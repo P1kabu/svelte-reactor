@@ -382,45 +382,52 @@ interface ReactorInspection<T> {
 - [x] README.md
 - [x] tests/setup.ts
 
-#### Sprint 1.2: Core State Management (В РОБОТІ)
-- [ ] TypeScript types (src/types/index.ts)
-- [ ] Core reactor (src/core/reactor.svelte.ts)
-- [ ] Basic update/set methods
-- [ ] Reactive state з $state
-- [ ] Unit tests для core
+#### Sprint 1.2: Core State Management ✅ COMPLETED
+- [x] TypeScript types (src/types/index.ts)
+- [x] Core reactor (src/core/reactor.svelte.ts)
+- [x] Basic update/set methods
+- [x] Reactive state з $state
+- [x] Unit tests для core
 
-#### Sprint 1.3: Basic Undo/Redo
-- [ ] UndoRedoHistory class
-- [ ] undo() та redo() методи
-- [ ] canUndo() та canRedo()
-- [ ] History limit
-- [ ] Unit tests для undo/redo
+#### Sprint 1.3: Basic Undo/Redo ✅ COMPLETED
+- [x] UndoRedoHistory class
+- [x] undo() та redo() методи
+- [x] canUndo() та canRedo()
+- [x] History limit
+- [x] Unit tests для undo/redo
 
-#### Sprint 1.4: Plugin System Foundation
-- [ ] ReactorPlugin interface
-- [ ] Plugin lifecycle (init, destroy)
-- [ ] Plugin context
-- [ ] Basic logger plugin
-- [ ] Tests для plugins
+#### Sprint 1.4: Plugin System Foundation ✅ COMPLETED
+- [x] ReactorPlugin interface
+- [x] Plugin lifecycle (init, destroy)
+- [x] Plugin context
+- [x] Basic logger plugin
+- [x] Tests для plugins
 
 ---
 
 ### 🔄 Phase 2: Advanced Features (Тиждень 3-4)
 
-#### Sprint 2.1: Middleware System
-- [ ] Middleware interface
-- [ ] Middleware chain
-- [ ] onBeforeUpdate/onAfterUpdate hooks
-- [ ] Logger middleware з devtools
-- [ ] Error handling middleware
-- [ ] Tests
+#### Sprint 2.1: Advanced Undo/Redo ✅ COMPLETED
+- [x] Batch operations (startBatch/endBatch)
+- [x] Action names/labels
+- [x] History filtering (exclude actions)
+- [x] History compression
+- [x] Group by action name
+- [x] Advanced tests (tests/advanced-undo.test.ts)
 
-#### Sprint 2.2: Advanced Undo/Redo
-- [ ] Batch operations (startBatch/endBatch)
-- [ ] Action names/labels
-- [ ] History filtering (exclude actions)
-- [ ] History compression
-- [ ] Tests
+**New Features:**
+- `exclude`: Skip certain actions from history
+- `compress`: Merge identical consecutive states
+- `groupByAction`: Group consecutive actions with same name
+- Enhanced constructor with options
+
+#### Sprint 2.2: Middleware System ✅ COMPLETED
+- [x] Middleware interface
+- [x] Middleware chain
+- [x] onBeforeUpdate/onAfterUpdate hooks
+- [x] Logger middleware з devtools
+- [x] Error handling middleware
+- [x] Tests
 
 #### Sprint 2.3: Persist Integration
 - [ ] Persist plugin

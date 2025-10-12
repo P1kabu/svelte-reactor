@@ -15,16 +15,36 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
   private limit: number;
   private batchMode = false;
   private batchBuffer: HistoryEntry<T>[] = [];
+  private excludeActions: string[];
+  private compress: boolean;
+  private groupByAction: boolean;
 
-  constructor(initialState: T, limit = 50) {
+  constructor(
+    initialState: T,
+    limit = 50,
+    options?: {
+      exclude?: string[];
+      compress?: boolean;
+      groupByAction?: boolean;
+    }
+  ) {
     this.current = deepClone(initialState);
     this.limit = limit;
+    this.excludeActions = options?.exclude || [];
+    this.compress = options?.compress || false;
+    this.groupByAction = options?.groupByAction || false;
   }
 
   /**
    * Push new state to history
    */
   push(prevState: T, nextState: T, action?: string): void {
+    // Skip excluded actions
+    if (action && this.excludeActions.includes(action)) {
+      this.current = deepClone(nextState);
+      return;
+    }
+
     // If in batch mode, buffer the entry
     if (this.batchMode) {
       this.batchBuffer.push({
@@ -33,6 +53,28 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
         action,
       });
       return;
+    }
+
+    // Group by action name if enabled
+    if (this.groupByAction && action && this.past.length > 0) {
+      const lastEntry = this.past[this.past.length - 1];
+      if (lastEntry.action === action) {
+        // Same action - just update current, don't add new entry
+        this.current = deepClone(nextState);
+        this.future = [];
+        return;
+      }
+    }
+
+    // Compress history if enabled
+    if (this.compress && this.past.length > 0) {
+      const lastEntry = this.past[this.past.length - 1];
+      // Simple compression: skip if state is identical
+      if (JSON.stringify(lastEntry.state) === JSON.stringify(prevState)) {
+        this.current = deepClone(nextState);
+        this.future = [];
+        return;
+      }
     }
 
     // Add to history

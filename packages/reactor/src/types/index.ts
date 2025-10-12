@@ -188,6 +188,15 @@ export interface UndoRedoOptions {
 
   /** Actions to exclude from history */
   exclude?: string[];
+
+  /** Enable history compression (merge similar consecutive states) */
+  compress?: boolean;
+
+  /** Custom state comparison for compression */
+  compareStates?: (a: any, b: any) => boolean;
+
+  /** Group actions by name (merge consecutive actions with same name) */
+  groupByAction?: boolean;
 }
 
 /**

@@ -19,14 +19,23 @@ import { UndoRedoHistory } from '../history/undo-redo.js';
  * ```
  */
 export function undoRedo<T extends object>(options?: UndoRedoOptions): ReactorPlugin<T> {
-  const { limit = 50 } = options ?? {};
+  const {
+    limit = 50,
+    exclude = [],
+    compress = false,
+    groupByAction = false,
+  } = options ?? {};
 
   return {
     name: 'undo-redo',
 
     init(context) {
-      // Create history instance
-      context.history = new UndoRedoHistory(context.state, limit);
+      // Create history instance with advanced options
+      context.history = new UndoRedoHistory(context.state, limit, {
+        exclude,
+        compress,
+        groupByAction,
+      });
     },
 
     destroy() {
