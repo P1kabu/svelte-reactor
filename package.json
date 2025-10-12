@@ -1,0 +1,27 @@
+{
+  "name": "svelte-persist-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @svelte-dev/persist dev",
+    "build": "pnpm --filter @svelte-dev/persist build",
+    "test": "pnpm --filter @svelte-dev/persist test",
+    "test:ui": "pnpm --filter @svelte-dev/persist test:ui",
+    "typecheck": "pnpm --filter @svelte-dev/persist typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.27.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

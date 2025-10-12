@@ -1,0 +1,72 @@
+{
+  "name": "@svelte-dev/persist",
+  "version": "0.1.0",
+  "description": "Effortless state persistence for Svelte 5 Runes - localStorage, sessionStorage, IndexedDB with compression, encryption, and tab sync",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm test && pnpm build"
+  },
+  "keywords": [
+    "svelte",
+    "svelte5",
+    "svelte-5",
+    "runes",
+    "persistence",
+    "persisted",
+    "state",
+    "localStorage",
+    "sessionStorage",
+    "indexeddb",
+    "state-management",
+    "reactive",
+    "compression",
+    "encryption",
+    "tab-sync",
+    "sveltekit",
+    "ssr",
+    "typescript"
+  ],
+  "author": "Svelte Persist Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svelte-dev/persist.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/svelte-dev/persist/issues"
+  },
+  "homepage": "https://github.com/svelte-dev/persist#readme",
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@vitest/ui": "^1.2.0",
+    "jsdom": "^24.0.0",
+    "svelte": "^5.0.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
+  }
+}

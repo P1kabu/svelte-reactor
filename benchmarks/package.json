@@ -1,0 +1,16 @@
+{
+  "name": "benchmarks",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node src/performance.js",
+    "size": "node src/bundle-size.js"
+  },
+  "dependencies": {
+    "@svelte-dev/persist": "workspace:*"
+  },
+  "devDependencies": {
+    "tinybench": "^2.5.0"
+  }
+}
