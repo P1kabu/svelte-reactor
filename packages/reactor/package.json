@@ -1,0 +1,77 @@
+{
+  "name": "@svelte-dev/reactor",
+  "version": "0.1.0",
+  "description": "Powerful reactive state management for Svelte 5 - undo/redo, middleware, persistence, and DevTools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "svelte": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./plugins": {
+      "types": "./dist/plugins/index.d.ts",
+      "svelte": "./dist/plugins/index.js",
+      "default": "./dist/plugins/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build && tsc --emitDeclarationOnly",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm test && pnpm build"
+  },
+  "keywords": [
+    "svelte",
+    "svelte5",
+    "svelte-5",
+    "runes",
+    "state-management",
+    "reactive",
+    "undo",
+    "redo",
+    "middleware",
+    "devtools",
+    "persistence",
+    "time-travel",
+    "sveltekit",
+    "ssr",
+    "typescript"
+  ],
+  "author": "Svelte Reactor Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/svelte-dev/reactor.git",
+    "directory": "packages/reactor"
+  },
+  "bugs": {
+    "url": "https://github.com/svelte-dev/reactor/issues"
+  },
+  "homepage": "https://github.com/svelte-dev/reactor#readme",
+  "peerDependencies": {
+    "svelte": "^5.0.0"
+  },
+  "dependencies": {
+    "@svelte-dev/persist": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@vitest/ui": "^1.2.0",
+    "jsdom": "^24.0.0",
+    "svelte": "^5.0.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
+  }
+}
