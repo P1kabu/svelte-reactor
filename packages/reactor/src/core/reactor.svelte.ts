@@ -60,7 +60,7 @@ export function createReactor<T extends object>(
 
       // Update history reference if plugin added it
       if (pluginContext.history) {
-        history = pluginContext.history;
+        history = pluginContext.history as UndoRedoHistory<T>;
       }
     } catch (error) {
       console.error(`[Reactor] Failed to initialize plugin "${plugin.name}":`, error);
@@ -73,7 +73,7 @@ export function createReactor<T extends object>(
   /**
    * Update state using an updater function
    */
-  function update(updater: (state: T) => void): void {
+  function update(updater: (state: T) => void, action?: string): void {
     if (destroyed) {
       console.warn('[Reactor] Cannot update destroyed reactor');
       return;
@@ -86,18 +86,18 @@ export function createReactor<T extends object>(
       // Run before middlewares
       const nextState = deepClone(state);
       updater(nextState);
-      middlewareChain.runBefore(prevState, nextState);
+      middlewareChain.runBefore(prevState, nextState, action);
 
       // Apply update
       updater(state);
 
       // Push to history
       if (history) {
-        history.push(prevState, state);
+        history.push(prevState, state, action);
       }
 
       // Run after middlewares
-      middlewareChain.runAfter(prevState, state);
+      middlewareChain.runAfter(prevState, state, action);
     } catch (error) {
       middlewareChain.handleError(error as Error);
       throw error;
@@ -182,6 +182,29 @@ export function createReactor<T extends object>(
   }
 
   /**
+   * Clear all history
+   */
+  function clearHistory(): void {
+    if (!history) {
+      console.warn('[Reactor] Undo/redo not enabled. Add undoRedo plugin.');
+      return;
+    }
+    history.clear();
+  }
+
+  /**
+   * Get history entries
+   */
+  function getHistory(): any[] {
+    if (!history) {
+      console.warn('[Reactor] Undo/redo not enabled. Add undoRedo plugin.');
+      return [];
+    }
+    const stack = history.getStack();
+    return stack.past;
+  }
+
+  /**
    * Get reactor inspection data (for DevTools)
    */
   function inspect(): ReactorInspection<T> {
@@ -227,6 +250,8 @@ export function createReactor<T extends object>(
     canUndo,
     canRedo,
     batch,
+    clearHistory,
+    getHistory,
     inspect,
     destroy,
   };

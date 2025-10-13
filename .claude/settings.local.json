@@ -8,7 +8,11 @@
       "Bash(pnpm install:*)",
       "Bash(rm:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(pnpm test:*)",
+      "Bash(node:*)",
+      "Bash(pnpm bench:*)",
+      "Bash(pnpm typecheck)"
     ],
     "deny": [],
     "ask": []

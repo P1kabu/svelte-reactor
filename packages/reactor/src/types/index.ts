@@ -10,7 +10,7 @@ export interface Reactor<T extends object> {
   readonly state: T;
 
   /** Update state using an updater function */
-  update(updater: (state: T) => void): void;
+  update(updater: (state: T) => void, action?: string): void;
 
   /** Set state directly */
   set(newState: Partial<T>): void;
@@ -29,6 +29,12 @@ export interface Reactor<T extends object> {
 
   /** Batch multiple updates into single history entry */
   batch(fn: () => void): void;
+
+  /** Clear all history */
+  clearHistory(): void;
+
+  /** Get history entries */
+  getHistory(): HistoryEntry<T>[];
 
   /** Get reactor inspection data (for DevTools) */
   inspect(): ReactorInspection<T>;
@@ -268,4 +274,13 @@ export interface ReactorDevTools<T extends object> {
 
   /** Get inspection data */
   inspect(): ReactorInspection<T>;
+
+  /** Reset to initial state */
+  reset(): void;
+
+  /** Get state at specific history index */
+  getStateAt(index: number): T | null;
+
+  /** Subscribe to state changes */
+  subscribe(callback: (inspection: ReactorInspection<T>) => void): () => void;
 }

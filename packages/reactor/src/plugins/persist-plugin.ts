@@ -1,12 +1,11 @@
 /**
- * Persist plugin - integration with @svelte-dev/persist
+ * Persist plugin - direct storage integration
  */
 
-import type { ReactorPlugin, PersistOptions } from '../types/index.js';
-import { persisted } from '@svelte-dev/persist';
+import type { ReactorPlugin, PersistOptions, Middleware } from '../types/index.js';
 
 /**
- * Enable state persistence using @svelte-dev/persist
+ * Enable state persistence using direct storage access
  *
  * @example
  * ```ts
@@ -27,48 +26,126 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     migrations,
   } = options;
 
-  let persistedState: any;
-  let cleanupEffect: (() => void) | undefined;
+  let debounceTimer: any;
+  let storageBackend: Storage | null = null;
+
+  // Get storage backend
+  function getStorage(): Storage | null {
+    if (typeof window === 'undefined') return null;
+
+    switch (storage) {
+      case 'localStorage':
+        return window.localStorage;
+      case 'sessionStorage':
+        return window.sessionStorage;
+      case 'memory':
+        return null; // In-memory storage not implemented yet
+      case 'indexedDB':
+        return null; // IndexedDB not implemented yet
+      default:
+        return window.localStorage;
+    }
+  }
+
+  // Load state from storage
+  function loadState(): T | null {
+    if (!storageBackend) return null;
+
+    try {
+      const item = storageBackend.getItem(key);
+      if (!item) return null;
+
+      let data = JSON.parse(item);
+
+      // Handle compression (basic implementation)
+      if (compress && typeof data === 'string') {
+        // Decompress if needed (not implemented - just parse again)
+        data = JSON.parse(data);
+      }
+
+      // Handle migrations
+      if (version && migrations && data.__version !== version) {
+        const currentVersion = data.__version || 0;
+        for (let v = currentVersion + 1; v <= version; v++) {
+          if (migrations[v]) {
+            data = migrations[v](data);
+          }
+        }
+        data.__version = version;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('[Reactor persist] Failed to load state:', error);
+      return null;
+    }
+  }
+
+  // Save state to storage
+  function saveState(state: T): void {
+    if (!storageBackend) return;
+
+    try {
+      let data: any = { ...state };
+
+      // Add version
+      if (version) {
+        data.__version = version;
+      }
+
+      let serialized = JSON.stringify(data);
+
+      // Handle compression (basic implementation)
+      if (compress) {
+        // Compress if needed (not implemented - just stringify again)
+        serialized = JSON.stringify(serialized);
+      }
+
+      storageBackend.setItem(key, serialized);
+    } catch (error) {
+      console.error('[Reactor persist] Failed to save state:', error);
+    }
+  }
 
   return {
     name: 'persist',
 
     init(context) {
-      // Create persisted state using @svelte-dev/persist
-      persistedState = persisted(key, context.state, {
-        storage,
-        debounce,
-        compress,
-        version,
-        migrations,
-        ssr: true,
-      });
+      // Initialize storage backend
+      storageBackend = getStorage();
 
-      // Load persisted state into reactor state
-      Object.assign(context.state, persistedState);
+      // Load persisted state
+      const loadedState = loadState();
+      if (loadedState) {
+        Object.assign(context.state, loadedState);
+      }
 
-      // Setup effect to sync reactor state to persisted state
-      const syncToPersisted = () => {
-        $effect(() => {
-          // Track reactor state changes
-          const currentState = context.state;
+      // Create middleware to sync changes
+      const persistMiddleware: Middleware<T> = {
+        name: 'persist-sync',
 
-          // Sync to persisted state
-          Object.assign(persistedState, currentState);
-        });
+        onAfterUpdate(prevState, nextState) {
+          // Debounce if needed
+          if (debounce > 0) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+              saveState(nextState);
+            }, debounce);
+          } else {
+            saveState(nextState);
+          }
+        },
       };
 
-      // Run sync effect
-      try {
-        syncToPersisted();
-      } catch (error) {
-        console.error('[Reactor] Failed to sync with persist:', error);
-      }
+      // Register middleware
+      context.middlewares.push(persistMiddleware);
     },
 
     destroy() {
-      // Cleanup effect if needed
-      cleanupEffect?.();
+      // Clear any pending debounce
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
     },
   };
 }

@@ -29,7 +29,7 @@ describe('Persist plugin integration', () => {
     expect(stored).toBeTruthy();
 
     const parsed = JSON.parse(stored!);
-    expect(parsed.value.value).toBe(42);
+    expect(parsed.value).toBe(42);
   });
 
   it('should load persisted state on initialization', () => {
@@ -122,15 +122,13 @@ describe('Persist plugin integration', () => {
   it('should support migrations', () => {
     // Save old version
     const oldData = {
-      value: {
-        oldField: 'old-value',
-      },
+      oldField: 'old-value',
       __version: 1,
     };
     localStorage.setItem('test-counter-migrate', JSON.stringify(oldData));
 
     // Create reactor with migration
-    const counter = createReactor({ newField: '' }, {
+    const counter = createReactor({ newField: 'default' }, {
       plugins: [
         persist({
           key: 'test-counter-migrate',

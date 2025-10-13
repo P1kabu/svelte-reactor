@@ -39,9 +39,21 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
    * Push new state to history
    */
   push(prevState: T, nextState: T, action?: string): void {
-    // Skip excluded actions
+    // Skip excluded actions - but save prevState so undo returns to before excluded action
     if (action && this.excludeActions.includes(action)) {
+      // Save prevState if this is first change after non-excluded action
+      if (this.past.length === 0 || JSON.stringify(this.past[this.past.length - 1].state) !== JSON.stringify(prevState)) {
+        this.past.push({
+          state: deepClone(prevState),
+          timestamp: Date.now(),
+        });
+        // Enforce limit
+        if (this.past.length > this.limit) {
+          this.past.shift();
+        }
+      }
       this.current = deepClone(nextState);
+      this.future = [];
       return;
     }
 
@@ -67,12 +79,10 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
     }
 
     // Compress history if enabled
-    if (this.compress && this.past.length > 0) {
-      const lastEntry = this.past[this.past.length - 1];
-      // Simple compression: skip if state is identical
-      if (JSON.stringify(lastEntry.state) === JSON.stringify(prevState)) {
-        this.current = deepClone(nextState);
-        this.future = [];
+    if (this.compress) {
+      // Simple compression: skip if next state is identical to current
+      if (JSON.stringify(this.current) === JSON.stringify(nextState)) {
+        // State hasn't changed, skip
         return;
       }
     }

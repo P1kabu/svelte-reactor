@@ -25,19 +25,19 @@ describe('Advanced undo/redo features', () => {
       // This should be in history
       counter.update((state) => {
         state.value = 1;
-      });
+      }, 'increment');
 
       // This should be skipped
       counter.update((state) => {
         state.value = 2;
-      });
+      }, 'skip-me');
 
       expect(counter.state.value).toBe(2);
       expect(counter.canUndo()).toBe(true);
 
       // Should undo to 1, not 0
       counter.undo();
-      expect(counter.state.value).toBe(0);
+      expect(counter.state.value).toBe(1);
     });
   });
 
@@ -55,13 +55,13 @@ describe('Advanced undo/redo features', () => {
       // Multiple increments (same action)
       counter.update((state) => {
         state.value++;
-      });
+      }, 'increment');
       counter.update((state) => {
         state.value++;
-      });
+      }, 'increment');
       counter.update((state) => {
         state.value++;
-      });
+      }, 'increment');
 
       expect(counter.state.value).toBe(3);
 
@@ -114,19 +114,19 @@ describe('Advanced undo/redo features', () => {
 
       counter.update((state) => {
         state.value = 1;
-      });
+      }, 'increment');
       counter.update((state) => {
         state.value = 2;
-      });
+      }, 'increment');
       counter.update((state) => {
         state.value = 3;
-      });
+      }, 'increment');
 
       expect(counter.state.value).toBe(3);
       expect(counter.canUndo()).toBe(true);
 
       counter.undo();
-      expect(counter.canUndo()).toBe(false); // Should be at start
+      expect(counter.canUndo()).toBe(false); // Should be at start after undo (groupByAction merged all)
     });
   });
 });

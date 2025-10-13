@@ -31,4 +31,17 @@ export { UndoRedoHistory as UndoRedoHistoryClass } from './history/undo-redo.js'
 export { createMiddlewareChain, createLoggerMiddleware } from './middleware/index.js';
 
 // Utils
-export { deepClone, isEqual } from './utils/index.js';
+export {
+  deepClone,
+  isEqual,
+  diff,
+  formatPath,
+  applyPatch,
+  getChangeSummary,
+} from './utils/index.js';
+
+// Utils types
+export type { DiffOperation, DiffEntry, DiffResult } from './utils/index.js';
+
+// DevTools
+export { createDevTools } from './devtools/index.js';
