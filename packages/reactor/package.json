@@ -66,13 +66,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/p1kabu/svelte-reactor.git",
+    "url": "git+https://github.com/P1kabu/svelte-reactor.git",
     "directory": "packages/reactor"
   },
   "bugs": {
-    "url": "https://github.com/p1kabu/svelte-reactor/issues"
+    "url": "https://github.com/P1kabu/svelte-reactor/issues"
   },
-  "homepage": "https://github.com/p1kabu/svelte-reactor#readme",
+  "homepage": "https://github.com/P1kabu/svelte-reactor#readme",
   "peerDependencies": {
     "svelte": "^5.0.0"
   },
