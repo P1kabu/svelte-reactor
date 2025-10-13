@@ -12,7 +12,19 @@
       "Bash(pnpm test:*)",
       "Bash(node:*)",
       "Bash(pnpm bench:*)",
-      "Bash(pnpm typecheck)"
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm dev)",
+      "Bash(cat:*)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(npm pack:*)",
+      "Bash(pnpm clean:*)",
+      "Bash(tsc:*)",
+      "Bash(pnpm exec tsc:*)",
+      "Bash(pnpm list:*)",
+      "Bash(npm view:*)",
+      "Bash(npm:*)"
     ],
     "deny": [],
     "ask": []

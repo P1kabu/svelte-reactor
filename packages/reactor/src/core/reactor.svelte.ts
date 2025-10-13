@@ -42,6 +42,9 @@ export function createReactor<T extends object>(
   // History (will be set by undo/redo plugin if enabled)
   let history: UndoRedoHistory<T> | undefined;
 
+  // Track history changes for reactivity
+  let historyVersion = $state(0);
+
   // Track if reactor is destroyed
   let destroyed = false;
 
@@ -83,21 +86,23 @@ export function createReactor<T extends object>(
       // Capture previous state
       const prevState = deepClone(state);
 
-      // Run before middlewares
-      const nextState = deepClone(state);
-      updater(nextState);
-      middlewareChain.runBefore(prevState, nextState, action);
-
-      // Apply update
+      // Apply update to real state
       updater(state);
+
+      // Capture next state after update
+      const nextState = deepClone(state);
+
+      // Run before middlewares
+      middlewareChain.runBefore(prevState, nextState, action);
 
       // Push to history
       if (history) {
-        history.push(prevState, state, action);
+        history.push(prevState, nextState, action);
+        historyVersion++;
       }
 
       // Run after middlewares
-      middlewareChain.runAfter(prevState, state, action);
+      middlewareChain.runAfter(prevState, nextState, action);
     } catch (error) {
       middlewareChain.handleError(error as Error);
       throw error;
@@ -124,10 +129,13 @@ export function createReactor<T extends object>(
 
     const prevState = history.undo();
     if (prevState) {
-      // Use untrack to avoid triggering effects
-      untrack(() => {
-        Object.assign(state, prevState);
-      });
+      historyVersion++;
+      // Update each property individually to trigger reactivity
+      for (const key in prevState) {
+        if (Object.prototype.hasOwnProperty.call(prevState, key)) {
+          (state as any)[key] = (prevState as any)[key];
+        }
+      }
     }
   }
 
@@ -142,10 +150,13 @@ export function createReactor<T extends object>(
 
     const nextState = history.redo();
     if (nextState) {
-      // Use untrack to avoid triggering effects
-      untrack(() => {
-        Object.assign(state, nextState);
-      });
+      historyVersion++;
+      // Update each property individually to trigger reactivity
+      for (const key in nextState) {
+        if (Object.prototype.hasOwnProperty.call(nextState, key)) {
+          (state as any)[key] = (nextState as any)[key];
+        }
+      }
     }
   }
 
@@ -153,6 +164,8 @@ export function createReactor<T extends object>(
    * Check if undo is available
    */
   function canUndo(): boolean {
+    // Access historyVersion to make this reactive
+    historyVersion;
     return history?.canUndo() ?? false;
   }
 
@@ -160,6 +173,8 @@ export function createReactor<T extends object>(
    * Check if redo is available
    */
   function canRedo(): boolean {
+    // Access historyVersion to make this reactive
+    historyVersion;
     return history?.canRedo() ?? false;
   }
 

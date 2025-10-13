@@ -3,6 +3,7 @@
  */
 
 import type { ReactorPlugin, PersistOptions, Middleware } from '../types/index.js';
+import { deepClone } from '../utils/index.js';
 
 /**
  * Enable state persistence using direct storage access
@@ -86,7 +87,8 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     if (!storageBackend) return;
 
     try {
-      let data: any = { ...state };
+      // Deep clone to handle Proxy objects from Svelte 5
+      let data: any = deepClone(state);
 
       // Add version
       if (version) {

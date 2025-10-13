@@ -1,4 +1,4 @@
-# Contributing to @svelte-dev/persist
+# Contributing to @svelte-dev/reactor
 
 Thank you for your interest in contributing! This guide will help you get started.
 
@@ -6,8 +6,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/svelte-dev/persist.git
-cd persist
+git clone https://github.com/svelte-dev/reactor.git
+cd reactor
 ```
 
 2. Install dependencies:
@@ -17,6 +17,7 @@ pnpm install
 
 3. Run tests:
 ```bash
+cd packages/reactor
 pnpm test
 ```
 
@@ -25,20 +26,28 @@ pnpm test
 pnpm test:watch
 ```
 
+5. Run benchmarks:
+```bash
+pnpm bench
+```
+
 ## Project Structure
 
 ```
-svelte-persist/
+svelte-dev.reactor/
 ├── packages/
-│   └── core/              # Main library
-│       ├── src/
-│       │   ├── persisted.svelte.ts  # Core functionality
-│       │   ├── storages/            # Storage adapters
-│       │   ├── utils/               # Utilities
-│       │   └── types/               # TypeScript types
-│       └── tests/                   # Unit tests
-├── docs/                  # Documentation (coming soon)
-├── playground/            # Interactive examples (coming soon)
+│   ├── reactor/           # Main library
+│   │   ├── src/
+│   │   │   ├── core/      # Core reactor functionality
+│   │   │   ├── history/   # Undo/redo engine
+│   │   │   ├── plugins/   # Built-in plugins
+│   │   │   ├── devtools/  # DevTools API
+│   │   │   ├── utils/     # Utilities (clone, diff)
+│   │   │   └── types/     # TypeScript types
+│   │   └── tests/         # Unit & integration tests
+│   └── persist/           # Persistence library
+├── examples/
+│   └── reactor-demos/     # Interactive demos
 └── package.json          # Monorepo root
 ```
 
