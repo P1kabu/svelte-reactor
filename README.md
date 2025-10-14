@@ -1,64 +1,88 @@
-# @svelte-dev/persist
+# svelte-reactor
 
-> Effortless state persistence for Svelte 5 Runes
+> Powerful reactive state management for Svelte 5
 
-[![npm version](https://img.shields.io/npm/v/@svelte-dev/persist.svg?style=flat)](https://www.npmjs.com/package/@svelte-dev/persist)
-[![Bundle size](https://img.shields.io/bundlephobia/minzip/@svelte-dev/persist?style=flat)](https://bundlephobia.com/package/@svelte-dev/persist)
+[![npm version](https://img.shields.io/npm/v/svelte-reactor.svg?style=flat)](https://www.npmjs.com/package/svelte-reactor)
+[![npm downloads](https://img.shields.io/npm/dm/svelte-reactor.svg?style=flat)](https://www.npmjs.com/package/svelte-reactor)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/svelte-reactor?style=flat&label=gzip)](https://bundlephobia.com/package/svelte-reactor)
+[![Build Status](https://github.com/P1kabu/svelte-reactor/workflows/CI/badge.svg)](https://github.com/P1kabu/svelte-reactor/actions)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/svelte-dev/persist/workflows/CI/badge.svg)](https://github.com/svelte-dev/persist/actions)
 
-A lightweight, type-safe library for persisting reactive state in Svelte 5 applications using the new Runes API.
+A comprehensive state management library for Svelte 5 applications with built-in undo/redo, middleware, persistence, and DevTools support.
 
 ## Features
 
 - **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
-- **Multi-storage** - localStorage, sessionStorage, IndexedDB, or custom adapters
+- **Undo/Redo** - Full history management with batch operations
+- **Middleware** - Redux-style middleware for logging, effects, and more
+- **Persistence** - Built-in persist plugin for localStorage/sessionStorage
+- **DevTools** - Time-travel debugging and state inspection
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - < 4KB gzipped (including all features)
-- **Tab sync** - Synchronize state across browser tabs
-- **Compression** - Built-in compression for large data using Compression Streams API
-- **Migrations** - Version and migrate your persisted data
-- **Debouncing** - Control write frequency for performance
-- **Zero dependencies** - No external runtime dependencies
+- **Tiny** - **10.87 KB gzipped** (full package), **1.05 KB** (plugins only)
+- **Tree-shakeable** - Import only what you need
+- **Zero dependencies** - Only requires Svelte 5
 
 ## Installation
 
 ```bash
-npm install @svelte-dev/persist
+npm install svelte-reactor
 ```
 
 ```bash
-pnpm add @svelte-dev/persist
+pnpm add svelte-reactor
 ```
 
 ```bash
-yarn add @svelte-dev/persist
+yarn add svelte-reactor
 ```
 
 ## Quick Start
 
-### Basic Counter
+### Basic Counter with Undo/Redo
 
 ```svelte
 <script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo, logger } from 'svelte-reactor/plugins';
 
-  let count = persisted('counter', $state(0));
+  const counter = createReactor(
+    { value: 0 },
+    {
+      plugins: [
+        undoRedo({ limit: 50 }),
+        logger(),
+      ],
+    }
+  );
+
+  function increment() {
+    counter.update(state => {
+      state.value++;
+    });
+  }
 </script>
 
-<button onclick={() => count++}>
-  Clicks: {count}
+<button onclick={increment}>
+  Count: {counter.state.value}
+</button>
+
+<button onclick={() => counter.undo()} disabled={!counter.canUndo()}>
+  Undo
+</button>
+
+<button onclick={() => counter.redo()} disabled={!counter.canRedo()}>
+  Redo
 </button>
 ```
 
-The counter value will automatically persist to localStorage and survive page refreshes.
-
-### Todo List
+### Todo List with Persistence
 
 ```svelte
 <script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface Todo {
     id: string;
@@ -66,301 +90,350 @@ The counter value will automatically persist to localStorage and survive page re
     done: boolean;
   }
 
-  let todos = persisted('todos', $state<Todo[]>([]));
-  let input = $state('');
+  const todos = createReactor(
+    { items: [] as Todo[] },
+    {
+      plugins: [
+        persist({ key: 'todos', debounce: 300 }),
+        undoRedo({ limit: 100 }),
+      ],
+    }
+  );
 
-  function addTodo() {
-    if (!input.trim()) return;
-    todos = [
-      ...todos,
-      {
+  function addTodo(text: string) {
+    todos.update(state => {
+      state.items.push({
         id: crypto.randomUUID(),
-        text: input,
+        text,
         done: false,
-      },
-    ];
-    input = '';
+      });
+    });
   }
 </script>
-
-<input bind:value={input} onkeydown={(e) => e.key === 'Enter' && addTodo()} />
-<button onclick={addTodo}>Add</button>
-
-<ul>
-  {#each todos as todo}
-    <li>
-      <input
-        type="checkbox"
-        bind:checked={todo.done}
-      />
-      {todo.text}
-    </li>
-  {/each}
-</ul>
 ```
 
 ## API Reference
 
-### `persisted(key, initialValue, options?)`
+### `createReactor(initialState, options?)`
 
-Create a persisted reactive state.
+Create a new reactor instance with undo/redo, middleware, and plugin support.
 
 **Parameters:**
 
-- `key: string` - Unique storage key
-- `initialValue: T` - Initial value (must use `$state()`)
-- `options?: PersistedOptions<T>` - Optional configuration
+- `initialState: T` - Initial state object
+- `options?: ReactorOptions<T>` - Optional configuration
 
 **Options:**
 
 ```typescript
-interface PersistedOptions<T> {
-  // Storage backend (default: 'localStorage')
-  storage?: 'localStorage' | 'sessionStorage' | 'memory' | 'indexedDB' | StorageAdapter;
+interface ReactorOptions<T> {
+  // Plugin system
+  plugins?: ReactorPlugin<T>[];
 
-  // Custom serializer (default: JSON)
-  serializer?: {
-    stringify: (value: T) => string;
-    parse: (str: string) => T;
-  };
+  // Reactor name (for DevTools)
+  name?: string;
 
-  // Debounce writes in milliseconds (default: 0)
-  debounce?: number;
-
-  // Enable compression for large data (default: false)
-  compress?: boolean;
-
-  // Enable tab synchronization (default: false)
-  sync?: boolean;
-
-  // Handle SSR gracefully (default: true)
-  ssr?: boolean;
-
-  // Callback when storage quota is exceeded
-  onQuotaExceeded?: (error: QuotaExceededError) => void;
-
-  // Schema version for migrations
-  version?: number;
-
-  // Migration functions
-  migrations?: Record<number, (data: any) => any>;
+  // Enable DevTools integration
+  devtools?: boolean;
 }
 ```
 
-## Advanced Usage
-
-### Custom Storage
-
-```svelte
-<script lang="ts">
-  import { persisted, sessionStorageAdapter } from '@svelte-dev/persist';
-
-  // Use sessionStorage instead of localStorage
-  let sessionData = persisted('session-key', $state({}), {
-    storage: 'sessionStorage',
-  });
-</script>
-```
-
-### Debounced Writes
-
-```svelte
-<script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
-
-  // Only save after 500ms of no changes (great for forms)
-  let formData = persisted('form', $state({ name: '', email: '' }), {
-    debounce: 500,
-  });
-</script>
-```
-
-### Tab Synchronization
-
-```svelte
-<script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
-
-  // Sync across tabs
-  let sharedCounter = persisted('shared-counter', $state(0), {
-    sync: true,
-  });
-</script>
-
-<button onclick={() => sharedCounter++}>
-  {sharedCounter}
-</button>
-
-<p>Open this page in multiple tabs - the counter syncs automatically!</p>
-```
-
-### Data Migrations
-
-```svelte
-<script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
-
-  interface User {
-    fullName: string; // v2: renamed from firstName
-    age: number;      // v2: added
-  }
-
-  let user = persisted('user', $state<User>({ fullName: '', age: 0 }), {
-    version: 2,
-    migrations: {
-      2: (oldData) => ({
-        fullName: oldData.firstName || '',
-        age: oldData.age || 0,
-      }),
-    },
-  });
-</script>
-```
-
-## Storage Adapters
-
-### Built-in Adapters
-
-- `localStorageAdapter` - Browser localStorage (default)
-- `sessionStorageAdapter` - Browser sessionStorage
-- `indexedDBAdapter` - IndexedDB for large data (async)
-- `memoryStorageAdapter` - In-memory storage (SSR fallback)
-
-### IndexedDB for Large Data
-
-```svelte
-<script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
-
-  // Store large data in IndexedDB
-  let photos = persisted('photos', $state([]), {
-    storage: 'indexedDB',
-  });
-
-  // Or create a custom IndexedDB adapter
-  import { createIndexedDBAdapter } from '@svelte-dev/persist';
-
-  const myDB = createIndexedDBAdapter('myApp', 'photos');
-  let images = persisted('images', $state([]), {
-    storage: myDB,
-  });
-</script>
-```
-
-### Compression
-
-```svelte
-<script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
-
-  // Automatically compress large data
-  let largeDataset = persisted('dataset', $state([]), {
-    compress: true,
-  });
-</script>
-```
-
-### Encryption
-
-```svelte
-<script lang="ts">
-  import { persisted, createEncryptedAdapter, localStorageAdapter } from '@svelte-dev/persist';
-
-  // Create encrypted storage adapter
-  const encryptedStorage = createEncryptedAdapter(
-    localStorageAdapter,
-    'your-secret-password'
-  );
-
-  // Store sensitive data encrypted
-  let sensitiveData = persisted('sensitive', $state({ token: '', apiKey: '' }), {
-    storage: encryptedStorage,
-  });
-</script>
-```
-
-**Note:** Encryption uses the Web Crypto API with AES-GCM-256. Keep your password secure!
-
-### Custom Adapter
+**Returns:** `Reactor<T>`
 
 ```typescript
-import { persisted, type StorageAdapter } from '@svelte-dev/persist';
+interface Reactor<T> {
+  // State access
+  state: T;
 
-const customAdapter: StorageAdapter = {
-  name: 'custom',
-  get: (key) => {
-    // Your implementation
-  },
-  set: (key, value) => {
-    // Your implementation
-  },
-  remove: (key) => {
-    // Your implementation
-  },
-  clear: () => {
-    // Your implementation
-  },
-};
+  // Actions
+  update(updater: (state: T) => void, action?: string): void;
+  set(newState: T): void;
 
-let data = persisted('key', $state({}), {
-  storage: customAdapter,
+  // Undo/Redo (available with undoRedo plugin)
+  undo(): void;
+  redo(): void;
+  canUndo(): boolean;
+  canRedo(): boolean;
+  clearHistory(): void;
+  getHistory(): HistoryEntry<T>[];
+
+  // Batch operations
+  batch(fn: () => void): void;
+
+  // DevTools
+  inspect(): ReactorInspection;
+
+  // Cleanup
+  destroy(): void;
+}
+```
+
+## Plugins
+
+### Built-in Plugins
+
+#### `undoRedo(options?)`
+
+Enable undo/redo functionality.
+
+```typescript
+import { undoRedo } from 'svelte-reactor/plugins';
+
+const reactor = createReactor(initialState, {
+  plugins: [
+    undoRedo({
+      limit: 50,                    // History limit (default: 50)
+      exclude: ['skip-history'],    // Actions to exclude from history
+      compress: true,                // Compress identical consecutive states
+    }),
+  ],
+});
+
+// Use with action names for better debugging
+reactor.update(state => { state.value++; }, 'increment');
+reactor.update(state => { state.temp = 123; }, 'skip-history'); // Won't add to history
+```
+
+#### `persist(options)`
+
+Built-in state persistence to localStorage/sessionStorage.
+
+```typescript
+import { persist } from 'svelte-reactor/plugins';
+
+const reactor = createReactor(initialState, {
+  plugins: [
+    persist({
+      key: 'my-state',
+      storage: 'localStorage', // or 'sessionStorage'
+      debounce: 300,
+      compress: false, // Optional compression (v0.2.0+)
+      migrations: {}, // Optional version migrations
+    }),
+  ],
 });
 ```
 
-## SSR Support
+#### `logger(options?)`
 
-The library automatically detects SSR environments (like SvelteKit) and falls back to memory storage. No configuration needed!
+Log all state changes to console.
+
+```typescript
+import { logger } from 'svelte-reactor/plugins';
+
+const reactor = createReactor(initialState, {
+  plugins: [
+    logger({
+      collapsed: true, // Collapse console groups
+    }),
+  ],
+});
+```
+
+## DevTools
+
+Built-in DevTools API for time-travel debugging and state inspection:
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+import { createDevTools } from 'svelte-reactor/devtools';
+
+const reactor = createReactor({ value: 0 });
+const devtools = createDevTools(reactor, { name: 'MyReactor' });
+
+// Time travel
+devtools.timeTravel(5); // Jump to history index 5
+
+// Export/Import state
+const snapshot = devtools.exportState();
+devtools.importState(snapshot);
+
+// Inspect current state
+const info = devtools.getStateAt(3);
+console.log(info.state, info.timestamp);
+
+// Subscribe to changes
+const unsubscribe = devtools.subscribe((state) => {
+  console.log('State changed:', state);
+});
+
+// Reset to initial state
+devtools.reset();
+```
+
+## Utilities
+
+Powerful utility functions for state management:
+
+```typescript
+import { diff, applyPatch, getChangeSummary, deepClone, isEqual } from 'svelte-reactor/utils';
+
+// State diffing
+const changes = diff(oldState, newState);
+console.log(changes); // { changes: [...], hasChanges: true }
+
+// Apply patches
+const newState = applyPatch(state, changes);
+
+// Get change summary
+const summary = getChangeSummary(changes);
+console.log(summary); // { added: 2, modified: 3, removed: 1 }
+
+// Deep clone
+const cloned = deepClone(state);
+
+// Deep equality
+const equal = isEqual(state1, state2);
+```
+
+## Middleware
+
+Create custom middleware for advanced use cases:
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+
+const loggingMiddleware = {
+  name: 'logger',
+  onBeforeUpdate(prevState, nextState, action) {
+    console.log(`[${action}] Before:`, prevState);
+  },
+  onAfterUpdate(prevState, nextState, action) {
+    console.log(`[${action}] After:`, nextState);
+  },
+  onError(error) {
+    console.error('Error:', error);
+  },
+};
+
+const reactor = createReactor(initialState, {
+  plugins: [
+    {
+      install: () => ({ middlewares: [loggingMiddleware] })
+    }
+  ],
+});
+```
+
+## Performance
+
+Reactor is highly optimized for performance:
+
+- **Simple state update**: 26,884 ops/sec (~0.037ms)
+- **Update with undo/redo**: 11,636 ops/sec (~0.086ms)
+- **100 sequential updates**: 331 ops/sec (~3ms)
+- **Bundle size**: 12.07 KB gzipped (full package)
+
+See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
+
+## Examples
+
+### Complete Todo App
 
 ```svelte
 <script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
-  // Works perfectly in SvelteKit!
-  let count = persisted('counter', $state(0));
+  interface Todo {
+    id: string;
+    text: string;
+    done: boolean;
+  }
+
+  const todos = createReactor(
+    { items: [] as Todo[], filter: 'all' as 'all' | 'active' | 'done' },
+    {
+      plugins: [
+        persist({ key: 'todos', debounce: 300 }),
+        undoRedo({ limit: 50 }),
+      ],
+    }
+  );
+
+  let newTodoText = $state('');
+
+  function addTodo() {
+    if (!newTodoText.trim()) return;
+    todos.update(state => {
+      state.items.push({
+        id: crypto.randomUUID(),
+        text: newTodoText.trim(),
+        done: false,
+      });
+    }, 'add-todo');
+    newTodoText = '';
+  }
+
+  function toggleTodo(id: string) {
+    todos.update(state => {
+      const todo = state.items.find(t => t.id === id);
+      if (todo) todo.done = !todo.done;
+    }, 'toggle-todo');
+  }
+
+  function removeTodo(id: string) {
+    todos.update(state => {
+      state.items = state.items.filter(t => t.id !== id);
+    }, 'remove-todo');
+  }
+
+  const filtered = $derived(
+    todos.state.filter === 'all'
+      ? todos.state.items
+      : todos.state.items.filter(t =>
+          todos.state.filter === 'done' ? t.done : !t.done
+        )
+  );
 </script>
+
+<input bind:value={newTodoText} onkeydown={e => e.key === 'Enter' && addTodo()} />
+<button onclick={addTodo}>Add</button>
+
+<div>
+  <button onclick={() => todos.update(s => { s.filter = 'all'; })}>All</button>
+  <button onclick={() => todos.update(s => { s.filter = 'active'; })}>Active</button>
+  <button onclick={() => todos.update(s => { s.filter = 'done'; })}>Done</button>
+</div>
+
+{#each filtered as todo (todo.id)}
+  <div>
+    <input type="checkbox" checked={todo.done} onchange={() => toggleTodo(todo.id)} />
+    <span style:text-decoration={todo.done ? 'line-through' : 'none'}>{todo.text}</span>
+    <button onclick={() => removeTodo(todo.id)}>×</button>
+  </div>
+{/each}
+
+<button onclick={() => todos.undo()} disabled={!todos.canUndo()}>Undo</button>
+<button onclick={() => todos.redo()} disabled={!todos.canRedo()}>Redo</button>
 ```
 
-## TypeScript
+## API Documentation
 
-Full TypeScript support with excellent type inference:
+For complete API reference, see [API.md](./API.md).
 
-```typescript
-import { persisted } from '@svelte-dev/persist';
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
-
-// Type is automatically inferred as User | null
-let user = persisted('user', $state<User | null>(null));
-```
+For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 
 ## Roadmap
 
-### Phase 1: MVP (v0.1.0) ✅
-- Basic `persisted` function with localStorage
-- TypeScript types
-- Svelte 5 Runes support
-- Serialization (JSON)
-- SSR detection
-- Unit tests
+### ✅ Phase 1: MVP (v0.1.0)
+- ✅ Core reactor with Svelte 5 Runes
+- ✅ Basic undo/redo
+- ✅ Plugin system
+- ✅ TypeScript types
 
-### Phase 2: Core Features (v0.5.0) ✅
-- IndexedDB adapter
-- Compression support (Compression Streams API)
-- Advanced tab synchronization
-- Playground
-- E2E tests (in progress)
+### ✅ Phase 2: Core Features (v0.2.0)
+- ✅ Advanced undo/redo with batch operations
+- ✅ Middleware system
+- ✅ Persist integration
+- ✅ State utilities (diff, clone, equality)
 
-### Phase 3: Production Ready (v1.0.0) ✅
-- Encryption plugin (AES-GCM-256)
-- Performance benchmarks
-- CI/CD pipeline (GitHub Actions)
-- Changesets for version management
-- Full documentation site (in progress)
-- Multiple examples
+### ✅ Phase 3: Advanced (v0.3.0)
+- ✅ DevTools API
+- ✅ Time-travel debugging
+- ✅ Performance benchmarks
+- ✅ Comprehensive documentation
+- ⏳ Multi-tab sync (optional)
 
 ## Development
 
@@ -374,54 +447,34 @@ pnpm test
 # Run tests in watch mode
 pnpm test:watch
 
+# Run benchmarks
+pnpm bench
+
 # Build
 pnpm build
 
 # Type check
 pnpm typecheck
-
-# Run playground
-cd playground
-pnpm install
-pnpm dev
-
-# Run benchmarks
-cd benchmarks
-pnpm install
-pnpm bench
-pnpm size
 ```
 
-## Publishing
+## Testing
 
-This library uses [Changesets](https://github.com/changesets/changesets) for version management and publishing.
+The package includes comprehensive test coverage:
 
-### Creating a release
+- **93 tests** covering all features
+- Unit tests for core reactor, plugins, utilities, and DevTools
+- Performance benchmarks for all operations
+- TypeScript type checking
 
-1. Create a changeset:
-```bash
-pnpm changeset
-```
-
-2. Version packages:
-```bash
-pnpm version
-```
-
-3. Publish to NPM:
-```bash
-pnpm release
-```
-
-Publishing is also automated via GitHub Actions when changesets are merged to main.
+Run tests with `pnpm test` or `pnpm test:watch` for development.
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! Please read our [Contributing Guide](../../CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details
+MIT License - see [LICENSE](../../LICENSE) for details
 
 ## Credits
 
