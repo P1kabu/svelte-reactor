@@ -1,6 +1,6 @@
 # svelte-reactor
 
-> Powerful reactive state management for Svelte 5
+> **Production-ready** reactive state management for Svelte 5 with full **Svelte stores API** compatibility
 
 [![npm version](https://img.shields.io/npm/v/svelte-reactor.svg?style=flat)](https://www.npmjs.com/package/svelte-reactor)
 [![npm downloads](https://img.shields.io/npm/dm/svelte-reactor.svg?style=flat)](https://www.npmjs.com/package/svelte-reactor)
@@ -9,20 +9,29 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat&logo=typescript)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT)
 
-A comprehensive state management library for Svelte 5 applications with built-in undo/redo, middleware, persistence, and DevTools support.
+**The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## Features
+## ✨ What's New in v0.2.0
 
-- **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
-- **Undo/Redo** - Full history management with batch operations
-- **Middleware** - Redux-style middleware for logging, effects, and more
-- **Persistence** - Built-in persist plugin for localStorage/sessionStorage
-- **DevTools** - Time-travel debugging and state inspection
-- **Type-safe** - Full TypeScript support with excellent type inference
-- **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - **10.87 KB gzipped** (full package), **1.05 KB** (plugins only)
-- **Tree-shakeable** - Import only what you need
-- **Zero dependencies** - Only requires Svelte 5
+🎉 **Full Svelte stores API compatibility** - Drop-in replacement for `writable()` stores with `subscribe()` support
+🛠️ **Helper functions** - `simpleStore()`, `persistedStore()`, `persistedReactor()` for common use cases
+🔒 **Enhanced security** - Selective persistence with `pick`/`omit` to exclude sensitive data
+🚀 **Production-ready** - SSR support, TypeScript improvements, comprehensive documentation
+
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)**
+
+## 🚀 Features
+
+- **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
+- **📦 Simple Helpers** - `simpleStore()` for basic stores, `persistedStore()` for localStorage
+- **♻️ Undo/Redo** - Built-in history management with batch operations
+- **💾 Smart Persistence** - Auto-save to localStorage with selective field persistence
+- **🔒 Security First** - Exclude sensitive data with `pick`/`omit` options
+- **🎮 DevTools** - Time-travel debugging and state inspection
+- **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
+- **🎯 Type-safe** - Full TypeScript support with excellent inference
+- **🪶 Lightweight** - **11.47 KB gzipped** (full), tree-shakeable modules
+- **0️⃣ Zero dependencies** - Only requires Svelte 5
 
 ## Installation
 
@@ -38,83 +47,153 @@ pnpm add svelte-reactor
 yarn add svelte-reactor
 ```
 
-## Quick Start
+## 📖 Quick Start
 
-### Basic Counter with Undo/Redo
+### 🎯 Simple Counter (3 lines!)
+
+```typescript
+import { simpleStore } from 'svelte-reactor';
+
+export const counter = simpleStore(0);
+```
 
 ```svelte
-<script lang="ts">
-  import { createReactor } from 'svelte-reactor';
-  import { undoRedo, logger } from 'svelte-reactor/plugins';
-
-  const counter = createReactor(
-    { value: 0 },
-    {
-      plugins: [
-        undoRedo({ limit: 50 }),
-        logger(),
-      ],
-    }
-  );
-
-  function increment() {
-    counter.update(state => {
-      state.value++;
-    });
-  }
+<script>
+  import { counter } from './stores';
 </script>
 
-<button onclick={increment}>
-  Count: {counter.state.value}
-</button>
-
-<button onclick={() => counter.undo()} disabled={!counter.canUndo()}>
-  Undo
-</button>
-
-<button onclick={() => counter.redo()} disabled={!counter.canRedo()}>
-  Redo
+<!-- Works with $ auto-subscription! -->
+<button onclick={() => counter.update(n => n + 1)}>
+  Count: {$counter}
 </button>
 ```
 
-### Todo List with Persistence
+### 💾 Persisted Counter (Auto-saves to localStorage)
 
-```svelte
-<script lang="ts">
-  import { createReactor } from 'svelte-reactor';
-  import { persist, undoRedo } from 'svelte-reactor/plugins';
+```typescript
+import { persistedStore } from 'svelte-reactor';
 
-  interface Todo {
-    id: string;
-    text: string;
-    done: boolean;
-  }
-
-  const todos = createReactor(
-    { items: [] as Todo[] },
-    {
-      plugins: [
-        persist({ key: 'todos', debounce: 300 }),
-        undoRedo({ limit: 100 }),
-      ],
-    }
-  );
-
-  function addTodo(text: string) {
-    todos.update(state => {
-      state.items.push({
-        id: crypto.randomUUID(),
-        text,
-        done: false,
-      });
-    });
-  }
-</script>
+// Automatically persists to localStorage
+export const counter = persistedStore('counter', 0);
 ```
 
-## API Reference
+```svelte
+<script>
+  import { counter } from './stores';
+</script>
 
-### `createReactor(initialState, options?)`
+<!-- State persists across page reloads! -->
+<button onclick={() => counter.update(n => n + 1)}>
+  Count: {$counter}
+</button>
+```
+
+### 🔒 Secure User Store (Exclude sensitive data)
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+export const user = persistedStore('user', {
+  name: 'John',
+  email: 'john@example.com',
+  token: 'secret_token_123',
+  sessionId: 'temp_session'
+}, {
+  // Only persist name and email, never save tokens!
+  omit: ['token', 'sessionId']
+});
+```
+
+### ♻️ Advanced Store with Undo/Redo
+
+```typescript
+import { persistedReactor } from 'svelte-reactor';
+import { undoRedo, logger } from 'svelte-reactor/plugins';
+
+export const editor = persistedReactor('editor', {
+  content: '',
+  history: []
+}, {
+  additionalPlugins: [
+    undoRedo({ limit: 50 }),
+    logger({ collapsed: true })
+  ]
+});
+```
+
+```svelte
+<script>
+  import { editor } from './stores';
+</script>
+
+<textarea bind:value={editor.state.content}></textarea>
+
+<button onclick={() => editor.undo()} disabled={!editor.canUndo()}>
+  Undo ↩
+</button>
+<button onclick={() => editor.redo()} disabled={!editor.canRedo()}>
+  Redo ↪
+</button>
+```
+
+## 📚 API Overview
+
+### Helper Functions (Recommended)
+
+#### `simpleStore(initialValue, options?)`
+**→ [Full Svelte stores API](./QUICK_START.md#simple-counter-store)**
+
+Simple writable store compatible with Svelte's `$store` syntax.
+
+```typescript
+import { simpleStore } from 'svelte-reactor';
+
+const counter = simpleStore(0);
+counter.subscribe(value => console.log(value));
+counter.update(n => n + 1);
+counter.set(5);
+console.log(counter.get()); // 5
+```
+
+#### `persistedStore(key, initialValue, options?)`
+**→ [Auto-save to localStorage](./QUICK_START.md#persisted-store)**
+
+Create a store that automatically persists to localStorage/sessionStorage.
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+const settings = persistedStore('app-settings', { theme: 'dark' }, {
+  storage: 'localStorage', // or 'sessionStorage'
+  debounce: 300,           // Save after 300ms of inactivity
+  omit: ['user.token'],    // Don't persist sensitive data
+  pick: ['theme', 'lang'], // Or only persist specific fields
+});
+```
+
+#### `persistedReactor(key, initialState, options?)`
+**→ [Full reactor with persistence](./QUICK_START.md#full-reactor-with-undoredo)**
+
+Full reactor API with automatic persistence and plugin support.
+
+```typescript
+import { persistedReactor } from 'svelte-reactor';
+import { undoRedo } from 'svelte-reactor/plugins';
+
+const store = persistedReactor('my-state', { count: 0 }, {
+  additionalPlugins: [undoRedo()],
+  omit: ['temp'], // Exclude temporary fields
+});
+
+store.update(s => { s.count++; });
+store.undo(); // Undo last change
+```
+
+---
+
+### Core API
+
+#### `createReactor(initialState, options?)`
 
 Create a new reactor instance with undo/redo, middleware, and plugin support.
 
@@ -145,9 +224,12 @@ interface Reactor<T> {
   // State access
   state: T;
 
+  // Svelte stores API (v0.2.0+)
+  subscribe(subscriber: (state: T) => void): () => void;
+
   // Actions
   update(updater: (state: T) => void, action?: string): void;
-  set(newState: T): void;
+  set(newState: Partial<T>): void;
 
   // Undo/Redo (available with undoRedo plugin)
   undo(): void;
@@ -196,7 +278,7 @@ reactor.update(state => { state.temp = 123; }, 'skip-history'); // Won't add to 
 
 #### `persist(options)`
 
-Built-in state persistence to localStorage/sessionStorage.
+Built-in state persistence with security features.
 
 ```typescript
 import { persist } from 'svelte-reactor/plugins';
@@ -205,10 +287,29 @@ const reactor = createReactor(initialState, {
   plugins: [
     persist({
       key: 'my-state',
-      storage: 'localStorage', // or 'sessionStorage'
-      debounce: 300,
-      compress: false, // Optional compression (v0.2.0+)
-      migrations: {}, // Optional version migrations
+      storage: 'localStorage',    // or 'sessionStorage'
+      debounce: 300,               // Save after 300ms
+
+      // NEW in v0.2.0: Security options
+      omit: ['user.token'],        // Exclude sensitive fields
+      pick: ['settings', 'theme'], // Or only persist specific fields
+
+      // NEW in v0.2.0: Custom serialization
+      serialize: (state) => ({      // Custom save logic
+        ...state,
+        savedAt: Date.now()
+      }),
+      deserialize: (stored) => {    // Custom load logic
+        const { savedAt, ...state } = stored;
+        return state;
+      },
+
+      // Optional features
+      compress: false,
+      version: 1,
+      migrations: {
+        1: (old) => ({ ...old, newField: 'value' })
+      },
     }),
   ],
 });
