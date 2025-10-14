@@ -1,13 +1,22 @@
 # Changelog
 
-All notable changes to @svelte-dev/reactor will be documented in this file.
+All notable changes to svelte-reactor will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-## [0.1.0] - 2025-01-XX
+## [0.1.1] - 2025-01-14
+
+### Fixed
+- Updated package name from `@svelte-dev/reactor` to `svelte-reactor` across all documentation and examples
+- Fixed GitHub repository links to point to correct repository (P1kabu/svelte-reactor)
+- Removed references to non-existent `@svelte-dev/persist` package
+- Fixed GitHub Actions workflows to use correct package names
+- Updated root README to display correct project information
+
+## [0.1.0] - 2025-01-13
 
 ### Added
 
@@ -98,7 +107,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Dependencies
 - Svelte 5 (peer dependency)
-- @svelte-dev/persist (workspace dependency)
 - Zero external runtime dependencies
 
 #### TypeScript
