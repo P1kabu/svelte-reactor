@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { persisted } from '@svelte-dev/persist';
+  import { persisted } from 'svelte-reactor';
 
   // Simple counter with localStorage
   let counter = persisted('counter', $state(0));
@@ -87,7 +87,7 @@
 
 <div class="container">
   <header>
-    <h1>@svelte-dev/persist</h1>
+    <h1>svelte-reactor</h1>
     <p>Effortless state persistence for Svelte 5 Runes</p>
   </header>
 

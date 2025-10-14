@@ -56,10 +56,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build reactor package
-        run: pnpm --filter @svelte-dev/reactor build
-
-      - name: Build persist package
-        run: pnpm --filter @svelte-dev/persist build
+        run: pnpm --filter svelte-reactor build
 
       - name: Build demos
         run: pnpm --filter reactor-demos build

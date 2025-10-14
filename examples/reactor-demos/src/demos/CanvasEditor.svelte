@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo } from 'svelte-reactor/plugins';
   import { onMount } from 'svelte';
 
   interface Point {

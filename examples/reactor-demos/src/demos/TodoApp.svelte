@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo, logger } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo, logger } from 'svelte-reactor/plugins';
 
   interface Todo {
     id: string;

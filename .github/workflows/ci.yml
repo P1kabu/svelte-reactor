@@ -42,23 +42,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests (persist)
-        run: pnpm --filter @svelte-dev/persist test
+      - name: Run tests
+        run: pnpm --filter svelte-reactor test
 
-      - name: Run tests (reactor)
-        run: pnpm --filter @svelte-dev/reactor test
+      - name: Type check
+        run: pnpm --filter svelte-reactor typecheck
 
-      - name: Type check (persist)
-        run: pnpm --filter @svelte-dev/persist typecheck
-
-      - name: Type check (reactor)
-        run: pnpm --filter @svelte-dev/reactor typecheck
-
-      - name: Build (persist)
-        run: pnpm --filter @svelte-dev/persist build
-
-      - name: Build (reactor)
-        run: pnpm --filter @svelte-dev/reactor build
+      - name: Build
+        run: pnpm --filter svelte-reactor build
 
   lint:
     name: Lint

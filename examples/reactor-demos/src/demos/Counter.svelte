@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo, logger } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo, logger } from 'svelte-reactor/plugins';
 
   interface CounterState {
     value: number;

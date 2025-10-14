@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface FormData {
     name: string;

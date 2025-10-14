@@ -8,7 +8,7 @@
     "size": "node src/bundle-size.js"
   },
   "dependencies": {
-    "@svelte-dev/persist": "workspace:*"
+    "svelte-reactor": "workspace:*"
   },
   "devDependencies": {
     "tinybench": "^2.5.0"

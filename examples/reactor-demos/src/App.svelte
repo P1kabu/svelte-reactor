@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist } from 'svelte-reactor/plugins';
   import Counter from './demos/Counter.svelte';
   import TodoApp from './demos/TodoApp.svelte';
   import ContactForm from './demos/ContactForm.svelte';
@@ -40,7 +40,7 @@
 
 <div class="app">
   <header>
-    <h1>@svelte-dev/reactor</h1>
+    <h1>svelte-reactor</h1>
     <p>Powerful reactive state management for Svelte 5</p>
   </header>
 
@@ -72,7 +72,7 @@
     <p>
       <a href="https://github.com/svelte-dev/reactor" target="_blank">GitHub</a>
       •
-      <a href="https://www.npmjs.com/package/@svelte-dev/reactor" target="_blank">npm</a>
+      <a href="https://www.npmjs.com/package/svelte-reactor" target="_blank">npm</a>
       •
       <a href="https://github.com/svelte-dev/reactor#readme" target="_blank">Docs</a>
     </p>

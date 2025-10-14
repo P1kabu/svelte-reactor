@@ -16,6 +16,6 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
-    "@svelte-dev/persist": "workspace:*"
+    "svelte-reactor": "workspace:*"
   }
 }

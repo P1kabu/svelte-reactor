@@ -32,10 +32,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
-        run: |
-          pnpm --filter @svelte-dev/persist build
-          pnpm --filter @svelte-dev/reactor build
+      - name: Build package
+        run: pnpm --filter svelte-reactor build
 
       - name: Create Release Pull Request or Publish
         id: changesets

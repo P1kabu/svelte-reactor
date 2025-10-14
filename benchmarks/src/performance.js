@@ -1,5 +1,5 @@
 import { Bench } from 'tinybench';
-import { localStorageAdapter, memoryStorageAdapter } from '@svelte-dev/persist';
+import { localStorageAdapter, memoryStorageAdapter } from 'svelte-reactor';
 
 // Mock localStorage for Node.js
 if (typeof localStorage === 'undefined') {

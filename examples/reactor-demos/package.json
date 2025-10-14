@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@svelte-dev/reactor": "workspace:*",
+    "svelte-reactor": "workspace:*",
     "svelte": "^5.0.0"
   },
   "devDependencies": {

@@ -16,8 +16,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@svelte-dev/reactor/plugins': resolve(__dirname, '../../packages/reactor/src/plugins/index.ts'),
-      '@svelte-dev/reactor': resolve(__dirname, '../../packages/reactor/src/index.ts'),
+      'svelte-reactor/plugins': resolve(__dirname, '../../packages/reactor/src/plugins/index.ts'),
+      'svelte-reactor': resolve(__dirname, '../../packages/reactor/src/index.ts'),
       '@svelte-dev/persist': resolve(__dirname, '../../packages/persist/src/index.ts'),
     },
   },
