@@ -12,3 +12,4 @@ export {
   type DiffEntry,
   type DiffResult,
 } from './diff.js';
+export { getPath, setPath, deletePath, pick, omit } from './path.js';

@@ -4,6 +4,7 @@
 
 import type { ReactorPlugin, PersistOptions, Middleware } from '../types/index.js';
 import { deepClone } from '../utils/index.js';
+import { pick, omit } from '../utils/path.js';
 
 /**
  * Enable state persistence using direct storage access
@@ -25,6 +26,10 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     compress = false,
     version,
     migrations,
+    serialize,
+    deserialize,
+    pick: pickPaths,
+    omit: omitPaths,
   } = options;
 
   let debounceTimer: any;
@@ -75,6 +80,11 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
         data.__version = version;
       }
 
+      // Custom deserializer
+      if (deserialize) {
+        data = deserialize(data);
+      }
+
       return data;
     } catch (error) {
       console.error('[Reactor persist] Failed to load state:', error);
@@ -89,6 +99,18 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     try {
       // Deep clone to handle Proxy objects from Svelte 5
       let data: any = deepClone(state);
+
+      // Apply pick/omit if specified
+      if (pickPaths && pickPaths.length > 0) {
+        data = pick(data, pickPaths);
+      } else if (omitPaths && omitPaths.length > 0) {
+        data = omit(data, omitPaths);
+      }
+
+      // Custom serializer
+      if (serialize) {
+        data = serialize(data);
+      }
 
       // Add version
       if (version) {

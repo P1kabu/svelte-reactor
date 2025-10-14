@@ -31,7 +31,7 @@ export function createReactor<T extends object>(
   initialState: T,
   options?: ReactorOptions<T>
 ): Reactor<T> {
-  const { plugins = [], name = 'reactor', devtools = false } = options ?? {};
+  const { plugins = [], name = 'reactor', devtools = false, onChange } = options ?? {};
 
   // Create reactive state with Svelte 5 $state
   let state = $state(initialState) as T;
@@ -47,6 +47,9 @@ export function createReactor<T extends object>(
 
   // Track if reactor is destroyed
   let destroyed = false;
+
+  // Subscribers for Svelte stores compatibility
+  const subscribers = new Set<(value: T) => void>();
 
   // Plugin context
   const pluginContext: PluginContext<T> = {
@@ -72,6 +75,56 @@ export function createReactor<T extends object>(
 
   // Create middleware chain
   const middlewareChain = createMiddlewareChain(middlewares);
+
+  /**
+   * Notify all subscribers about state change
+   */
+  function notifySubscribers(nextState: T, prevState: T, action?: string): void {
+    const stateClone = deepClone(nextState);
+
+    // Call subscribers
+    subscribers.forEach((subscriber) => {
+      try {
+        subscriber(stateClone);
+      } catch (error) {
+        console.error('[Reactor] Subscriber error:', error);
+      }
+    });
+
+    // Call onChange callback if provided
+    if (onChange) {
+      try {
+        onChange(stateClone, deepClone(prevState), action);
+      } catch (error) {
+        console.error('[Reactor] onChange callback error:', error);
+      }
+    }
+  }
+
+  /**
+   * Subscribe to state changes (Svelte stores API compatible)
+   */
+  function subscribe(subscriber: (value: T) => void): () => void {
+    if (destroyed) {
+      console.warn('[Reactor] Cannot subscribe to destroyed reactor');
+      return () => {};
+    }
+
+    // Add subscriber
+    subscribers.add(subscriber);
+
+    // Immediately call with current state (Svelte stores behavior)
+    try {
+      subscriber(deepClone(state));
+    } catch (error) {
+      console.error('[Reactor] Subscriber error on initial call:', error);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      subscribers.delete(subscriber);
+    };
+  }
 
   /**
    * Update state using an updater function
@@ -103,6 +156,9 @@ export function createReactor<T extends object>(
 
       // Run after middlewares
       middlewareChain.runAfter(prevState, nextState, action);
+
+      // Notify subscribers
+      notifySubscribers(nextState, prevState, action);
     } catch (error) {
       middlewareChain.handleError(error as Error);
       throw error;
@@ -127,6 +183,7 @@ export function createReactor<T extends object>(
       return;
     }
 
+    const currentState = deepClone(state);
     const prevState = history.undo();
     if (prevState) {
       historyVersion++;
@@ -136,6 +193,8 @@ export function createReactor<T extends object>(
           (state as any)[key] = (prevState as any)[key];
         }
       }
+      // Notify subscribers about the undo
+      notifySubscribers(prevState, currentState, 'undo');
     }
   }
 
@@ -148,6 +207,7 @@ export function createReactor<T extends object>(
       return;
     }
 
+    const currentState = deepClone(state);
     const nextState = history.redo();
     if (nextState) {
       historyVersion++;
@@ -157,6 +217,8 @@ export function createReactor<T extends object>(
           (state as any)[key] = (nextState as any)[key];
         }
       }
+      // Notify subscribers about the redo
+      notifySubscribers(nextState, currentState, 'redo');
     }
   }
 
@@ -258,6 +320,7 @@ export function createReactor<T extends object>(
     get state() {
       return state;
     },
+    subscribe,
     update,
     set,
     undo,

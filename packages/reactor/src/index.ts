@@ -6,6 +6,9 @@
 // Core
 export { createReactor } from './core/reactor.svelte.js';
 
+// Helpers (convenient wrappers)
+export { simpleStore, persistedStore, persistedReactor } from './helpers/index.js';
+
 // Types
 export type {
   Reactor,
@@ -22,7 +25,12 @@ export type {
   LoggerOptions,
   SyncOptions,
   ReactorDevTools,
+  Subscriber,
+  Unsubscriber,
 } from './types/index.js';
+
+// Helper types
+export type { WritableStore, PersistedStoreOptions } from './helpers/index.js';
 
 // History
 export { UndoRedoHistory as UndoRedoHistoryClass } from './history/undo-redo.js';
@@ -38,6 +46,11 @@ export {
   formatPath,
   applyPatch,
   getChangeSummary,
+  getPath,
+  setPath,
+  deletePath,
+  pick,
+  omit,
 } from './utils/index.js';
 
 // Utils types

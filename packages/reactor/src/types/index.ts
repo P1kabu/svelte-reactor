@@ -3,11 +3,24 @@
  */
 
 /**
+ * Subscriber callback type (Svelte stores compatible)
+ */
+export type Subscriber<T> = (value: T) => void;
+
+/**
+ * Unsubscribe function type (Svelte stores compatible)
+ */
+export type Unsubscriber = () => void;
+
+/**
  * Reactor instance returned by createReactor
  */
 export interface Reactor<T extends object> {
   /** Reactive state (Svelte $state) */
   readonly state: T;
+
+  /** Subscribe to state changes (Svelte stores API compatible) */
+  subscribe(subscriber: Subscriber<T>): Unsubscriber;
 
   /** Update state using an updater function */
   update(updater: (state: T) => void, action?: string): void;
@@ -55,6 +68,9 @@ export interface ReactorOptions<T extends object> {
 
   /** Enable DevTools integration */
   devtools?: boolean;
+
+  /** Callback for state changes (for non-Svelte context) */
+  onChange?: (state: T, prevState: T, action?: string) => void;
 }
 
 /**
@@ -226,6 +242,18 @@ export interface PersistOptions {
 
   /** Migration functions */
   migrations?: Record<number, (data: any) => any>;
+
+  /** Custom serializer (for selective persistence) */
+  serialize?: (state: any) => any;
+
+  /** Custom deserializer */
+  deserialize?: (stored: any) => any;
+
+  /** Pick specific paths to persist (e.g., ['user.name', 'settings']) */
+  pick?: string[];
+
+  /** Omit specific paths from persistence (e.g., ['user.token', 'temp']) */
+  omit?: string[];
 }
 
 /**
