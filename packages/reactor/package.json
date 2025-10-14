@@ -1,7 +1,7 @@
 {
   "name": "svelte-reactor",
-  "version": "0.1.1",
-  "description": "Powerful reactive state management for Svelte 5 with undo/redo, middleware, persistence, DevTools, and state utilities. Built on Svelte 5 Runes with full TypeScript support.",
+  "version": "0.2.0",
+  "description": "Powerful reactive state management for Svelte 5 with full Svelte stores API compatibility, undo/redo, middleware, persistence, and DevTools. Production-ready with SSR support.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,6 +15,11 @@
       "types": "./dist/plugins/index.d.ts",
       "svelte": "./dist/plugins/index.js",
       "default": "./dist/plugins/index.js"
+    },
+    "./helpers": {
+      "types": "./dist/helpers/index.d.ts",
+      "svelte": "./dist/helpers/index.js",
+      "default": "./dist/helpers/index.js"
     },
     "./devtools": {
       "types": "./dist/devtools/devtools.d.ts",
@@ -30,6 +35,8 @@
   "files": [
     "dist",
     "README.md",
+    "QUICK_START.md",
+    "MIGRATION.md",
     "LICENSE"
   ],
   "scripts": {
@@ -52,15 +59,23 @@
     "runes",
     "state-management",
     "reactive",
+    "store",
+    "stores",
+    "writable",
+    "svelte-stores",
     "undo",
     "redo",
     "middleware",
     "devtools",
     "persistence",
+    "persist",
+    "localStorage",
     "time-travel",
     "sveltekit",
     "ssr",
-    "typescript"
+    "typescript",
+    "helpers",
+    "utilities"
   ],
   "author": "Svelte Reactor Contributors",
   "license": "MIT",
