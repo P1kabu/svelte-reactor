@@ -16,13 +16,13 @@ A comprehensive state management library for Svelte 5 applications with built-in
 - **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
 - **Undo/Redo** - Full history management with batch operations
 - **Middleware** - Redux-style middleware for logging, effects, and more
-- **Persistence** - Seamless integration with @svelte-dev/persist
+- **Persistence** - Built-in persist plugin for localStorage/sessionStorage
 - **DevTools** - Time-travel debugging and state inspection
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - **12.07 KB gzipped** (full package), **1.03 KB** (plugins only)
+- **Tiny** - **10.87 KB gzipped** (full package), **1.05 KB** (plugins only)
 - **Tree-shakeable** - Import only what you need
-- **Zero dependencies** - Except Svelte 5 and @svelte-dev/persist
+- **Zero dependencies** - Only requires Svelte 5
 
 ## Installation
 
@@ -44,8 +44,8 @@ yarn add svelte-reactor
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo, logger } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo, logger } from 'svelte-reactor/plugins';
 
   const counter = createReactor(
     { value: 0 },
@@ -81,8 +81,8 @@ yarn add svelte-reactor
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface Todo {
     id: string;
@@ -177,7 +177,7 @@ interface Reactor<T> {
 Enable undo/redo functionality.
 
 ```typescript
-import { undoRedo } from '@svelte-dev/reactor/plugins';
+import { undoRedo } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(initialState, {
   plugins: [
@@ -196,17 +196,19 @@ reactor.update(state => { state.temp = 123; }, 'skip-history'); // Won't add to 
 
 #### `persist(options)`
 
-Integrate with @svelte-dev/persist for automatic state persistence.
+Built-in state persistence to localStorage/sessionStorage.
 
 ```typescript
-import { persist } from '@svelte-dev/reactor/plugins';
+import { persist } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(initialState, {
   plugins: [
     persist({
       key: 'my-state',
-      storage: 'localStorage', // or 'sessionStorage', 'indexedDB'
+      storage: 'localStorage', // or 'sessionStorage'
       debounce: 300,
+      compress: false, // Optional compression (v0.2.0+)
+      migrations: {}, // Optional version migrations
     }),
   ],
 });
@@ -217,7 +219,7 @@ const reactor = createReactor(initialState, {
 Log all state changes to console.
 
 ```typescript
-import { logger } from '@svelte-dev/reactor/plugins';
+import { logger } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(initialState, {
   plugins: [
@@ -233,8 +235,8 @@ const reactor = createReactor(initialState, {
 Built-in DevTools API for time-travel debugging and state inspection:
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { createDevTools } from '@svelte-dev/reactor/devtools';
+import { createReactor } from 'svelte-reactor';
+import { createDevTools } from 'svelte-reactor/devtools';
 
 const reactor = createReactor({ value: 0 });
 const devtools = createDevTools(reactor, { name: 'MyReactor' });
@@ -264,7 +266,7 @@ devtools.reset();
 Powerful utility functions for state management:
 
 ```typescript
-import { diff, applyPatch, getChangeSummary, deepClone, isEqual } from '@svelte-dev/reactor/utils';
+import { diff, applyPatch, getChangeSummary, deepClone, isEqual } from 'svelte-reactor/utils';
 
 // State diffing
 const changes = diff(oldState, newState);
@@ -289,7 +291,7 @@ const equal = isEqual(state1, state2);
 Create custom middleware for advanced use cases:
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 const loggingMiddleware = {
   name: 'logger',
@@ -330,8 +332,8 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface Todo {
     id: string;
