@@ -5,6 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "svelte-reactor": "./cli/index.js"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -34,6 +37,8 @@
   },
   "files": [
     "dist",
+    "cli",
+    "templates",
     "README.md",
     "QUICK_START.md",
     "MIGRATION.md",
@@ -75,7 +80,13 @@
     "ssr",
     "typescript",
     "helpers",
-    "utilities"
+    "utilities",
+    "cli",
+    "ai",
+    "claude",
+    "cursor",
+    "copilot",
+    "code-assistant"
   ],
   "author": "Svelte Reactor Contributors",
   "license": "MIT",
@@ -90,6 +101,11 @@
   "homepage": "https://github.com/P1kabu/svelte-reactor#readme",
   "peerDependencies": {
     "svelte": "^5.0.0"
+  },
+  "dependencies": {
+    "prompts": "^2.4.2",
+    "kleur": "^4.1.5",
+    "sade": "^1.8.1"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

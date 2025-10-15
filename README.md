@@ -18,6 +18,7 @@ A comprehensive state management library for Svelte 5 applications with built-in
 - **Middleware** - Redux-style middleware for logging, effects, and more
 - **Persistence** - Built-in persist plugin for localStorage/sessionStorage
 - **DevTools** - Time-travel debugging and state inspection
+- **AI-Ready** - CLI to teach AI assistants (Claude, Cursor, Copilot) best practices
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
 - **Tiny** - **10.87 KB gzipped** (full package), **1.05 KB** (plugins only)
@@ -37,6 +38,26 @@ pnpm add svelte-reactor
 ```bash
 yarn add svelte-reactor
 ```
+
+## AI Assistant Setup
+
+Teach your AI assistant (Claude Code, Cursor, or GitHub Copilot) the best practices for using Svelte Reactor:
+
+```bash
+npx svelte-reactor init-ai
+```
+
+This interactive CLI will generate AI instructions tailored to your preferred assistant:
+
+- **Claude Code**: Creates `.claude/SVELTE_REACTOR_RULES.md`
+- **Cursor AI**: Creates `.cursorrules`
+- **GitHub Copilot**: Creates `.github/copilot-instructions.md`
+
+After setup, your AI will automatically:
+- Use `createReactor()` for state management
+- Apply best practices for plugins and middleware
+- Suggest proper patterns for undo/redo and persistence
+- Avoid common anti-patterns
 
 ## Quick Start
 
@@ -433,6 +454,7 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ Time-travel debugging
 - ✅ Performance benchmarks
 - ✅ Comprehensive documentation
+- ✅ AI Assistant CLI (Claude, Cursor, Copilot)
 - ⏳ Multi-tab sync (optional)
 
 ## Development
