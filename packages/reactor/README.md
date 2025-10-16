@@ -28,14 +28,15 @@ Previous updates (v0.2.0):
 ## 🚀 Features
 
 - **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
-- **📦 Simple Helpers** - `simpleStore()` for basic stores, `persistedStore()` for localStorage
+- **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
+- **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
 - **💾 Smart Persistence** - Auto-save to localStorage with selective field persistence
 - **🔒 Security First** - Exclude sensitive data with `pick`/`omit` options
 - **🎮 DevTools** - Time-travel debugging and state inspection
 - **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
 - **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **11.47 KB gzipped** (full), tree-shakeable modules
+- **🪶 Lightweight** - **12.22 KB gzipped** (full), tree-shakeable modules
 - **0️⃣ Zero dependencies** - Only requires Svelte 5
 
 ## Installation
@@ -51,6 +52,21 @@ pnpm add svelte-reactor
 ```bash
 yarn add svelte-reactor
 ```
+
+### 🤖 AI Assistant Setup (Optional)
+
+Supercharge your development with AI-powered code suggestions! Run this once to configure your AI assistant:
+
+```bash
+npx svelte-reactor init-ai
+```
+
+This will generate AI instructions for:
+- **Claude Code** - `.claude/svelte-reactor.md`
+- **Cursor AI** - `.cursorrules` or `.cursor/svelte-reactor.md`
+- **GitHub Copilot** - `.github/copilot-instructions.md`
+
+Your AI assistant will then understand svelte-reactor patterns and suggest optimal code!
 
 ## 📖 Quick Start
 

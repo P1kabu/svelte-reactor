@@ -9,7 +9,7 @@ import { generateCopilot } from './generators/copilot.js';
 
 const prog = sade('svelte-reactor');
 
-prog.version('0.2.0');
+prog.version('0.2.1');
 
 prog
   .command('init-ai')
