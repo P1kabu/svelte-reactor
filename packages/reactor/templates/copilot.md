@@ -23,6 +23,87 @@ counter.update(s => ({ value: s.value + 1 }));
 counter.subscribe(state => console.log(state.value));
 ```
 
+## Array Actions Helper
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+// ✅ GOOD: Array CRUD without boilerplate
+const todos = createReactor({ items: [] });
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.update('1', { done: true });
+actions.toggle('1', 'done');
+actions.remove('1');
+
+// Query operations
+const item = actions.find('1');
+const count = actions.count();
+
+// ❌ BAD: Manual update() for every operation
+todos.update(s => ({ items: [...s.items, newItem] }));
+todos.update(s => ({ items: s.items.map(/* ... */) }));
+```
+
+**Available methods:**
+`add`, `update`, `updateBy`, `remove`, `removeWhere`, `clear`, `toggle`, `set`, `filter`, `find`, `has`, `count`
+
+## Async Actions Helper
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+// ✅ GOOD: Async operations with automatic loading/error
+const store = createReactor({
+  users: [],
+  loading: false,
+  error: null
+});
+
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    return { users: await response.json() };
+  },
+  createUser: async (name: string, email: string) => {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ name, email })
+    });
+    const newUser = await response.json();
+    return { users: [...store.state.users, newUser] };
+  }
+});
+
+// Usage
+await api.fetchUsers();
+// ✅ store.state.loading was automatically true during fetch
+// ✅ store.state.users now has data
+// ✅ store.state.error is null
+
+// ❌ BAD: Manual loading/error management
+let loading = false;
+let error = null;
+async function fetchUsers() {
+  loading = true;
+  try {
+    const response = await fetch('/api/users');
+    users = await response.json();
+    error = null;
+  } catch (e) {
+    error = e;
+  } finally {
+    loading = false;
+  }
+}
+```
+
+**Options:**
+- `loadingKey` - Custom field name (default: 'loading')
+- `errorKey` - Custom field name (default: 'error')
+- `actionPrefix` - Debugging prefix (default: 'async')
+
 ## With Plugins
 
 ### Undo/Redo
@@ -87,10 +168,10 @@ console.log('after', user);
 ### Todo List
 
 ```typescript
-import { createReactor } from 'svelte-reactor';
+import { createReactor, arrayActions } from 'svelte-reactor';
 import { persist, undoRedo } from 'svelte-reactor/plugins';
 
-// ✅ GOOD: Full-featured todos
+// ✅ GOOD: Full-featured todos with arrayActions helper
 const todos = createReactor({ items: [] }, {
   plugins: [
     persist({ key: 'todos' }),
@@ -98,25 +179,25 @@ const todos = createReactor({ items: [] }, {
   ]
 });
 
+// Use arrayActions helper to reduce boilerplate
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
 function addTodo(text) {
-  todos.update(s => ({
-    items: [...s.items, { id: Date.now(), text, done: false }]
-  }));
+  actions.add({ id: Date.now(), text, done: false });
 }
 
 function toggleTodo(id) {
-  todos.update(s => ({
-    items: s.items.map(t =>
-      t.id === id ? { ...t, done: !t.done } : t
-    )
-  }));
+  actions.toggle(id, 'done');
 }
 
 function deleteTodo(id) {
-  todos.update(s => ({
-    items: s.items.filter(t => t.id !== id)
-  }));
+  actions.remove(id);
 }
+
+// ❌ BAD: Manual update() for every operation
+todos.update(s => ({
+  items: [...s.items, newItem] // Too much boilerplate!
+}));
 
 // ❌ BAD: Imperative approach
 let todoList = [];

@@ -181,6 +181,127 @@ store.update(state => { state.value++; }, 'INCREMENT'); // Optional action name
 // Bonus: Undo/redo built-in!
 ```
 
+## Working with Arrays
+
+### Before (writable - manual array operations)
+
+```typescript
+import { writable } from 'svelte/store';
+
+const todos = writable([]);
+
+// Adding item - verbose
+function addTodo(text) {
+  todos.update(items => [...items, { id: Date.now(), text, done: false }]);
+}
+
+// Toggling - complex
+function toggleTodo(id) {
+  todos.update(items =>
+    items.map(t => t.id === id ? { ...t, done: !t.done } : t)
+  );
+}
+
+// Removing - filtering
+function removeTodo(id) {
+  todos.update(items => items.filter(t => t.id !== id));
+}
+```
+
+### After (reactor + arrayActions - clean & simple)
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+const todos = createReactor({ items: [] });
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+// Adding item - one line!
+function addTodo(text) {
+  actions.add({ id: Date.now(), text, done: false });
+}
+
+// Toggling - built-in!
+function toggleTodo(id) {
+  actions.toggle(id, 'done');
+}
+
+// Removing - simple!
+function removeTodo(id) {
+  actions.remove(id);
+}
+
+// Bonus: More methods available
+actions.update(id, { text: 'New text' });
+actions.removeWhere(t => t.done); // Remove all completed
+actions.clear(); // Clear all
+```
+
+**Benefits:**
+- ✅ 90% less boilerplate code
+- ✅ TypeScript inference works perfectly
+- ✅ Automatic action names for debugging
+- ✅ Works with undo/redo plugin
+
+---
+
+## Async Operations & Loading States
+
+### Before (manual loading/error management)
+
+```typescript
+import { writable } from 'svelte/store';
+
+const users = writable([]);
+const loading = writable(false);
+const error = writable(null);
+
+async function fetchUsers() {
+  loading.set(true);
+  error.set(null);
+
+  try {
+    const response = await fetch('/api/users');
+    const data = await response.json();
+    users.set(data);
+  } catch (e) {
+    error.set(e);
+  } finally {
+    loading.set(false);
+  }
+}
+```
+
+### After (asyncActions - automatic!)
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+const store = createReactor({
+  users: [],
+  loading: false,
+  error: null
+});
+
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    return { users: await response.json() };
+  }
+});
+
+// Usage - loading & error handled automatically!
+await api.fetchUsers();
+```
+
+**Benefits:**
+- ✅ No manual loading state management
+- ✅ Automatic error handling
+- ✅ Cleaner, more declarative code
+- ✅ TypeScript inference for parameters
+
+---
+
 ## Component Migration
 
 ### Before (Svelte 4 + writable)

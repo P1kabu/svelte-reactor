@@ -32,6 +32,7 @@ coverage
 *.log
 .turbo
 .claude
+test-ai-cli
 
 # Temporary files
 Text Document.txt

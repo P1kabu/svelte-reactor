@@ -100,7 +100,7 @@ function decrement() {
 
 ### Todo List with Persistence
 ```typescript
-import { createReactor } from 'svelte-reactor';
+import { createReactor, arrayActions } from 'svelte-reactor';
 import { persist, undoRedo } from 'svelte-reactor/plugins';
 
 const todos = createReactor({ items: [] }, {
@@ -110,16 +110,19 @@ const todos = createReactor({ items: [] }, {
   ]
 });
 
+// Use arrayActions helper to reduce boilerplate
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
 function addTodo(text) {
-  todos.update(s => ({
-    items: [...s.items, { id: Date.now(), text, done: false }]
-  }));
+  actions.add({ id: Date.now(), text, done: false });
 }
 
 function toggleTodo(id) {
-  todos.update(s => ({
-    items: s.items.map(t => t.id === id ? { ...t, done: !t.done } : t)
-  }));
+  actions.toggle(id, 'done');
+}
+
+function removeTodo(id) {
+  actions.remove(id);
 }
 ```
 
@@ -141,6 +144,96 @@ const form = createReactor({
   ]
 });
 ```
+
+## Async Actions Helper
+
+For async operations, use `asyncActions()` for automatic loading/error handling:
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+const store = createReactor({
+  users: [],
+  loading: false,
+  error: null
+});
+
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    return { users: await response.json() };
+  },
+  createUser: async (name: string) => {
+    await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+    // Refetch users
+    const response = await fetch('/api/users');
+    return { users: await response.json() };
+  }
+});
+
+// Usage - automatic loading & error management!
+await api.fetchUsers();
+// store.state.loading was true during fetch
+// store.state.users now has data
+// store.state.error is null
+
+try {
+  await api.createUser('John');
+} catch (error) {
+  // store.state.error contains the error
+}
+```
+
+**Available options:**
+- `loadingKey` - Custom loading field name (default: 'loading')
+- `errorKey` - Custom error field name (default: 'error')
+- `actionPrefix` - Action prefix for debugging (default: 'async')
+- `resetErrorOnStart` - Reset error on new request (default: true)
+
+## Array Actions Helper
+
+For array-heavy stores, use `arrayActions()` to eliminate CRUD boilerplate:
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+const todos = createReactor({ items: [] as Todo[] });
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+// CRUD operations - no more manual update() calls!
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.update('1', { done: true });
+actions.toggle('1', 'done');
+actions.remove('1');
+
+// Query operations
+const item = actions.find('1');
+const exists = actions.has('1');
+const count = actions.count();
+```
+
+**Available methods:**
+- `add(item)` - Add item to array
+- `update(id, updates)` - Update item by id
+- `updateBy(id, updater)` - Update using function
+- `remove(id)` - Remove item by id
+- `removeWhere(predicate)` - Remove items matching predicate
+- `clear()` - Clear all items
+- `toggle(id, field)` - Toggle boolean field
+- `set(items)` - Replace entire array
+- `filter(predicate)` - Filter items
+- `find(id)` - Find item by id
+- `has(id)` - Check if item exists
+- `count()` - Get array length
 
 ## Advanced Features
 

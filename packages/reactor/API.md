@@ -11,6 +11,9 @@ Complete API documentation for @svelte-dev/reactor.
   - [undoRedo](#undoredo)
   - [persist](#persist)
   - [logger](#logger)
+- [Helpers](#helpers)
+  - [arrayActions](#arrayactions)
+  - [asyncActions](#asyncactions)
 - [DevTools](#devtools)
   - [createDevTools](#createdevtools)
   - [ReactorDevTools Interface](#reactordevtools-interface)
@@ -332,7 +335,7 @@ reactor.undo(); // Back to value: 1
 
 ### persist
 
-Integrate with @svelte-dev/persist for automatic state persistence.
+Automatic state persistence to localStorage/sessionStorage with cross-tab synchronization.
 
 ```typescript
 function persist<T extends object>(
@@ -433,6 +436,271 @@ const reactor = createReactor(
   }
 );
 ```
+
+**Features:**
+
+- **Auto-sync**: Changes from other tabs (localStorage) are automatically synced
+- **DevTools friendly**: Manual changes in DevTools are detected
+- **Debouncing**: Configurable debounce to reduce write frequency
+- **Migrations**: Schema versioning for backwards compatibility
+
+---
+
+## Helpers
+
+### arrayActions
+
+Create array CRUD actions helper for a reactor field to reduce boilerplate.
+
+```typescript
+function arrayActions<S extends object, K extends keyof S, T>(
+  reactor: Reactor<S>,
+  field: K,
+  options?: ArrayActionsOptions
+): ArrayActions<T>
+```
+
+**Parameters:**
+
+- `reactor: Reactor<S>` - The reactor instance
+- `field: K` - Field name containing the array
+- `options?: ArrayActionsOptions` - Optional configuration
+
+**ArrayActionsOptions:**
+
+```typescript
+interface ArrayActionsOptions {
+  // Field name to use as unique identifier (default: 'id')
+  idKey?: string;
+
+  // Action prefix for undo/redo history (default: field name)
+  actionPrefix?: string;
+}
+```
+
+**Returns:** `ArrayActions<T>`
+
+**ArrayActions Interface:**
+
+```typescript
+interface ArrayActions<T> {
+  // Add item to array
+  add(item: T): void;
+
+  // Update item by id
+  update(id: any, updates: Partial<T>): void;
+
+  // Update item by id using updater function
+  updateBy(id: any, updater: (item: T) => void): void;
+
+  // Remove item by id
+  remove(id: any): void;
+
+  // Remove items matching predicate
+  removeWhere(predicate: (item: T) => boolean): void;
+
+  // Clear all items
+  clear(): void;
+
+  // Toggle boolean field for item
+  toggle(id: any, field: keyof T): void;
+
+  // Replace entire array
+  set(items: T[]): void;
+
+  // Filter items
+  filter(predicate: (item: T) => boolean): void;
+
+  // Find item by id
+  find(id: any): T | undefined;
+
+  // Check if item exists
+  has(id: any): boolean;
+
+  // Get array length
+  count(): number;
+}
+```
+
+**Example:**
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+import { undoRedo, persist } from 'svelte-reactor/plugins';
+
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+const todos = createReactor({ items: [] as Todo[] }, {
+  plugins: [persist({ key: 'todos' }), undoRedo()]
+});
+
+// Create array actions helper
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+// CRUD operations - no more manual update() calls!
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.update('1', { done: true });
+actions.toggle('1', 'done');
+actions.remove('1');
+
+// Advanced operations
+actions.removeWhere(item => item.done);
+actions.filter(item => !item.done);
+
+// Query operations (don't trigger updates)
+const item = actions.find('1');
+const exists = actions.has('1');
+const count = actions.count();
+```
+
+**Features:**
+
+- **Less boilerplate**: No need to write `update()` for every operation
+- **Type-safe**: Full TypeScript inference for array items
+- **Undo/Redo compatible**: Works seamlessly with undoRedo plugin
+- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, etc.)
+
+---
+
+### asyncActions
+
+Create async actions helper with automatic loading/error state management.
+
+```typescript
+function asyncActions<S extends object, T extends Record<string, AsyncAction<any, any>>>(
+  reactor: Reactor<S>,
+  actions: T,
+  options?: AsyncActionOptions
+): AsyncActions<T>
+```
+
+**Parameters:**
+
+- `reactor: Reactor<S>` - The reactor instance
+- `actions: T` - Object with async action functions
+- `options?: AsyncActionOptions` - Optional configuration
+
+**AsyncActionOptions:**
+
+```typescript
+interface AsyncActionOptions {
+  // Field name for loading state (default: 'loading')
+  loadingKey?: string;
+
+  // Field name for error state (default: 'error')
+  errorKey?: string;
+
+  // Action prefix for undo/redo history (default: 'async')
+  actionPrefix?: string;
+
+  // Reset error on new request (default: true)
+  resetErrorOnStart?: boolean;
+}
+```
+
+**Returns:** `AsyncActions<T>`
+
+**Example:**
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+interface User {
+  id: number;
+  name: string;
+}
+
+interface StoreState {
+  users: User[];
+  loading: boolean;
+  error: Error | null;
+}
+
+const store = createReactor<StoreState>({
+  users: [],
+  loading: false,
+  error: null,
+});
+
+// Create async actions
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    const users = await response.json();
+    return { users };
+  },
+  createUser: async (name: string, email: string) => {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email }),
+    });
+    const newUser = await response.json();
+    return { users: [...store.state.users, newUser] };
+  },
+  deleteUser: async (id: number) => {
+    await fetch(`/api/users/${id}`, { method: 'DELETE' });
+    return { users: store.state.users.filter(u => u.id !== id) };
+  },
+});
+
+// Usage - automatic loading & error handling!
+await api.fetchUsers();
+// During execution:
+//   store.state.loading = true
+// After success:
+//   store.state.loading = false
+//   store.state.error = null
+//   store.state.users = [...]
+
+try {
+  await api.createUser('John', 'john@example.com');
+} catch (error) {
+  // After error:
+  //   store.state.loading = false
+  //   store.state.error = error
+}
+```
+
+**With Custom Options:**
+
+```typescript
+const api = asyncActions(
+  store,
+  {
+    loadData: async () => {
+      const data = await fetchData();
+      return { data };
+    },
+  },
+  {
+    loadingKey: 'isLoading',
+    errorKey: 'lastError',
+    actionPrefix: 'api',
+    resetErrorOnStart: true,
+  }
+);
+
+// Now uses store.state.isLoading and store.state.lastError
+```
+
+**Features:**
+
+- **Automatic state management**: Handles loading/error states automatically
+- **Type-safe**: Full TypeScript inference for action parameters and return values
+- **Error handling**: Catches errors and updates error state
+- **Customizable**: Configure field names and behavior
+- **Works with undo/redo**: Action names like `async:fetchUsers:start`, `async:fetchUsers:success`
+
+**Action Lifecycle:**
+
+1. **Start**: Sets `loading: true`, optionally resets `error: null`
+2. **Success**: Sets `loading: false`, `error: null`, applies returned state
+3. **Error**: Sets `loading: false`, `error: <Error>`
 
 ---
 
@@ -791,9 +1059,32 @@ interface ReactorInspection {
 
 ### From v0.1.x to v0.2.x
 
-- `update()` now accepts optional `action` parameter for better debugging
-- Added `clearHistory()` and `getHistory()` methods
-- Added batch operation support with `batch()`
+**New Features:**
+- `arrayActions()` helper for array CRUD operations
+- `persist` plugin now syncs across tabs (localStorage) and detects DevTools changes
+- 149 tests (was 93)
+
+**API Changes:**
+- No breaking changes
+
+**Improvements:**
+- `persist` plugin auto-syncs when storage changes externally
+- Better debugging with `arrayActions` automatic action names
+
+**Example Migration:**
+
+```typescript
+// Before (v0.1.x)
+function addTodo(text) {
+  todos.update(s => ({
+    items: [...s.items, { id: Date.now(), text, done: false }]
+  }));
+}
+
+// After (v0.2.x) - using arrayActions
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+actions.add({ id: Date.now(), text, done: false });
+```
 
 ### From v0.2.x to v0.3.x
 

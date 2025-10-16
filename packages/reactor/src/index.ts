@@ -7,7 +7,7 @@
 export { createReactor } from './core/reactor.svelte.js';
 
 // Helpers (convenient wrappers)
-export { simpleStore, persistedStore, persistedReactor } from './helpers/index.js';
+export { simpleStore, persistedStore, persistedReactor, arrayActions, asyncActions } from './helpers/index.js';
 
 // Types
 export type {
@@ -30,7 +30,7 @@ export type {
 } from './types/index.js';
 
 // Helper types
-export type { WritableStore, PersistedStoreOptions } from './helpers/index.js';
+export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
 
 // History
 export { UndoRedoHistory as UndoRedoHistoryClass } from './history/undo-redo.js';

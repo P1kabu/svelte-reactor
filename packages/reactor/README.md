@@ -11,12 +11,17 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.0
+## ✨ What's New in v0.2.1
 
-🎉 **Full Svelte stores API compatibility** - Drop-in replacement for `writable()` stores with `subscribe()` support
-🛠️ **Helper functions** - `simpleStore()`, `persistedStore()`, `persistedReactor()` for common use cases
-🔒 **Enhanced security** - Selective persistence with `pick`/`omit` to exclude sensitive data
-🚀 **Production-ready** - SSR support, TypeScript improvements, comprehensive documentation
+🎯 **Async Actions Helper** - Automatic loading/error state management with `asyncActions()`
+📦 **Array Actions Helper** - CRUD operations without boilerplate with `arrayActions()`
+📚 **Enhanced Migration Guide** - Detailed examples for arrays and async operations
+🧪 **172 tests** - Including advanced complexity tests for concurrent operations
+
+Previous updates (v0.2.0):
+- 🎉 Full Svelte stores API compatibility with `subscribe()`
+- 🛠️ Helper functions: `simpleStore()`, `persistedStore()`, `persistedReactor()`
+- 🔒 Enhanced security with `pick`/`omit` for selective persistence
 
 👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)**
 
@@ -187,6 +192,56 @@ const store = persistedReactor('my-state', { count: 0 }, {
 
 store.update(s => { s.count++; });
 store.undo(); // Undo last change
+```
+
+#### `arrayActions(reactor, field, options?)`
+**→ [CRUD operations without boilerplate](./MIGRATION.md#working-with-arrays)**
+
+Simplify array management with built-in CRUD operations.
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+const todos = createReactor({ items: [] });
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+// Simple CRUD - no manual update() needed!
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.update('1', { done: true });
+actions.toggle('1', 'done');
+actions.remove('1');
+
+// Query operations
+const item = actions.find('1');
+const count = actions.count();
+```
+
+#### `asyncActions(reactor, actions, options?)`
+**→ [Automatic loading/error handling](./MIGRATION.md#async-operations--loading-states)**
+
+Manage async operations with automatic loading and error states.
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+const store = createReactor({
+  users: [],
+  loading: false,
+  error: null
+});
+
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    return { users: await response.json() };
+  }
+});
+
+// Automatic loading & error management!
+await api.fetchUsers();
+// store.state.loading was true during fetch
+// store.state.users now has data
+// store.state.error is null
 ```
 
 ---
@@ -517,24 +572,40 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 
 ## Roadmap
 
-### ✅ Phase 1: MVP (v0.1.0)
+### ✅ v0.1.0 - MVP (Released)
 - ✅ Core reactor with Svelte 5 Runes
-- ✅ Basic undo/redo
-- ✅ Plugin system
-- ✅ TypeScript types
-
-### ✅ Phase 2: Core Features (v0.2.0)
-- ✅ Advanced undo/redo with batch operations
-- ✅ Middleware system
-- ✅ Persist integration
+- ✅ Basic undo/redo functionality
+- ✅ Plugin system (undoRedo, persist, logger)
+- ✅ DevTools API with time-travel debugging
 - ✅ State utilities (diff, clone, equality)
+- ✅ TypeScript types
+- ✅ 93 tests
 
-### ✅ Phase 3: Advanced (v0.3.0)
-- ✅ DevTools API
-- ✅ Time-travel debugging
-- ✅ Performance benchmarks
-- ✅ Comprehensive documentation
-- ⏳ Multi-tab sync (optional)
+### ✅ v0.2.0 - Production Ready (Released)
+- ✅ **Full Svelte stores API** - `subscribe()` support, `$store` auto-subscription
+- ✅ **Helper functions** - `simpleStore()`, `persistedStore()`, `persistedReactor()`
+- ✅ **Array Actions Helper** - `arrayActions()` for CRUD operations
+- ✅ **Enhanced persistence** - `pick`/`omit`, custom serialization, cross-tab sync
+- ✅ **Security features** - Exclude sensitive data from persistence
+- ✅ 149 tests (+56)
+
+### ✅ v0.2.1 - Async & Helpers (Released)
+- ✅ **Async Actions Helper** - `asyncActions()` for automatic loading/error states
+- ✅ **Enhanced Migration Guide** - Array and async operation examples
+- ✅ **Advanced testing** - 3 complexity tests for concurrent operations
+- ✅ 172 tests (+23)
+
+### 🔜 v0.3.0 - Advanced Features (Planned)
+- 🔄 Computed/Derived State API
+- 🔄 Selectors API with memoization
+- 🔄 IndexedDB storage adapter
+- 🔄 Multi-tab sync with BroadcastChannel
+
+### 🚀 v1.0.0 - Stable Release (Future)
+- React/Vue adapters
+- Redux DevTools extension
+- Advanced performance optimizations
+- Comprehensive ecosystem
 
 ## Development
 
@@ -562,8 +633,9 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **93 tests** covering all features
-- Unit tests for core reactor, plugins, utilities, and DevTools
+- **172 tests** covering all features
+- Unit tests for core reactor, plugins, helpers, utilities, and DevTools
+- Advanced complexity tests for edge cases and concurrent operations
 - Performance benchmarks for all operations
 - TypeScript type checking
 

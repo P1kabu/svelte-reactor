@@ -20,6 +20,14 @@ const store = createReactor(initialState, options);
 - `persist({ key })` - localStorage persistence
 - `logger()` - Console logging of changes
 
+## Helpers
+
+- `arrayActions(reactor, field, { idKey })` - CRUD operations for arrays
+  - Methods: `add`, `update`, `remove`, `toggle`, `filter`, `find`, `has`, etc.
+- `asyncActions(reactor, actions, options)` - Async operations with loading/error
+  - Automatic `loading` and `error` state management
+  - Options: `loadingKey`, `errorKey`, `actionPrefix`
+
 ## Best Practices
 
 ✅ **DO:**
@@ -46,9 +54,32 @@ const counter = createReactor({ value: 0 }, {
 
 ### Todos with Persistence
 ```typescript
+import { arrayActions } from 'svelte-reactor';
+
 const todos = createReactor({ items: [] }, {
   plugins: [persist({ key: 'todos' }), undoRedo()]
 });
+
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.toggle('1', 'done');
+actions.remove('1');
+```
+
+### Async Data Fetching
+```typescript
+import { asyncActions } from 'svelte-reactor';
+
+const store = createReactor({ users: [], loading: false, error: null });
+
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const res = await fetch('/api/users');
+    return { users: await res.json() };
+  }
+});
+
+await api.fetchUsers(); // Automatic loading/error handling
 ```
 
 ### Form State
