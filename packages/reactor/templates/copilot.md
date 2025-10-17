@@ -313,7 +313,7 @@ const app = createReactor({ user: null, settings: {} }, {
 // Tons of boilerplate code...
 ```
 
-## Common Mistakes
+## Common Mistakes (v0.2.2)
 
 ```typescript
 // ❌ BAD: Direct mutation
@@ -329,12 +329,46 @@ store.update(s => ({ name: 'John' })); // Loses other fields!
 // ✅ GOOD: Spread existing state
 store.update(s => ({ ...s, name: 'John' }));
 
-// ❌ BAD: Not unsubscribing
-const unsub = store.subscribe(console.log);
+// ❌ BAD: Not destroying reactor
+const store = createReactor({ value: 0 });
 // Memory leak if not cleaned up!
 
-// ✅ GOOD: Cleanup
-onDestroy(() => unsub());
+// ✅ GOOD: Always cleanup
+import { onDestroy } from 'svelte';
+onDestroy(() => store.destroy());
+```
+
+## v0.2.2 Improvements
+
+### Memory Management
+```typescript
+// ✅ ALWAYS destroy reactors to prevent memory leaks
+import { onDestroy } from 'svelte';
+
+const store = createReactor({ count: 0 });
+
+onDestroy(() => {
+  store.destroy(); // Clears subscribers and middlewares
+});
+```
+
+### Auto-Optimization
+- Automatically skips updates when state hasn't changed
+- Deep equality check prevents unnecessary re-renders
+- Better performance out of the box
+
+### Enhanced Error Handling
+```typescript
+// Better validation with helpful errors
+createReactor(null);
+// TypeError: initialState must be a non-null object
+
+reactor.update('not a function');
+// TypeError: update() requires a function
+
+// Context-aware error messages
+// [Reactor:counter] Cannot update destroyed reactor
+// [persist:todos] Storage quota exceeded in localStorage
 ```
 
 ## TypeScript
@@ -357,4 +391,12 @@ store.update(s => ({ ...s, count: s.count + 1 }));
 
 ---
 
-**Key Takeaway:** Use `createReactor()` for all state, never mutate directly, leverage plugins for common features.
+**Current Version:** v0.2.2 (181 tests, production-ready)
+
+**Key Features:**
+- Memory leak prevention (auto-cleanup on destroy)
+- Performance optimization (skip unchanged updates)
+- Enhanced error handling (helpful validation messages)
+- Full Svelte stores API compatibility
+
+**Key Takeaway:** Use `createReactor()` for all state, never mutate directly, always destroy() on unmount, leverage plugins and helpers for common features.

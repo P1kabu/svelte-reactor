@@ -18,7 +18,7 @@ counter.set(5);
 ### After (svelte-reactor - Simple)
 
 ```typescript
-import { simpleStore } from '@svelte-dev/reactor';
+import { simpleStore } from 'svelte-reactor';
 
 export const counter = simpleStore(0);
 
@@ -31,7 +31,7 @@ counter.set(5);
 ### After (svelte-reactor - Full)
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 export const counter = createReactor({ value: 0 });
 
@@ -56,7 +56,7 @@ export const counter = persist('counter', 0);
 ### After (svelte-reactor)
 
 ```typescript
-import { persistedStore } from '@svelte-dev/reactor';
+import { persistedStore } from 'svelte-reactor';
 
 export const counter = persistedStore('counter', 0);
 
@@ -66,7 +66,7 @@ export const counter = persistedStore('counter', 0);
 ### With Advanced Options
 
 ```typescript
-import { persistedStore } from '@svelte-dev/reactor';
+import { persistedStore } from 'svelte-reactor';
 
 export const settings = persistedStore('app-settings', {
   theme: 'dark',
@@ -99,7 +99,7 @@ export const useStore = create((set) => ({
 ### After (svelte-reactor)
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 export const store = createReactor({
   count: 0,
@@ -131,7 +131,7 @@ counter.set(5);
 ### After (svelte-reactor)
 
 ```typescript
-import { simpleStore } from '@svelte-dev/reactor';
+import { simpleStore } from 'svelte-reactor';
 
 export const counter = simpleStore(0);
 
@@ -170,7 +170,7 @@ store.dispatch({ type: 'INCREMENT' });
 ### After (svelte-reactor)
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 const store = createReactor({ value: 0 });
 
@@ -322,7 +322,7 @@ await api.fetchUsers();
 
 ```svelte
 <script>
-  import { simpleStore } from '@svelte-dev/reactor';
+  import { simpleStore } from 'svelte-reactor';
 
   const counter = simpleStore(0);
 </script>
@@ -336,7 +336,7 @@ await api.fetchUsers();
 
 ```svelte
 <script>
-  import { createReactor } from '@svelte-dev/reactor';
+  import { createReactor } from 'svelte-reactor';
 
   const store = createReactor({ count: 0 });
   let count = $derived(store.state.count);
@@ -365,7 +365,7 @@ await api.fetchUsers();
 ### Step 1: Install svelte-reactor
 
 ```bash
-npm install @svelte-dev/reactor
+npm install svelte-reactor
 ```
 
 ### Step 2: Update imports
@@ -376,7 +376,7 @@ import { writable } from 'svelte/store';
 import persist from 'svelte-persist';
 
 // After
-import { simpleStore, persistedStore } from '@svelte-dev/reactor';
+import { simpleStore, persistedStore } from 'svelte-reactor';
 ```
 
 ### Step 3: Update store creation

@@ -1,6 +1,6 @@
 /**
  * Helper functions for common use cases
- * @module @svelte-dev/reactor/helpers
+ * @module svelte-reactor/helpers
  */
 
 export { simpleStore, type WritableStore } from './simple-store.js';

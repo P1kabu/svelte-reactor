@@ -1,6 +1,6 @@
-# @svelte-dev/reactor - Interactive Demos
+# svelte-reactor - Interactive Demos
 
-Live demos showcasing the power of @svelte-dev/reactor state management library for Svelte 5.
+Live demos showcasing the power of svelte-reactor state management library for Svelte 5.
 
 ## 🚀 Running the Demos
 
@@ -121,6 +121,6 @@ examples/reactor-demos/
 
 ## 🔗 Learn More
 
-- [@svelte-dev/reactor](../../packages/reactor) - Main package
+- [svelte-reactor](../../packages/reactor) - Main package
 - [API Documentation](../../packages/reactor/API.md)
 - [Examples](../../packages/reactor/EXAMPLES.md)

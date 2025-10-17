@@ -28,6 +28,7 @@
     },
     {
       name: 'contact-form',
+      devtools: true,
       plugins: [
         persist({ key: 'reactor-contact-form', debounce: 1000 }),
         undoRedo({ limit: 20 }),
@@ -89,7 +90,7 @@
     });
   }
 
-  let isFormValid = $derived(() => {
+  let isFormValid = $derived.by(() => {
     const { data } = form.state;
     return (
       data.name.trim().length > 0 &&
@@ -100,7 +101,7 @@
   });
 
   let charCount = $derived(form.state.data.message.length);
-  let lastSavedText = $derived(() => {
+  let lastSavedText = $derived.by(() => {
     const { lastSaved } = form.state;
     if (!lastSaved) return '';
     const seconds = Math.floor((Date.now() - lastSaved) / 1000);
@@ -181,7 +182,7 @@
 
         <div class="form-status">
           {#if form.state.lastSaved}
-            <span class="autosave">✓ {lastSavedText()}</span>
+            <span class="autosave">✓ {lastSavedText}</span>
           {/if}
         </div>
 
@@ -215,7 +216,7 @@
           <button
             type="submit"
             class="btn btn-primary"
-            disabled={!isFormValid()}
+            disabled={!isFormValid}
           >
             Send Message
           </button>
@@ -232,6 +233,8 @@
     lastSaved: null,
   },
   {
+    name: 'contact-form',
+    devtools: true,  // Enable Redux DevTools
     plugins: [
       persist({ key: 'contact-form', debounce: 1000 }),
       undoRedo({ limit: 20 }),

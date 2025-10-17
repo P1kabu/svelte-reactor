@@ -1,5 +1,5 @@
 /**
- * @svelte-dev/reactor
+ * svelte-reactor
  * Powerful reactive state management for Svelte 5
  */
 

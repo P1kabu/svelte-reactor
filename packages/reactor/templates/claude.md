@@ -63,20 +63,25 @@ const store = createReactor({ user: null }, {
 // All state changes logged to console
 ```
 
-## Best Practices
+## Best Practices (v0.2.2)
 
 1. **Always use createReactor** for state management in Svelte 5 projects
 2. **Use .update()** for state changes, never mutate directly
 3. **Combine plugins** for powerful features (undo + persist + logger)
 4. **Use middleware** for custom logic before/after state changes
 5. **Enable DevTools** in development for time-travel debugging
+6. **Always call destroy()** when component unmounts to prevent memory leaks
+7. **Use arrayActions() and asyncActions()** helpers to reduce boilerplate
+8. **Add action names** to update() calls for better debugging
 
 ## Anti-patterns
 
 - ❌ Don't mutate state directly: `store.count++`
 - ❌ Don't mix with writable() stores - choose one approach
-- ❌ Don't forget to unsubscribe when component unmounts
+- ❌ Don't forget to destroy() reactor when component unmounts (memory leak!)
 - ❌ Don't use persist plugin for sensitive data without encryption
+- ❌ Don't skip validation - reactor validates inputs and provides helpful errors
+- ❌ Don't ignore error handling - persist plugin detects quota issues automatically
 
 ## Common Examples
 
@@ -263,6 +268,46 @@ const store = createReactor({ count: 0 }, {
 });
 ```
 
+## Performance & Stability (v0.2.2)
+
+### Memory Management
+Always destroy reactors when components unmount:
+
+```typescript
+import { onDestroy } from 'svelte';
+
+const store = createReactor({ value: 0 });
+
+onDestroy(() => {
+  store.destroy(); // Clears subscribers and middlewares
+});
+```
+
+### Automatic Optimizations
+- **Skip unnecessary updates** - Reactor automatically skips updates when state hasn't changed
+- **Deep equality check** - Uses efficient deep comparison to prevent re-renders
+- **Quota handling** - Persist plugin automatically handles localStorage quota errors
+
+### Error Handling
+Reactor provides helpful validation and error messages:
+
+```typescript
+// ✅ Good - Valid usage
+createReactor({ count: 0 }, { name: 'counter' });
+
+// ❌ Bad - Will throw helpful error
+createReactor(null); // TypeError: initialState must be a non-null object
+
+// ❌ Bad - Will throw helpful error
+reactor.update('not a function'); // TypeError: update() requires a function
+```
+
+All errors include reactor name for easy debugging:
+```
+[Reactor:counter] Cannot update destroyed reactor
+[persist:todos] Storage quota exceeded in localStorage
+```
+
 ## SSR Support
 
 Svelte Reactor works seamlessly with SvelteKit:
@@ -276,4 +321,6 @@ const store = createReactor({ data: null });
 
 ---
 
-**Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, and DevTools integration.
+**Version:** v0.2.2 (181 tests, all features stable)
+
+**Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, DevTools integration, and automatic memory management.

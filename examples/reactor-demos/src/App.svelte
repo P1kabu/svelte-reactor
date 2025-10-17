@@ -5,8 +5,12 @@
   import TodoApp from './demos/TodoApp.svelte';
   import ContactForm from './demos/ContactForm.svelte';
   import CanvasEditor from './demos/CanvasEditor.svelte';
+  import TestPage from './demos/TestPage.svelte';
+  import DevToolsDemo from './demos/DevToolsDemo.svelte';
 
   const demos = [
+    { id: 'test', name: '🧪 v0.2.2 Test', component: TestPage },
+    { id: 'devtools', name: '🛠️ DevTools Preview', component: DevToolsDemo },
     { id: 'counter', name: 'Counter', component: Counter },
     { id: 'todo', name: 'Todo App', component: TodoApp },
     { id: 'form', name: 'Contact Form', component: ContactForm },
@@ -19,7 +23,7 @@
   }
 
   const nav = createReactor<NavState>(
-    { currentDemo: 'counter' },
+    { currentDemo: 'test' },
     {
       name: 'navigation',
       plugins: [persist({ key: 'reactor-demo-nav' })],
@@ -57,7 +61,11 @@
   </nav>
 
   <main>
-    {#if nav.state.currentDemo === 'counter'}
+    {#if nav.state.currentDemo === 'test'}
+      <TestPage />
+    {:else if nav.state.currentDemo === 'devtools'}
+      <DevToolsDemo />
+    {:else if nav.state.currentDemo === 'counter'}
       <Counter />
     {:else if nav.state.currentDemo === 'todo'}
       <TodoApp />
@@ -70,11 +78,11 @@
 
   <footer>
     <p>
-      <a href="https://github.com/svelte-dev/reactor" target="_blank">GitHub</a>
+      <a href="https://github.com/P1kabu/svelte-reactor" target="_blank">GitHub</a>
       •
       <a href="https://www.npmjs.com/package/svelte-reactor" target="_blank">npm</a>
       •
-      <a href="https://github.com/svelte-dev/reactor#readme" target="_blank">Docs</a>
+      <a href="https://github.com/P1kabu/svelte-reactor#readme" target="_blank">Docs</a>
     </p>
   </footer>
 </div>

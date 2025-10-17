@@ -390,9 +390,9 @@ describe('Integration: All plugins together', () => {
       });
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[Reactor] Cannot update destroyed reactor'
-    );
+    expect(warnSpy).toHaveBeenCalled();
+    const warnCall = warnSpy.mock.calls[0][0];
+    expect(warnCall).toContain('Cannot update destroyed reactor');
     expect(todos.state.items.length).toBe(1);
 
     warnSpy.mockRestore();

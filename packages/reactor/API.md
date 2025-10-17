@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for @svelte-dev/reactor.
+Complete API documentation for svelte-reactor.
 
 ## Table of Contents
 
@@ -65,8 +65,8 @@ interface ReactorOptions<T> {
 **Example:**
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { undoRedo, persist } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { undoRedo, persist } from 'svelte-reactor/plugins';
 
 const counter = createReactor(
   { value: 0 },
@@ -304,8 +304,8 @@ interface UndoRedoOptions {
 **Example:**
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { undoRedo } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { undoRedo } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(
   { value: 0 },
@@ -367,8 +367,8 @@ interface PersistOptions {
 **Example:**
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { persist } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { persist } from 'svelte-reactor/plugins';
 
 const todos = createReactor(
   { items: [] },
@@ -419,8 +419,8 @@ interface LoggerOptions {
 **Example:**
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { logger } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { logger } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(
   { value: 0 },
@@ -727,8 +727,8 @@ function createDevTools<T extends object>(
 **Example:**
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { createDevTools } from '@svelte-dev/reactor/devtools';
+import { createReactor } from 'svelte-reactor';
+import { createDevTools } from 'svelte-reactor/devtools';
 
 const reactor = createReactor({ value: 0 });
 const devtools = createDevTools(reactor, { name: 'Counter' });
@@ -889,7 +889,7 @@ interface DiffEntry {
 **Example:**
 
 ```typescript
-import { diff } from '@svelte-dev/reactor/utils';
+import { diff } from 'svelte-reactor/utils';
 
 const oldState = { user: { name: 'Alice', age: 30 }, count: 5 };
 const newState = { user: { name: 'Bob', age: 30 }, count: 5, active: true };
@@ -920,7 +920,7 @@ function applyPatch<T extends object>(
 **Example:**
 
 ```typescript
-import { diff, applyPatch } from '@svelte-dev/reactor/utils';
+import { diff, applyPatch } from 'svelte-reactor/utils';
 
 const oldState = { value: 1 };
 const newState = { value: 2 };
@@ -945,7 +945,7 @@ function getChangeSummary(
 **Example:**
 
 ```typescript
-import { diff, getChangeSummary } from '@svelte-dev/reactor/utils';
+import { diff, getChangeSummary } from 'svelte-reactor/utils';
 
 const changes = diff(oldState, newState);
 const summary = getChangeSummary(changes);
@@ -965,7 +965,7 @@ function deepClone<T>(obj: T): T
 **Example:**
 
 ```typescript
-import { deepClone } from '@svelte-dev/reactor/utils';
+import { deepClone } from 'svelte-reactor/utils';
 
 const original = { user: { name: 'Alice' }, items: [1, 2, 3] };
 const cloned = deepClone(original);
@@ -987,7 +987,7 @@ function isEqual(a: unknown, b: unknown): boolean
 **Example:**
 
 ```typescript
-import { isEqual } from '@svelte-dev/reactor/utils';
+import { isEqual } from 'svelte-reactor/utils';
 
 isEqual({ a: 1 }, { a: 1 }); // true
 isEqual({ a: 1 }, { a: 2 }); // false
@@ -1086,7 +1086,18 @@ const actions = arrayActions(todos, 'items', { idKey: 'id' });
 actions.add({ id: Date.now(), text, done: false });
 ```
 
-### From v0.2.x to v0.3.x
+### From v0.2.1 to v0.2.2
+
+**Bug Fixes:**
+- Memory leak fixes - Proper cleanup of subscribers and middlewares on destroy
+- Performance optimization - Skip unnecessary updates when state unchanged
+- Enhanced error handling - Better validation and context-aware error messages
+- Persist plugin improvements - Quota exceeded handling and auto-cleanup
+- 181 tests (was 172)
+
+**No Breaking Changes** - Fully backward compatible
+
+### From v0.2.x to v0.3.x (Planned)
 
 - Added DevTools API with `createDevTools()`
 - Added utility functions: `diff`, `applyPatch`, `getChangeSummary`

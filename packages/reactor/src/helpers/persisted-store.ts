@@ -24,7 +24,7 @@ export interface PersistedStoreOptions extends Omit<PersistOptions, 'key'> {
  *
  * @example
  * ```ts
- * import { persistedStore } from '@svelte-dev/reactor/helpers';
+ * import { persistedStore } from 'svelte-reactor/helpers';
  *
  * // Simple usage
  * const counter = persistedStore('counter', 0);
@@ -91,8 +91,8 @@ export function persistedStore<T>(
  *
  * @example
  * ```ts
- * import { persistedReactor } from '@svelte-dev/reactor/helpers';
- * import { undoRedo } from '@svelte-dev/reactor/plugins';
+ * import { persistedReactor } from 'svelte-reactor/helpers';
+ * import { undoRedo } from 'svelte-reactor/plugins';
  *
  * const store = persistedReactor(
  *   'app-state',

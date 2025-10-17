@@ -1,5 +1,5 @@
 /**
- * Core types for @svelte-dev/reactor
+ * Core types for svelte-reactor
  */
 
 /**

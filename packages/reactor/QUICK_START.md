@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-npm install @svelte-dev/reactor
+npm install svelte-reactor
 ```
 
 ## Basic Usage
@@ -11,7 +11,7 @@ npm install @svelte-dev/reactor
 ### Simple Counter Store
 
 ```typescript
-import { simpleStore } from '@svelte-dev/reactor';
+import { simpleStore } from 'svelte-reactor';
 
 // Create a simple writable store
 export const counter = simpleStore(0);
@@ -25,7 +25,7 @@ console.log(counter.get()); // 1
 ### Persisted Store (Auto-save to localStorage)
 
 ```typescript
-import { persistedStore } from '@svelte-dev/reactor';
+import { persistedStore } from 'svelte-reactor';
 
 // Simple persisted counter
 export const counter = persistedStore('counter', 0);
@@ -41,8 +41,8 @@ export const settings = persistedStore('app-settings', { theme: 'dark' }, {
 ### Full Reactor with Undo/Redo
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { undoRedo, logger } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { undoRedo, logger } from 'svelte-reactor/plugins';
 
 const store = createReactor(
   { count: 0, name: 'John' },
@@ -109,7 +109,7 @@ store.redo();
 
 ```svelte
 <script>
-  import { createReactor } from '@svelte-dev/reactor';
+  import { createReactor } from 'svelte-reactor';
 
   const store = createReactor({ count: 0 });
 
@@ -127,7 +127,7 @@ store.redo();
 ### Selective Persistence (Security)
 
 ```typescript
-import { persistedStore } from '@svelte-dev/reactor';
+import { persistedStore } from 'svelte-reactor';
 
 const userStore = persistedStore('user', {
   name: 'John',
@@ -163,7 +163,7 @@ const store = persistedStore('data', initialValue, {
 ### Non-Svelte Context (onChange callback)
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 // Use in plain JavaScript/TypeScript (no Svelte needed)
 const store = createReactor(
@@ -181,7 +181,7 @@ store.update(s => { s.count++; });
 ### SSR-Safe (Server-Side Rendering)
 
 ```typescript
-import { persistedStore } from '@svelte-dev/reactor';
+import { persistedStore } from 'svelte-reactor';
 
 // Automatically handles SSR - persistence disabled on server
 export const settings = persistedStore('settings', { theme: 'dark' });
@@ -194,8 +194,8 @@ export const settings = persistedStore('settings', { theme: 'dark' });
 ### Todo List
 
 ```typescript
-import { persistedReactor } from '@svelte-dev/reactor';
-import { undoRedo } from '@svelte-dev/reactor/plugins';
+import { persistedReactor } from 'svelte-reactor';
+import { undoRedo } from 'svelte-reactor/plugins';
 
 interface Todo {
   id: number;
@@ -234,7 +234,7 @@ export function toggleTodo(id: number) {
 ### Form Management
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 export const formStore = createReactor({
   values: { email: '', password: '' },

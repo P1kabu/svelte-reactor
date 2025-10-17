@@ -12,7 +12,7 @@ import type {
 } from '../types/index.js';
 import { UndoRedoHistory } from '../history/undo-redo.js';
 import { createMiddlewareChain } from '../middleware/middleware.js';
-import { deepClone } from '../utils/clone.js';
+import { deepClone, isEqual } from '../utils/clone.js';
 
 /**
  * Create a reactor with undo/redo, middleware, and plugin support
@@ -31,7 +31,17 @@ export function createReactor<T extends object>(
   initialState: T,
   options?: ReactorOptions<T>
 ): Reactor<T> {
+  // Validate initial state
+  if (!initialState || typeof initialState !== 'object') {
+    throw new TypeError('[Reactor] initialState must be a non-null object');
+  }
+
   const { plugins = [], name = 'reactor', devtools = false, onChange } = options ?? {};
+
+  // Validate reactor name
+  if (typeof name !== 'string' || name.trim().length === 0) {
+    throw new TypeError('[Reactor] name must be a non-empty string');
+  }
 
   // Create reactive state with Svelte 5 $state
   let state = $state(initialState) as T;
@@ -105,8 +115,12 @@ export function createReactor<T extends object>(
    * Subscribe to state changes (Svelte stores API compatible)
    */
   function subscribe(subscriber: (value: T) => void): () => void {
+    if (typeof subscriber !== 'function') {
+      throw new TypeError(`[Reactor:${name}] subscribe() requires a function, got ${typeof subscriber}`);
+    }
+
     if (destroyed) {
-      console.warn('[Reactor] Cannot subscribe to destroyed reactor');
+      console.warn(`[Reactor:${name}] Cannot subscribe to destroyed reactor. Call destroy() cleanup.`);
       return () => {};
     }
 
@@ -117,7 +131,7 @@ export function createReactor<T extends object>(
     try {
       subscriber(deepClone(state));
     } catch (error) {
-      console.error('[Reactor] Subscriber error on initial call:', error);
+      console.error(`[Reactor:${name}] Subscriber error on initial call:`, error);
     }
 
     // Return unsubscribe function
@@ -130,8 +144,12 @@ export function createReactor<T extends object>(
    * Update state using an updater function
    */
   function update(updater: (state: T) => void, action?: string): void {
+    if (typeof updater !== 'function') {
+      throw new TypeError(`[Reactor:${name}] update() requires a function, got ${typeof updater}`);
+    }
+
     if (destroyed) {
-      console.warn('[Reactor] Cannot update destroyed reactor');
+      console.warn(`[Reactor:${name}] Cannot update destroyed reactor. Reactor was destroyed at ${new Date().toISOString()}`);
       return;
     }
 
@@ -144,6 +162,11 @@ export function createReactor<T extends object>(
 
       // Capture next state after update
       const nextState = deepClone(state);
+
+      // Skip update if state hasn't actually changed (performance optimization)
+      if (isEqual(prevState, nextState)) {
+        return;
+      }
 
       // Run before middlewares
       middlewareChain.runBefore(prevState, nextState, action);
@@ -160,6 +183,8 @@ export function createReactor<T extends object>(
       // Notify subscribers
       notifySubscribers(nextState, prevState, action);
     } catch (error) {
+      const actionName = action ? ` (action: "${action}")` : '';
+      console.error(`[Reactor:${name}] Update failed${actionName}:`, error);
       middlewareChain.handleError(error as Error);
       throw error;
     }
@@ -310,6 +335,12 @@ export function createReactor<T extends object>(
         console.error(`[Reactor] Failed to destroy plugin "${plugin.name}":`, error);
       }
     }
+
+    // Clear subscribers to prevent memory leaks
+    subscribers.clear();
+
+    // Clear middlewares
+    middlewares.length = 0;
 
     // Clear history
     history?.clear();

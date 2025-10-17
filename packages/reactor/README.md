@@ -11,17 +11,16 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.1
+## ✨ What's New in v0.2.2
 
-🎯 **Async Actions Helper** - Automatic loading/error state management with `asyncActions()`
-📦 **Array Actions Helper** - CRUD operations without boilerplate with `arrayActions()`
-📚 **Enhanced Migration Guide** - Detailed examples for arrays and async operations
-🧪 **172 tests** - Including advanced complexity tests for concurrent operations
+🐛 **Critical Bug Fixes** - Memory leak prevention, performance optimization, enhanced error handling
+✅ **181 tests** - Added 9 new tests for bug fixes verification
+🔒 **Enhanced Validation** - Better input validation and error messages with context
+⚡ **Performance** - Skip unnecessary updates when state hasn't changed
 
-Previous updates (v0.2.0):
-- 🎉 Full Svelte stores API compatibility with `subscribe()`
-- 🛠️ Helper functions: `simpleStore()`, `persistedStore()`, `persistedReactor()`
-- 🔒 Enhanced security with `pick`/`omit` for selective persistence
+Previous updates:
+- **v0.2.1**: Async Actions Helper, Array Actions Helper, Enhanced Migration Guide
+- **v0.2.0**: Full Svelte stores API compatibility, Helper functions, Security features
 
 👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)**
 
@@ -62,8 +61,8 @@ npx svelte-reactor init-ai
 ```
 
 This will generate AI instructions for:
-- **Claude Code** - `.claude/svelte-reactor.md`
-- **Cursor AI** - `.cursorrules` or `.cursor/svelte-reactor.md`
+- **Claude Code** - `.claude/SVELTE_REACTOR_RULES.md`
+- **Cursor AI** - `.cursorrules`
 - **GitHub Copilot** - `.github/copilot-instructions.md`
 
 Your AI assistant will then understand svelte-reactor patterns and suggest optimal code!
@@ -162,9 +161,10 @@ export const editor = persistedReactor('editor', {
 ### Helper Functions (Recommended)
 
 #### `simpleStore(initialValue, options?)`
-**→ [Full Svelte stores API](./QUICK_START.md#simple-counter-store)**
 
 Simple writable store compatible with Svelte's `$store` syntax.
+
+**→ [See full example in Quick Start](./QUICK_START.md#simple-counter-store)**
 
 ```typescript
 import { simpleStore } from 'svelte-reactor';
@@ -177,9 +177,10 @@ console.log(counter.get()); // 5
 ```
 
 #### `persistedStore(key, initialValue, options?)`
-**→ [Auto-save to localStorage](./QUICK_START.md#persisted-store)**
 
 Create a store that automatically persists to localStorage/sessionStorage.
+
+**→ [See full example in Quick Start](./QUICK_START.md#persisted-store-auto-save-to-localstorage)**
 
 ```typescript
 import { persistedStore } from 'svelte-reactor';
@@ -193,9 +194,10 @@ const settings = persistedStore('app-settings', { theme: 'dark' }, {
 ```
 
 #### `persistedReactor(key, initialState, options?)`
-**→ [Full reactor with persistence](./QUICK_START.md#full-reactor-with-undoredo)**
 
 Full reactor API with automatic persistence and plugin support.
+
+**→ [See full example in Quick Start](./QUICK_START.md#full-reactor-with-undoredo)**
 
 ```typescript
 import { persistedReactor } from 'svelte-reactor';
@@ -211,9 +213,10 @@ store.undo(); // Undo last change
 ```
 
 #### `arrayActions(reactor, field, options?)`
-**→ [CRUD operations without boilerplate](./MIGRATION.md#working-with-arrays)**
 
 Simplify array management with built-in CRUD operations.
+
+**→ [See Migration Guide](./MIGRATION.md#working-with-arrays)**
 
 ```typescript
 import { createReactor, arrayActions } from 'svelte-reactor';
@@ -233,9 +236,10 @@ const count = actions.count();
 ```
 
 #### `asyncActions(reactor, actions, options?)`
-**→ [Automatic loading/error handling](./MIGRATION.md#async-operations--loading-states)**
 
 Manage async operations with automatic loading and error states.
+
+**→ [See Migration Guide](./MIGRATION.md#async-operations--loading-states)**
 
 ```typescript
 import { createReactor, asyncActions } from 'svelte-reactor';
@@ -611,6 +615,13 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ **Advanced testing** - 3 complexity tests for concurrent operations
 - ✅ 172 tests (+23)
 
+### ✅ v0.2.2 - Bug Fixes & Stability (Released)
+- ✅ **Memory Leak Fixes** - Proper cleanup of subscribers and middlewares on destroy
+- ✅ **Performance Optimization** - Skip unnecessary updates when state unchanged
+- ✅ **Enhanced Error Handling** - Better validation and context-aware error messages
+- ✅ **Persist Plugin Improvements** - Quota exceeded handling and auto-cleanup
+- ✅ 181 tests (+9)
+
 ### 🔜 v0.3.0 - Advanced Features (Planned)
 - 🔄 Computed/Derived State API
 - 🔄 Selectors API with memoization
@@ -649,7 +660,7 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **172 tests** covering all features
+- **181 tests** covering all features
 - Unit tests for core reactor, plugins, helpers, utilities, and DevTools
 - Advanced complexity tests for edge cases and concurrent operations
 - Performance benchmarks for all operations
@@ -659,11 +670,11 @@ Run tests with `pnpm test` or `pnpm test:watch` for development.
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](../../CONTRIBUTING.md) for details.
+Contributions are welcome! Please read our [Contributing Guide](https://github.com/P1kabu/svelte-reactor/blob/master/CONTRIBUTING.md) for details.
 
 ## License
 
-MIT License - see [LICENSE](../../LICENSE) for details
+MIT License - see [LICENSE](./LICENSE) for details
 
 ## Credits
 

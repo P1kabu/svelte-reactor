@@ -139,9 +139,9 @@ describe('Edge Cases: Destroyed reactor', () => {
       state.value = 5;
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      '[Reactor] Cannot update destroyed reactor'
-    );
+    expect(warnSpy).toHaveBeenCalled();
+    const warnCall = warnSpy.mock.calls[0][0];
+    expect(warnCall).toContain('Cannot update destroyed reactor');
     expect(reactor.state.value).toBe(0);
 
     warnSpy.mockRestore();

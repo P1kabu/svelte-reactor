@@ -11,7 +11,7 @@ import { pick, omit } from '../utils/path.js';
  *
  * @example
  * ```ts
- * import { persist } from '@svelte-dev/reactor/plugins';
+ * import { persist } from 'svelte-reactor/plugins';
  *
  * const reactor = createReactor(state, {
  *   plugins: [persist({ key: 'my-state' })],
@@ -19,6 +19,15 @@ import { pick, omit } from '../utils/path.js';
  * ```
  */
 export function persist<T extends object>(options: PersistOptions): ReactorPlugin<T> {
+  // Validate required options
+  if (!options || typeof options !== 'object') {
+    throw new TypeError('[persist] options must be an object');
+  }
+
+  if (!options.key || typeof options.key !== 'string') {
+    throw new TypeError('[persist] options.key is required and must be a non-empty string');
+  }
+
   const {
     key,
     storage = 'localStorage',
@@ -32,8 +41,14 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     omit: omitPaths,
   } = options;
 
+  // Validate debounce
+  if (typeof debounce !== 'number' || debounce < 0) {
+    throw new TypeError(`[persist] options.debounce must be a non-negative number, got ${debounce}`);
+  }
+
   let debounceTimer: any;
   let storageBackend: Storage | null = null;
+  let storageListener: ((e: StorageEvent) => void) | null = null;
 
   // Get storage backend
   function getStorage(): Storage | null {
@@ -87,7 +102,14 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
 
       return data;
     } catch (error) {
-      console.error('[Reactor persist] Failed to load state:', error);
+      console.error(`[persist:${key}] Failed to load state from ${storage}:`, error);
+      // Try to recover by clearing corrupted data
+      try {
+        storageBackend?.removeItem(key);
+        console.warn(`[persist:${key}] Cleared corrupted data from storage`);
+      } catch {
+        // Ignore cleanup errors
+      }
       return null;
     }
   }
@@ -127,7 +149,19 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
 
       storageBackend.setItem(key, serialized);
     } catch (error) {
-      console.error('[Reactor persist] Failed to save state:', error);
+      // Check if quota exceeded
+      const isQuotaExceeded =
+        error instanceof DOMException &&
+        (error.code === 22 || // Chrome
+         error.code === 1014 || // Firefox
+         error.name === 'QuotaExceededError' ||
+         error.name === 'NS_ERROR_DOM_QUOTA_REACHED');
+
+      if (isQuotaExceeded) {
+        console.error(`[persist:${key}] Storage quota exceeded in ${storage}. Consider using compression or clearing old data.`, error);
+      } else {
+        console.error(`[persist:${key}] Failed to save state to ${storage}:`, error);
+      }
     }
   }
 
@@ -163,12 +197,38 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
 
       // Register middleware
       context.middlewares.push(persistMiddleware);
+
+      // Listen for storage changes from other tabs/windows (localStorage only)
+      // or from manual changes in DevTools (both localStorage and sessionStorage)
+      if (typeof window !== 'undefined' && storageBackend) {
+        storageListener = (e: StorageEvent) => {
+          // Only react to changes for our key
+          if (e.key !== key) return;
+
+          // Ignore changes from the same window (we already updated)
+          if (e.storageArea !== storageBackend) return;
+
+          // Load and apply the new state
+          const newState = loadState();
+          if (newState) {
+            Object.assign(context.state, newState);
+          }
+        };
+
+        window.addEventListener('storage', storageListener);
+      }
     },
 
     destroy() {
       // Clear any pending debounce
       if (debounceTimer) {
         clearTimeout(debounceTimer);
+      }
+
+      // Remove storage event listener
+      if (storageListener && typeof window !== 'undefined') {
+        window.removeEventListener('storage', storageListener);
+        storageListener = null;
       }
     },
   };

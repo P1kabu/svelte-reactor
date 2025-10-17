@@ -28,6 +28,7 @@
     },
     {
       name: 'canvas',
+      devtools: true,
       plugins: [undoRedo({ limit: 100 })],
     }
   );
@@ -253,6 +254,8 @@
     currentWidth: 3,
   },
   {
+    name: 'canvas',
+    devtools: true,  // Enable Redux DevTools
     plugins: [undoRedo({ limit: 100 })],
   }
 );

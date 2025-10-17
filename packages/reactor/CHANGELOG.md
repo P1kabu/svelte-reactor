@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-10-18
+
+### Fixed
+- **Memory leaks** - Fixed memory leaks in core reactor
+  - Subscribers Set is now properly cleared on destroy()
+  - Middlewares array is now properly cleared on destroy()
+  - Prevents memory leaks when reactors are destroyed and recreated
+
+- **Performance optimization** - Skip unnecessary updates when state unchanged
+  - Added deep equality check before running middlewares and notifying subscribers
+  - Improves performance by avoiding re-renders when state hasn't actually changed
+  - Uses existing `isEqual()` utility for reliable comparison
+
+- **Error handling** - Enhanced error messages and validation
+  - Added validation for createReactor initialState (must be non-null object)
+  - Added validation for reactor name (must be non-empty string)
+  - Added validation for subscribe() parameter (must be function)
+  - Added validation for update() parameter (must be function)
+  - Added validation for persist plugin options (key required, debounce must be number)
+  - Improved error messages with reactor name context
+  - Better error recovery in persist plugin (auto-cleanup corrupted data)
+  - Quota exceeded detection in persist plugin with helpful error messages
+
+- **Documentation links** - Fixed broken links in README for NPM package
+  - Added API.md, EXAMPLES.md, PERFORMANCE.md to published files
+  - Fixed CONTRIBUTING.md link to use GitHub URL
+  - Fixed LICENSE link to use relative path
+
+### Changed
+- Test count increased from 172 to 181 tests (+9 tests for bug fixes)
+- More descriptive error messages include reactor name for easier debugging
+
 ## [0.2.1] - 2025-01-16
 
 ### Added
@@ -55,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.1] - 2025-01-14
 
 ### Fixed
-- Updated package name from `@svelte-dev/reactor` to `svelte-reactor` across all documentation and examples
+- Updated package name from `svelte-reactor` to `svelte-reactor` across all documentation and examples
 - Fixed GitHub repository links to point to correct repository (P1kabu/svelte-reactor)
 - Removed references to non-existent `@svelte-dev/persist` package
 - Fixed GitHub Actions workflows to use correct package names

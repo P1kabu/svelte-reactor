@@ -15,6 +15,8 @@ A comprehensive state management library for Svelte 5 applications with built-in
 
 - **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
 - **Undo/Redo** - Full history management with batch operations
+- **Array Actions** - Helper for common CRUD operations (add, update, remove, toggle)
+- **Async Actions** - Automatic loading/error state management for async operations
 - **Middleware** - Redux-style middleware for logging, effects, and more
 - **Persistence** - Built-in persist plugin for localStorage/sessionStorage
 - **DevTools** - Time-travel debugging and state inspection
@@ -37,6 +39,17 @@ pnpm add svelte-reactor
 
 ```bash
 yarn add svelte-reactor
+```
+
+## Live Demo
+
+Try the interactive demo: [examples/reactor-demos](./examples/reactor-demos)
+
+Run locally:
+```bash
+cd examples/reactor-demos
+pnpm install
+pnpm dev
 ```
 
 ## AI Assistant Setup
@@ -71,9 +84,11 @@ After setup, your AI will automatically:
   const counter = createReactor(
     { value: 0 },
     {
+      name: 'counter',
+      devtools: true,  // Enable Redux DevTools
       plugins: [
         undoRedo({ limit: 50 }),
-        logger(),
+        logger({ collapsed: true }),
       ],
     }
   );
@@ -81,7 +96,7 @@ After setup, your AI will automatically:
   function increment() {
     counter.update(state => {
       state.value++;
-    });
+    }, 'increment');
   }
 </script>
 
@@ -114,6 +129,8 @@ After setup, your AI will automatically:
   const todos = createReactor(
     { items: [] as Todo[] },
     {
+      name: 'todos',
+      devtools: true,
       plugins: [
         persist({ key: 'todos', debounce: 300 }),
         undoRedo({ limit: 100 }),
@@ -128,7 +145,7 @@ After setup, your AI will automatically:
         text,
         done: false,
       });
-    });
+    }, 'add-todo');
   }
 </script>
 ```
@@ -217,7 +234,7 @@ reactor.update(state => { state.temp = 123; }, 'skip-history'); // Won't add to 
 
 #### `persist(options)`
 
-Built-in state persistence to localStorage/sessionStorage.
+Built-in state persistence to localStorage/sessionStorage with automatic cross-tab synchronization.
 
 ```typescript
 import { persist } from 'svelte-reactor/plugins';
@@ -234,6 +251,12 @@ const reactor = createReactor(initialState, {
   ],
 });
 ```
+
+**Features:**
+- **Auto-sync**: Changes from other tabs (localStorage) are automatically synced
+- **DevTools friendly**: Manual changes in DevTools are detected
+- **Debouncing**: Configurable debounce to reduce write frequency
+- **Migrations**: Schema versioning for backwards compatibility
 
 #### `logger(options?)`
 
@@ -307,6 +330,129 @@ const cloned = deepClone(state);
 const equal = isEqual(state1, state2);
 ```
 
+## Array Actions Helper
+
+Reduce boilerplate for common array operations with the `arrayActions` helper:
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+const todos = createReactor({ items: [] as Todo[] });
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
+
+// CRUD operations - no more manual update() calls!
+actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.update('1', { done: true });
+actions.remove('1');
+actions.clear();
+
+// Advanced operations
+actions.toggle('1', 'done');                    // Toggle boolean field
+actions.filter(item => !item.done);              // Filter items
+actions.removeWhere(item => item.done);          // Remove by predicate
+
+// Query operations (don't trigger updates)
+const item = actions.find('1');                  // Find by id
+const exists = actions.has('1');                 // Check existence
+const count = actions.count();                   // Get count
+```
+
+**Features:**
+- **Less boilerplate**: No need to write `update()` for every operation
+- **Type-safe**: Full TypeScript inference for array items
+- **Undo/Redo compatible**: Works seamlessly with undoRedo plugin
+- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, etc.)
+
+**Available Methods:**
+
+```typescript
+actions.add(item)                    // Add item to array
+actions.update(id, updates)          // Update item by id
+actions.updateBy(id, updater)        // Update using function
+actions.remove(id)                   // Remove item by id
+actions.removeWhere(predicate)       // Remove items matching predicate
+actions.clear()                      // Clear all items
+actions.toggle(id, field)            // Toggle boolean field
+actions.set(items)                   // Replace entire array
+actions.filter(predicate)            // Filter items
+actions.find(id)                     // Find item by id
+actions.has(id)                      // Check if item exists
+actions.count()                      // Get array length
+```
+
+## Async Actions Helper
+
+Automatic loading and error state management for async operations:
+
+```typescript
+import { createReactor, asyncActions } from 'svelte-reactor';
+
+interface User {
+  id: number;
+  name: string;
+}
+
+const store = createReactor({
+  users: [] as User[],
+  loading: false,
+  error: null as Error | null,
+});
+
+// Define async actions
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const response = await fetch('/api/users');
+    const users = await response.json();
+    return { users };
+  },
+  createUser: async (name: string) => {
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    const newUser = await response.json();
+    return { users: [...store.state.users, newUser] };
+  },
+});
+
+// Usage - automatically handles loading & error states!
+await api.fetchUsers();
+// store.state.loading was true during fetch
+// store.state.users is now populated
+// store.state.error is null
+
+try {
+  await api.createUser('John');
+} catch (error) {
+  // store.state.loading is false
+  // store.state.error contains the error
+}
+```
+
+**Features:**
+- **Automatic loading state**: Sets `loading: true` before, `false` after
+- **Error handling**: Catches errors and sets `error` state
+- **Type-safe**: Full TypeScript inference for parameters and return values
+- **Customizable**: Configure loading/error field names
+- **Works with undo/redo**: Integrates seamlessly with other features
+
+**Options:**
+
+```typescript
+const api = asyncActions(store, actions, {
+  loadingKey: 'isLoading',      // Custom loading field (default: 'loading')
+  errorKey: 'lastError',         // Custom error field (default: 'error')
+  actionPrefix: 'api',           // Custom action prefix (default: 'async')
+  resetErrorOnStart: true,       // Reset error on new request (default: true)
+});
+```
+
 ## Middleware
 
 Create custom middleware for advanced use cases:
@@ -343,7 +489,7 @@ Reactor is highly optimized for performance:
 - **Simple state update**: 26,884 ops/sec (~0.037ms)
 - **Update with undo/redo**: 11,636 ops/sec (~0.086ms)
 - **100 sequential updates**: 331 ops/sec (~3ms)
-- **Bundle size**: 12.07 KB gzipped (full package)
+- **Bundle size**: 10.87 KB gzipped (full package)
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
 
@@ -365,6 +511,8 @@ See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
   const todos = createReactor(
     { items: [] as Todo[], filter: 'all' as 'all' | 'active' | 'done' },
     {
+      name: 'todos',
+      devtools: true,
       plugins: [
         persist({ key: 'todos', debounce: 300 }),
         undoRedo({ limit: 50 }),
@@ -449,13 +597,30 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ Persist integration
 - ✅ State utilities (diff, clone, equality)
 
-### ✅ Phase 3: Advanced (v0.3.0)
-- ✅ DevTools API
+### ✅ Phase 3: Developer Experience (v0.2.0)
+- ✅ DevTools API with Redux DevTools integration
 - ✅ Time-travel debugging
 - ✅ Performance benchmarks
 - ✅ Comprehensive documentation
-- ✅ AI Assistant CLI (Claude, Cursor, Copilot)
-- ⏳ Multi-tab sync (optional)
+- ✅ AI Assistant CLI (Claude Code, Cursor AI, GitHub Copilot)
+- ✅ Interactive demo site
+
+### ✅ Phase 4: Async & Helpers (v0.2.1)
+- ✅ Array Actions Helper - `arrayActions()` for CRUD operations
+- ✅ Async Actions Helper - `asyncActions()` for loading/error management
+- ✅ Enhanced Migration Guide
+
+### ✅ Phase 5: Stability & Bug Fixes (v0.2.2)
+- ✅ Memory leak fixes (subscribers, middlewares cleanup)
+- ✅ Performance optimization (skip unchanged updates)
+- ✅ Enhanced error handling and validation
+- ✅ Persist plugin improvements (quota handling)
+
+### Phase 6: Future (v0.3.0+)
+- ⏳ Multi-tab synchronization with BroadcastChannel
+- ⏳ Plugin ecosystem
+- ⏳ Visual DevTools UI
+- ⏳ Advanced selectors and computed state
 
 ## Development
 
@@ -483,8 +648,8 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **93 tests** covering all features
-- Unit tests for core reactor, plugins, utilities, and DevTools
+- **181 tests** covering all features
+- Unit tests for core reactor, plugins, utilities, helpers, and DevTools
 - Performance benchmarks for all operations
 - TypeScript type checking
 

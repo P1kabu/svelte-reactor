@@ -98,6 +98,74 @@ describe('Persist plugin integration', () => {
     expect(stored).toBeTruthy();
   });
 
+  it('should sync state when storage changes externally', () => {
+    const counter = createReactor({ value: 0 }, {
+      plugins: [
+        persist({
+          key: 'test-counter-sync',
+          storage: 'localStorage',
+        }),
+      ],
+    });
+
+    // Initial value
+    expect(counter.state.value).toBe(0);
+
+    // Simulate external storage change (e.g., from another tab or DevTools)
+    const newData = { value: 999 };
+    localStorage.setItem('test-counter-sync', JSON.stringify(newData));
+
+    // Trigger storage event manually (browser does this automatically for other tabs)
+    const storageEvent = new StorageEvent('storage', {
+      key: 'test-counter-sync',
+      newValue: JSON.stringify(newData),
+      oldValue: JSON.stringify({ value: 0 }),
+      storageArea: localStorage,
+      url: window.location.href,
+    });
+
+    window.dispatchEvent(storageEvent);
+
+    // State should be synced
+    expect(counter.state.value).toBe(999);
+
+    counter.destroy();
+  });
+
+  it('should sync sessionStorage when changed externally', () => {
+    const counter = createReactor({ value: 0 }, {
+      plugins: [
+        persist({
+          key: 'test-session-sync',
+          storage: 'sessionStorage',
+        }),
+      ],
+    });
+
+    // Initial value
+    expect(counter.state.value).toBe(0);
+
+    // Simulate external sessionStorage change (e.g., from DevTools)
+    const newData = { value: 777 };
+    sessionStorage.setItem('test-session-sync', JSON.stringify(newData));
+
+    // Trigger storage event
+    const storageEvent = new StorageEvent('storage', {
+      key: 'test-session-sync',
+      newValue: JSON.stringify(newData),
+      oldValue: JSON.stringify({ value: 0 }),
+      storageArea: sessionStorage,
+      url: window.location.href,
+    });
+
+    window.dispatchEvent(storageEvent);
+
+    // State should be synced
+    expect(counter.state.value).toBe(777);
+
+    counter.destroy();
+  });
+
   it('should work with compression option', () => {
     const counter = createReactor({ value: 0 }, {
       plugins: [

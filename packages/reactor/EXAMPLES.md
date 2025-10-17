@@ -1,6 +1,6 @@
 # Examples
 
-Real-world examples and patterns for using @svelte-dev/reactor.
+Real-world examples and patterns for using svelte-reactor.
 
 ## Table of Contents
 
@@ -28,8 +28,8 @@ Simple counter with full undo/redo support.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo } from 'svelte-reactor/plugins';
 
   const counter = createReactor(
     { value: 0, step: 1 },
@@ -91,8 +91,8 @@ Manage complex form state with validation.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo } from 'svelte-reactor/plugins';
 
   interface FormState {
     name: string;
@@ -216,8 +216,8 @@ Persistent settings with localStorage.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist } from 'svelte-reactor/plugins';
 
   interface Settings {
     theme: 'light' | 'dark';
@@ -333,8 +333,8 @@ Complete todo app with categories, filters, and persistence.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface Todo {
     id: string;
@@ -591,8 +591,8 @@ Shopping cart with quantity management and persistence.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { persist, undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { persist, undoRedo } from 'svelte-reactor/plugins';
 
   interface CartItem {
     id: string;
@@ -796,8 +796,8 @@ Simple drawing app with undo/redo.
 
 ```svelte
 <script lang="ts">
-  import { createReactor } from '@svelte-dev/reactor';
-  import { undoRedo } from '@svelte-dev/reactor/plugins';
+  import { createReactor } from 'svelte-reactor';
+  import { undoRedo } from 'svelte-reactor/plugins';
 
   interface Point {
     x: number;
@@ -985,7 +985,7 @@ Simple drawing app with undo/redo.
 Create custom middleware for logging, analytics, or side effects.
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 // Analytics middleware
 const analyticsMiddleware = {
@@ -1033,7 +1033,7 @@ const reactor = createReactor(
 Use Svelte's `$derived` for computed values.
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
+import { createReactor } from 'svelte-reactor';
 
 const cart = createReactor({
   items: [
@@ -1063,8 +1063,8 @@ console.log(`Total: $${total.toFixed(2)}`);
 Use action names to track and debug state changes.
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { undoRedo, logger } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { undoRedo, logger } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(
   { value: 0 },
@@ -1095,8 +1095,8 @@ console.log(history); // Each entry has action name
 Handle schema changes with version migrations.
 
 ```typescript
-import { createReactor } from '@svelte-dev/reactor';
-import { persist } from '@svelte-dev/reactor/plugins';
+import { createReactor } from 'svelte-reactor';
+import { persist } from 'svelte-reactor/plugins';
 
 const todos = createReactor(
   {

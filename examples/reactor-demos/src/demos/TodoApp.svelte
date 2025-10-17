@@ -21,6 +21,7 @@
     },
     {
       name: 'todos',
+      devtools: true,
       plugins: [
         persist({ key: 'reactor-todos', debounce: 300 }),
         undoRedo({ limit: 100 }),
@@ -73,14 +74,14 @@
     }, 'set-filter');
   }
 
-  let filteredTodos = $derived(() => {
+  let filteredTodos = $derived.by(() => {
     const { items, filter } = todos.state;
     if (filter === 'active') return items.filter((t) => !t.done);
     if (filter === 'completed') return items.filter((t) => t.done);
     return items;
   });
 
-  let stats = $derived(() => {
+  let stats = $derived.by(() => {
     const { items } = todos.state;
     return {
       total: items.length,
@@ -115,27 +116,27 @@
         class:active={todos.state.filter === 'all'}
         onclick={() => setFilter('all')}
       >
-        All ({stats().total})
+        All ({stats.total})
       </button>
       <button
         class="filter-btn"
         class:active={todos.state.filter === 'active'}
         onclick={() => setFilter('active')}
       >
-        Active ({stats().active})
+        Active ({stats.active})
       </button>
       <button
         class="filter-btn"
         class:active={todos.state.filter === 'completed'}
         onclick={() => setFilter('completed')}
       >
-        Completed ({stats().completed})
+        Completed ({stats.completed})
       </button>
     </div>
 
     <div class="todo-list">
-      {#if filteredTodos().length > 0}
-        {#each filteredTodos() as todo (todo.id)}
+      {#if filteredTodos.length > 0}
+        {#each filteredTodos as todo (todo.id)}
           <div class="todo-item" class:done={todo.done}>
             <input
               type="checkbox"
@@ -177,7 +178,7 @@
       <button
         class="btn btn-secondary"
         onclick={clearCompleted}
-        disabled={stats().completed === 0}
+        disabled={stats.completed === 0}
       >
         Clear Completed
       </button>
@@ -197,6 +198,8 @@
     <pre><code>{`const todos = createReactor(
   { items: [], filter: 'all' },
   {
+    name: 'todos',
+    devtools: true,  // Enable Redux DevTools
     plugins: [
       persist({ key: 'todos', debounce: 300 }),
       undoRedo({ limit: 100 }),

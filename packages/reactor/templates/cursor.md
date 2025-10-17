@@ -28,20 +28,40 @@ const store = createReactor(initialState, options);
   - Automatic `loading` and `error` state management
   - Options: `loadingKey`, `errorKey`, `actionPrefix`
 
-## Best Practices
+## Best Practices (v0.2.2)
 
 ✅ **DO:**
 - Use createReactor for reactive state
 - Combine multiple plugins
 - Use .update() for state changes
 - Enable devtools in development
-- Unsubscribe when component unmounts
+- Call destroy() when component unmounts (prevents memory leaks!)
+- Use arrayActions() and asyncActions() helpers
+- Add action names for better debugging
 
 ❌ **DON'T:**
 - Mutate state directly
 - Mix with writable() stores
-- Forget to unsubscribe
+- Forget to destroy() reactor (memory leak!)
 - Persist sensitive data without encryption
+- Skip input validation (reactor validates automatically)
+
+## v0.2.2 Features
+
+🛡️ **Memory Safety:**
+```typescript
+import { onDestroy } from 'svelte';
+const store = createReactor({ value: 0 });
+onDestroy(() => store.destroy()); // Always cleanup!
+```
+
+⚡ **Auto-optimization:** Skips unnecessary updates when state unchanged
+
+🔍 **Better errors:** Context-aware messages with reactor name
+```
+[Reactor:counter] Cannot update destroyed reactor
+[persist:todos] Storage quota exceeded
+```
 
 ## Common Patterns
 
@@ -94,3 +114,8 @@ form.update(s => ({ ...s, name: 'John' }));
 - DevTools integration for debugging
 - Full Svelte stores API compatibility
 - SSR support (SvelteKit ready)
+
+---
+
+**Current Version:** v0.2.2 (181 tests, production-ready)
+**Key Updates:** Memory leak fixes, auto-optimization, enhanced error handling

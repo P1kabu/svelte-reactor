@@ -14,6 +14,7 @@
     },
     {
       name: 'counter',
+      devtools: true,
       plugins: [
         undoRedo({ limit: 50 }),
         logger({ collapsed: true }),
@@ -34,7 +35,9 @@
   }
 
   function reset() {
-    counter.set({ value: 0 });
+    counter.update((state) => {
+      state.value = 0;
+    }, 'reset');
   }
 
   function setStep(value: number) {
@@ -130,6 +133,8 @@
     <pre><code>{`const counter = createReactor(
   { value: 0, step: 1 },
   {
+    name: 'counter',
+    devtools: true,  // Enable Redux DevTools
     plugins: [
       undoRedo({ limit: 50 }),
       logger({ collapsed: true }),
