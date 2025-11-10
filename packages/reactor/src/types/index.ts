@@ -254,6 +254,20 @@ export interface PersistOptions {
 
   /** Omit specific paths from persistence (e.g., ['user.token', 'temp']) */
   omit?: string[];
+
+  /**
+   * IndexedDB configuration (only used when storage='indexedDB')
+   */
+  indexedDB?: {
+    /** Database name (default: 'svelte-reactor') */
+    database?: string;
+
+    /** Object store name (default: 'state') */
+    storeName?: string;
+
+    /** Database version (default: 1) */
+    version?: number;
+  };
 }
 
 /**
@@ -263,8 +277,20 @@ export interface LoggerOptions {
   /** Collapse console groups (default: false) */
   collapsed?: boolean;
 
-  /** Filter actions to log */
-  filter?: (action?: string) => boolean;
+  /** Filter actions to log (now supports state comparison) */
+  filter?: (action?: string, state?: any, prevState?: any) => boolean;
+
+  /** Track performance and show execution time (default: false) */
+  trackPerformance?: boolean;
+
+  /** Warn if action takes longer than this (in ms). Requires trackPerformance */
+  slowThreshold?: number;
+
+  /** Include timestamp in logs (default: false) */
+  includeTimestamp?: boolean;
+
+  /** Maximum depth for logged objects (default: 3) */
+  maxDepth?: number;
 }
 
 /**

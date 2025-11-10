@@ -566,4 +566,337 @@ describe('asyncActions', () => {
       expect(fetchProfileCallCount).toBe(4); // 3 users + 1 retry for user 2
     });
   });
+
+  describe('Retry logic', () => {
+    it('should retry failed operations', async () => {
+      let attemptCount = 0;
+
+      const api = asyncActions(
+        store,
+        {
+          unstableFetch: async () => {
+            attemptCount++;
+            if (attemptCount < 3) {
+              throw new Error(`Attempt ${attemptCount} failed`);
+            }
+            return { users: [{ id: 1, name: 'Success' }] };
+          },
+        },
+        {
+          retry: {
+            attempts: 3,
+            delay: 10,
+          },
+        }
+      );
+
+      await api.unstableFetch();
+
+      expect(attemptCount).toBe(3);
+      expect(store.state.users).toHaveLength(1);
+      expect(store.state.error).toBeNull();
+    });
+
+    it('should use exponential backoff by default', async () => {
+      const delays: number[] = [];
+      let attemptCount = 0;
+      let lastTime = Date.now();
+
+      const api = asyncActions(
+        store,
+        {
+          fetchWithBackoff: async () => {
+            attemptCount++;
+            const now = Date.now();
+            if (attemptCount > 1) {
+              delays.push(now - lastTime);
+            }
+            lastTime = now;
+
+            if (attemptCount < 3) {
+              throw new Error('Failed');
+            }
+            return { users: [] };
+          },
+        },
+        {
+          retry: {
+            attempts: 3,
+            delay: 50,
+            backoff: 'exponential',
+          },
+        }
+      );
+
+      await api.fetchWithBackoff();
+
+      expect(attemptCount).toBe(3);
+      // delays should be roughly [50, 100] (exponential)
+      expect(delays[0]).toBeGreaterThanOrEqual(45);
+      expect(delays[1]).toBeGreaterThanOrEqual(95);
+    });
+
+    it('should use linear backoff when specified', async () => {
+      const delays: number[] = [];
+      let attemptCount = 0;
+      let lastTime = Date.now();
+
+      const api = asyncActions(
+        store,
+        {
+          fetchWithLinear: async () => {
+            attemptCount++;
+            const now = Date.now();
+            if (attemptCount > 1) {
+              delays.push(now - lastTime);
+            }
+            lastTime = now;
+
+            if (attemptCount < 3) {
+              throw new Error('Failed');
+            }
+            return { users: [] };
+          },
+        },
+        {
+          retry: {
+            attempts: 3,
+            delay: 50,
+            backoff: 'linear',
+          },
+        }
+      );
+
+      await api.fetchWithLinear();
+
+      expect(attemptCount).toBe(3);
+      // delays should be roughly [50, 50] (linear)
+      expect(delays[0]).toBeGreaterThanOrEqual(45);
+      expect(delays[0]).toBeLessThan(70);
+      expect(delays[1]).toBeGreaterThanOrEqual(45);
+      expect(delays[1]).toBeLessThan(70);
+    });
+
+    it('should respect retryOn custom logic', async () => {
+      let attemptCount = 0;
+
+      const api = asyncActions(
+        store,
+        {
+          selectiveRetry: async () => {
+            attemptCount++;
+            const error = new Error(
+              attemptCount === 1 ? 'NetworkError' : 'ValidationError'
+            );
+            throw error;
+          },
+        },
+        {
+          retry: {
+            attempts: 3,
+            delay: 10,
+            retryOn: (error) => error.message.includes('Network'),
+          },
+        }
+      );
+
+      await expect(api.selectiveRetry()).rejects.toThrow('ValidationError');
+
+      // Should only retry once (network error) then fail on validation error
+      expect(attemptCount).toBe(2);
+    });
+
+    it('should throw after max retries exceeded', async () => {
+      let attemptCount = 0;
+
+      const api = asyncActions(
+        store,
+        {
+          alwaysFail: async () => {
+            attemptCount++;
+            throw new Error('Always fails');
+          },
+        },
+        {
+          retry: {
+            attempts: 2,
+            delay: 10,
+          },
+        }
+      );
+
+      await expect(api.alwaysFail()).rejects.toThrow('Always fails');
+
+      expect(attemptCount).toBe(3); // Initial + 2 retries
+      expect(store.state.error?.message).toBe('Always fails');
+    });
+  });
+
+  describe('Debounce', () => {
+    it('should debounce rapid calls', async () => {
+      let callCount = 0;
+
+      const api = asyncActions(
+        store,
+        {
+          search: async (query: string) => {
+            callCount++;
+            return { users: [{ id: callCount, name: query }] };
+          },
+        },
+        {
+          debounce: 50,
+        }
+      );
+
+      // Make rapid calls - catch rejections from cancelled calls
+      const p1 = api.search('a').catch(() => {});
+      const p2 = api.search('ab').catch(() => {});
+      const p3 = api.search('abc').catch(() => {});
+      const p4 = api.search('abcd');
+
+      await p4;
+
+      // Only last call should execute
+      expect(callCount).toBe(1);
+      expect(store.state.users[0].name).toBe('abcd');
+    });
+
+    it('should cancel previous debounced calls', async () => {
+      let callCount = 0;
+
+      const api = asyncActions(
+        store,
+        {
+          search: async (query: string) => {
+            callCount++;
+            return { users: [{ id: callCount, name: query }] };
+          },
+        },
+        {
+          debounce: 100,
+        }
+      );
+
+      // Catch rejections from cancelled calls
+      api.search('first').catch(() => {});
+      api.search('second').catch(() => {});
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      const result = api.search('third');
+
+      await result;
+
+      expect(callCount).toBe(1);
+      expect(store.state.users[0].name).toBe('third');
+    });
+  });
+
+  describe('Cancellation', () => {
+    it('should allow cancelling an action', async () => {
+      const api = asyncActions(store, {
+        slowFetch: async () => {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          return { users: [{ id: 1, name: 'Slow' }] };
+        },
+      });
+
+      const controller = api.slowFetch();
+
+      // Cancel immediately
+      controller.cancel();
+
+      await expect(controller).rejects.toThrow('Action cancelled');
+      expect(store.state.users).toHaveLength(0);
+    });
+
+    it('should provide AbortController for fetch API', () => {
+      const api = asyncActions(store, {
+        fetchData: async () => ({ users: [] }),
+      });
+
+      const controller = api.fetchData();
+
+      expect(controller.abort).toBeDefined();
+      expect(controller.cancel).toBeDefined();
+
+      // Catch rejection before cancelling
+      controller.catch(() => {});
+      controller.cancel();
+    });
+
+    it('should have cancel method on returned controller', () => {
+      const api = asyncActions(store, {
+        cancellableFetch: async () => {
+          return { users: [{ id: 1, name: 'Test' }] };
+        },
+      });
+
+      const controller = api.cancellableFetch();
+
+      // Controller should have cancel method
+      expect(typeof controller.cancel).toBe('function');
+
+      // Cleanup - catch any rejection to avoid unhandled promise rejection
+      controller.catch(() => {});
+      controller.cancel();
+    });
+  });
+
+  describe('Retry with cancellation', () => {
+    it('should support both retry and cancel features', () => {
+      const api = asyncActions(
+        store,
+        {
+          retryableFetch: async () => {
+            throw new Error('Retry needed');
+          },
+        },
+        {
+          retry: {
+            attempts: 5,
+            delay: 20,
+            backoff: 'linear',
+          },
+        }
+      );
+
+      const controller = api.retryableFetch();
+
+      // Should have both cancel method and be a promise
+      expect(typeof controller.cancel).toBe('function');
+      expect(controller instanceof Promise).toBe(true);
+
+      // Cleanup
+      controller.catch(() => {});
+      controller.cancel();
+    });
+  });
+
+  describe('Debounce with retry', () => {
+    it('should support both debounce and retry options', async () => {
+      const api = asyncActions(
+        store,
+        {
+          debouncedAction: async () => {
+            return { users: [{ id: 1, name: 'Success' }] };
+          },
+        },
+        {
+          debounce: 50,
+          retry: {
+            attempts: 3,
+            delay: 10,
+          },
+        }
+      );
+
+      // Call action once and wait
+      await api.debouncedAction();
+
+      // Should have updated state
+      expect(store.state.users[0].name).toBe('Success');
+    });
+  });
 });

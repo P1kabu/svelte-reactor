@@ -17,18 +17,20 @@ const store = createReactor(initialState, options);
 ## Plugins
 
 - `undoRedo()` - Undo/redo functionality
-- `persist({ key })` - localStorage persistence
-- `logger()` - Console logging of changes
+- `persist({ key, pick?, omit? })` - localStorage persistence (v0.2.3: selective persistence)
+- `logger({ filter?, trackPerformance? })` - Console logging (v0.2.3: advanced filtering)
 
 ## Helpers
 
 - `arrayActions(reactor, field, { idKey })` - CRUD operations for arrays
   - Methods: `add`, `update`, `remove`, `toggle`, `filter`, `find`, `has`, etc.
+  - **NEW in v0.2.3:** `sort`, `bulkUpdate`, `bulkRemove`
 - `asyncActions(reactor, actions, options)` - Async operations with loading/error
   - Automatic `loading` and `error` state management
   - Options: `loadingKey`, `errorKey`, `actionPrefix`
+  - **NEW in v0.2.3:** `retry`, `debounce`, cancellation with `.cancel()`
 
-## Best Practices (v0.2.2)
+## Best Practices (v0.2.3)
 
 ✅ **DO:**
 - Use createReactor for reactive state
@@ -46,21 +48,30 @@ const store = createReactor(initialState, options);
 - Persist sensitive data without encryption
 - Skip input validation (reactor validates automatically)
 
-## v0.2.2 Features
+## v0.2.3 Features
 
-🛡️ **Memory Safety:**
+🔒 **Selective Persistence:** Pick/omit fields for security
 ```typescript
-import { onDestroy } from 'svelte';
-const store = createReactor({ value: 0 });
-onDestroy(() => store.destroy()); // Always cleanup!
+persist({ key: 'app', omit: ['user.token'] }) // Don't save sensitive data
 ```
 
-⚡ **Auto-optimization:** Skips unnecessary updates when state unchanged
-
-🔍 **Better errors:** Context-aware messages with reactor name
+⚡ **Retry & Debounce:** Automatic retry with backoff + request debouncing
+```typescript
+asyncActions(store, actions, {
+  retry: { attempts: 3, backoff: 'exponential' },
+  debounce: 300
+})
 ```
-[Reactor:counter] Cannot update destroyed reactor
-[persist:todos] Storage quota exceeded
+
+📊 **Performance Tracking:** Logger with execution time monitoring
+```typescript
+logger({ trackPerformance: true, slowThreshold: 16 })
+```
+
+🎯 **Bulk Operations:** Efficient multi-item updates
+```typescript
+actions.bulkUpdate(['1', '2', '3'], { done: true });
+actions.sort((a, b) => a.priority - b.priority);
 ```
 
 ## Common Patterns
@@ -117,5 +128,5 @@ form.update(s => ({ ...s, name: 'John' }));
 
 ---
 
-**Current Version:** v0.2.2 (181 tests, production-ready)
-**Key Updates:** Memory leak fixes, auto-optimization, enhanced error handling
+**Current Version:** v0.2.3 (232 tests, production-ready)
+**Key Updates:** Selective persistence, retry/debounce, bulk operations, performance tracking

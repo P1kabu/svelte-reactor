@@ -78,6 +78,21 @@ export interface ArrayActions<T> {
    * Get array length
    */
   count(): number;
+
+  /**
+   * Sort array using comparator function
+   */
+  sort(compareFn: (a: T, b: T) => number): void;
+
+  /**
+   * Update multiple items by their ids
+   */
+  bulkUpdate(ids: any[], updates: Partial<T>): void;
+
+  /**
+   * Remove multiple items by their ids or by predicate
+   */
+  bulkRemove(idsOrPredicate: any[] | ((item: T) => boolean)): void;
 }
 
 /**
@@ -206,6 +221,40 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
     count(): number {
       const arr = getArray();
       return arr.length;
+    },
+
+    sort(compareFn: (a: T, b: T) => number): void {
+      reactor.update((state) => {
+        const arr = state[field] as T[];
+        arr.sort(compareFn);
+      }, `${actionPrefix}:sort`);
+    },
+
+    bulkUpdate(ids: any[], updates: Partial<T>): void {
+      reactor.update((state) => {
+        const arr = state[field] as T[];
+        for (const id of ids) {
+          const item = arr.find((item: any) => item[idKey] === id);
+          if (item) {
+            Object.assign(item as any, updates);
+          }
+        }
+      }, `${actionPrefix}:bulkUpdate`);
+    },
+
+    bulkRemove(idsOrPredicate: any[] | ((item: T) => boolean)): void {
+      reactor.update((state) => {
+        const arr = state[field] as T[];
+
+        if (typeof idsOrPredicate === 'function') {
+          // Remove by predicate
+          (state[field] as any) = arr.filter((item) => !idsOrPredicate(item));
+        } else {
+          // Remove by ids
+          const idsSet = new Set(idsOrPredicate);
+          (state[field] as any) = arr.filter((item: any) => !idsSet.has(item[idKey]));
+        }
+      }, `${actionPrefix}:bulkRemove`);
     },
   };
 }

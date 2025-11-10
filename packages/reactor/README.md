@@ -11,18 +11,21 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.2
+## ✨ What's New in v0.2.3
 
-🐛 **Critical Bug Fixes** - Memory leak prevention, performance optimization, enhanced error handling
-✅ **181 tests** - Added 9 new tests for bug fixes verification
-🔒 **Enhanced Validation** - Better input validation and error messages with context
-⚡ **Performance** - Skip unnecessary updates when state hasn't changed
+🔒 **Selective Persistence** - `pick`/`omit` options for security and performance
+📊 **Array Enhancements** - `sort()`, `bulkUpdate()`, `bulkRemove()` methods
+🔄 **Async Retry & Cancellation** - Retry logic, debouncing, and cancellation
+🎯 **Advanced Logger Filtering** - Filter by action/state, performance tracking
+🐛 **Critical Bug Fixes** - Unhandled rejection fixes, better error handling
+✅ **232 tests** (+58 new) - All features thoroughly tested
 
 Previous updates:
-- **v0.2.1**: Async Actions Helper, Array Actions Helper, Enhanced Migration Guide
-- **v0.2.0**: Full Svelte stores API compatibility, Helper functions, Security features
+- **v0.2.2**: Memory leak fixes, performance optimization, enhanced validation
+- **v0.2.1**: Async Actions Helper, Array Actions Helper
+- **v0.2.0**: Full Svelte stores API compatibility
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)**
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[Upgrade Guide v0.2.3](../../UPGRADES/UPGRADE-0.2.3.md)**
 
 ## 🚀 Features
 
@@ -30,12 +33,15 @@ Previous updates:
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
-- **💾 Smart Persistence** - Auto-save to localStorage with selective field persistence
-- **🔒 Security First** - Exclude sensitive data with `pick`/`omit` options
+- **💾 Smart Persistence** - localStorage, sessionStorage (IndexedDB planned for v0.3.0)
+- **🔒 Security First** - Exclude sensitive data (tokens, passwords) from persistence
+- **🔄 Network Resilience** - Retry logic with exponential backoff, request cancellation
+- **📊 Bulk Operations** - Sort, bulk update/remove for arrays
+- **🎯 Advanced Logging** - Filter by action/state, performance tracking
 - **🎮 DevTools** - Time-travel debugging and state inspection
 - **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
 - **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **12.22 KB gzipped** (full), tree-shakeable modules
+- **🪶 Lightweight** - **13.5 KB gzipped** (full), tree-shakeable modules
 - **0️⃣ Zero dependencies** - Only requires Svelte 5
 
 ## Installation
@@ -51,6 +57,15 @@ pnpm add svelte-reactor
 ```bash
 yarn add svelte-reactor
 ```
+
+## Upgrading
+
+📖 **[View All Upgrade Guides](../../UPGRADES/)**
+
+- [v0.2.3](../../UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements (selective persistence, retry, bulk ops)
+- [v0.2.2](../../UPGRADES/UPGRADE-0.2.2.md) - Bug fixes & stability improvements
+
+For general migration tips, see [MIGRATION.md](./MIGRATION.md).
 
 ### 🤖 AI Assistant Setup (Optional)
 
@@ -108,7 +123,7 @@ export const counter = persistedStore('counter', 0);
 </button>
 ```
 
-### 🔒 Secure User Store (Exclude sensitive data)
+### 🔒 Secure User Store (Exclude sensitive data) - NEW in v0.2.3
 
 ```typescript
 import { persistedStore } from 'svelte-reactor';
@@ -117,11 +132,17 @@ export const user = persistedStore('user', {
   name: 'John',
   email: 'john@example.com',
   token: 'secret_token_123',
-  sessionId: 'temp_session'
+  sessionId: 'temp_session',
+  preferences: { theme: 'dark' }
 }, {
-  // Only persist name and email, never save tokens!
-  omit: ['token', 'sessionId']
+  // Option 1: Only persist specific fields
+  pick: ['name', 'email', 'preferences'],
+
+  // Option 2: Exclude sensitive fields (can't use both)
+  // omit: ['token', 'sessionId']
 });
+
+// Tokens never saved to localStorage - secure by default!
 ```
 
 ### ♻️ Advanced Store with Undo/Redo
@@ -178,7 +199,7 @@ console.log(counter.get()); // 5
 
 #### `persistedStore(key, initialValue, options?)`
 
-Create a store that automatically persists to localStorage/sessionStorage.
+Create a store that automatically persists to localStorage/sessionStorage (IndexedDB coming in v0.3.0).
 
 **→ [See full example in Quick Start](./QUICK_START.md#persisted-store-auto-save-to-localstorage)**
 
@@ -186,10 +207,13 @@ Create a store that automatically persists to localStorage/sessionStorage.
 import { persistedStore } from 'svelte-reactor';
 
 const settings = persistedStore('app-settings', { theme: 'dark' }, {
-  storage: 'localStorage', // or 'sessionStorage'
+  storage: 'localStorage', // or 'sessionStorage' (indexedDB planned for v0.3.0)
   debounce: 300,           // Save after 300ms of inactivity
-  omit: ['user.token'],    // Don't persist sensitive data
-  pick: ['theme', 'lang'], // Or only persist specific fields
+
+  // NEW in v0.2.3: Security options
+  omit: ['user.token', 'temp'], // Exclude sensitive/temporary data
+  // OR
+  pick: ['theme', 'lang'],      // Only persist specific fields (can't use both)
 });
 ```
 
@@ -225,10 +249,16 @@ const todos = createReactor({ items: [] });
 const actions = arrayActions(todos, 'items', { idKey: 'id' });
 
 // Simple CRUD - no manual update() needed!
-actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.add({ id: '1', text: 'Buy milk', done: false, priority: 1 });
 actions.update('1', { done: true });
 actions.toggle('1', 'done');
 actions.remove('1');
+
+// NEW in v0.2.3: Sorting and bulk operations
+actions.sort((a, b) => a.priority - b.priority); // Sort by priority
+actions.bulkUpdate(['1', '2', '3'], { done: true }); // Update multiple
+actions.bulkRemove(['1', '2']); // Remove multiple
+actions.bulkRemove(item => item.done); // Remove by predicate
 
 // Query operations
 const item = actions.find('1');
@@ -253,15 +283,36 @@ const store = createReactor({
 const api = asyncActions(store, {
   fetchUsers: async () => {
     const response = await fetch('/api/users');
+    if (!response.ok) throw new Error('Failed to fetch');
+    return { users: await response.json() };
+  },
+  searchUsers: async (query: string) => {
+    const response = await fetch(`/api/users?q=${query}`);
     return { users: await response.json() };
   }
+}, {
+  // NEW in v0.2.3: Retry with exponential backoff
+  retry: {
+    attempts: 3,
+    delay: 1000,
+    backoff: 'exponential' // 1s, 2s, 4s, 8s...
+  },
+  // NEW in v0.2.3: Debounce for search
+  debounce: 300 // Wait 300ms before executing
 });
 
 // Automatic loading & error management!
 await api.fetchUsers();
-// store.state.loading was true during fetch
-// store.state.users now has data
-// store.state.error is null
+// Automatically retries 3 times on failure!
+
+// Debounced search - only last call executes
+api.searchUsers('j');
+api.searchUsers('jo');
+api.searchUsers('john'); // Only this one runs after 300ms
+
+// Manual cancellation
+const controller = api.fetchUsers();
+controller.cancel(); // Cancel in-flight request
 ```
 
 ---
@@ -392,7 +443,7 @@ const reactor = createReactor(initialState, {
 
 #### `logger(options?)`
 
-Log all state changes to console.
+Log all state changes to console with advanced filtering.
 
 ```typescript
 import { logger } from 'svelte-reactor/plugins';
@@ -401,6 +452,20 @@ const reactor = createReactor(initialState, {
   plugins: [
     logger({
       collapsed: true, // Collapse console groups
+
+      // NEW in v0.2.3: Advanced filtering
+      filter: (action, state, prevState) => {
+        // Only log user actions
+        return action?.startsWith('user:');
+        // Or only log when count changes
+        // return state.count !== prevState.count;
+      },
+
+      // NEW in v0.2.3: Performance tracking
+      trackPerformance: true,  // Show execution time
+      slowThreshold: 100,      // Warn if action takes > 100ms
+      includeTimestamp: true,  // Add timestamp to logs
+      maxDepth: 3,             // Limit object depth in console
     }),
   ],
 });
@@ -615,18 +680,25 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ **Advanced testing** - 3 complexity tests for concurrent operations
 - ✅ 172 tests (+23)
 
+### ✅ v0.2.3 - Feature Enhancements (Current)
+- ✅ **Selective Persistence** - `pick`/`omit` options for security
+- ✅ **Array Enhancements** - `sort()`, `bulkUpdate()`, `bulkRemove()`
+- ✅ **Async Retry & Cancellation** - Retry logic, debouncing, cancellation
+- ✅ **Advanced Logger** - Filter by action/state, performance tracking
+- ✅ **Critical Bug Fixes** - Unhandled rejection fixes
+- ✅ 232 tests (+58)
+
 ### ✅ v0.2.2 - Bug Fixes & Stability (Released)
-- ✅ **Memory Leak Fixes** - Proper cleanup of subscribers and middlewares on destroy
-- ✅ **Performance Optimization** - Skip unnecessary updates when state unchanged
-- ✅ **Enhanced Error Handling** - Better validation and context-aware error messages
-- ✅ **Persist Plugin Improvements** - Quota exceeded handling and auto-cleanup
+- ✅ **Memory Leak Fixes** - Proper cleanup of subscribers and middlewares
+- ✅ **Performance Optimization** - Skip unnecessary updates
+- ✅ **Enhanced Error Handling** - Better validation and error messages
 - ✅ 181 tests (+9)
 
 ### 🔜 v0.3.0 - Advanced Features (Planned)
 - 🔄 Computed/Derived State API
 - 🔄 Selectors API with memoization
-- 🔄 IndexedDB storage adapter
 - 🔄 Multi-tab sync with BroadcastChannel
+- 🔄 Image compression for persist plugin
 
 ### 🚀 v1.0.0 - Stable Release (Future)
 - React/Vue adapters
@@ -660,9 +732,10 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **181 tests** covering all features
+- **232 tests** covering all features (+51 new in v0.2.3)
 - Unit tests for core reactor, plugins, helpers, utilities, and DevTools
 - Advanced complexity tests for edge cases and concurrent operations
+- Integration tests for v0.2.3 features
 - Performance benchmarks for all operations
 - TypeScript type checking
 

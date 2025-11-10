@@ -361,6 +361,20 @@ interface PersistOptions {
 
   // Migration function
   migrate?: (stored: unknown, version: number) => unknown;
+
+  // NEW in v0.2.3: Selective persistence
+  // Pick specific fields to persist (dot notation supported)
+  pick?: string[];
+
+  // Omit specific fields from persistence (dot notation supported)
+  // Note: Cannot use both pick and omit
+  omit?: string[];
+
+  // Custom serialization (optional)
+  serialize?: (state: T) => unknown;
+
+  // Custom deserialization (optional)
+  deserialize?: (stored: unknown) => T;
 }
 ```
 
@@ -371,7 +385,7 @@ import { createReactor } from 'svelte-reactor';
 import { persist } from 'svelte-reactor/plugins';
 
 const todos = createReactor(
-  { items: [] },
+  { items: [], user: { name: 'John', token: 'secret123' } },
   {
     plugins: [
       persist({
@@ -386,10 +400,48 @@ const todos = createReactor(
           }
           return stored;
         },
+
+        // NEW in v0.2.3: Exclude sensitive data
+        omit: ['user.token'], // Don't persist token
+
+        // OR: Only persist specific fields
+        // pick: ['items', 'user.name']
       }),
     ],
   }
 );
+```
+
+**Security Features (v0.2.3):**
+
+```typescript
+// Example 1: Exclude sensitive data
+const store = createReactor({
+  user: { name: 'John', email: 'john@example.com', token: 'secret' },
+  settings: { theme: 'dark' },
+  temp: { cache: [] }
+}, {
+  plugins: [
+    persist({
+      key: 'app',
+      omit: ['user.token', 'temp'] // Exclude token and temp data
+    })
+  ]
+});
+
+// Example 2: Only persist specific fields
+const store2 = createReactor({
+  user: { name: 'John', email: 'john@example.com', token: 'secret' },
+  settings: { theme: 'dark' },
+  temp: { cache: [] }
+}, {
+  plugins: [
+    persist({
+      key: 'app',
+      pick: ['user.name', 'user.email', 'settings'] // Only persist these
+    })
+  ]
+});
 ```
 
 ---
@@ -413,6 +465,22 @@ interface LoggerOptions {
 
   // Custom logger function
   log?: (action: string, prevState: unknown, nextState: unknown) => void;
+
+  // NEW in v0.2.3: Advanced filtering
+  // Filter function to control what gets logged
+  filter?: (action?: string, state?: unknown, prevState?: unknown) => boolean;
+
+  // Track execution time for each action
+  trackPerformance?: boolean;
+
+  // Warn if action execution time exceeds this threshold (in ms)
+  slowThreshold?: number;
+
+  // Include timestamp in logs
+  includeTimestamp?: boolean;
+
+  // Maximum depth for object inspection in console (default: 3)
+  maxDepth?: number;
 }
 ```
 
@@ -423,7 +491,7 @@ import { createReactor } from 'svelte-reactor';
 import { logger } from 'svelte-reactor/plugins';
 
 const reactor = createReactor(
-  { value: 0 },
+  { value: 0, user: { name: 'John' } },
   {
     plugins: [
       logger({
@@ -431,10 +499,48 @@ const reactor = createReactor(
         log: (action, prev, next) => {
           console.log(`[${action}]`, prev, '->', next);
         },
+
+        // NEW in v0.2.3: Filter by action name
+        filter: (action) => action?.startsWith('user:'),
+
+        // Or filter by state changes
+        // filter: (action, state, prevState) => {
+        //   return state.value !== prevState.value;
+        // },
+
+        // Performance tracking
+        trackPerformance: true,
+        slowThreshold: 100, // Warn if action takes > 100ms
+        includeTimestamp: true,
+        maxDepth: 3,
       }),
     ],
   }
 );
+```
+
+**Advanced Filtering Examples (v0.2.3):**
+
+```typescript
+// Filter by action prefix
+logger({
+  filter: (action) => action?.startsWith('api:')
+})
+
+// Filter by state changes
+logger({
+  filter: (action, state, prevState) => {
+    return state.count !== prevState.count;
+  }
+})
+
+// Combine with performance tracking
+logger({
+  filter: (action) => !action?.includes('temp'),
+  trackPerformance: true,
+  slowThreshold: 50,
+  collapsed: true
+})
 ```
 
 **Features:**
@@ -511,6 +617,15 @@ interface ArrayActions<T> {
   // Filter items
   filter(predicate: (item: T) => boolean): void;
 
+  // NEW in v0.2.3: Sort array
+  sort(compareFn: (a: T, b: T) => number): void;
+
+  // NEW in v0.2.3: Bulk update multiple items
+  bulkUpdate(ids: any[], updates: Partial<T>): void;
+
+  // NEW in v0.2.3: Bulk remove multiple items
+  bulkRemove(idsOrPredicate: any[] | ((item: T) => boolean)): void;
+
   // Find item by id
   find(id: any): T | undefined;
 
@@ -551,18 +666,49 @@ actions.remove('1');
 actions.removeWhere(item => item.done);
 actions.filter(item => !item.done);
 
+// NEW in v0.2.3: Sorting
+actions.sort((a, b) => a.priority - b.priority); // Sort by priority
+actions.sort((a, b) => b.createdAt - a.createdAt); // Newest first
+actions.sort((a, b) => a.text.localeCompare(b.text)); // Alphabetically
+
+// NEW in v0.2.3: Bulk operations
+actions.bulkUpdate(['1', '2', '3'], { done: true }); // Update multiple
+actions.bulkRemove(['1', '2']); // Remove multiple by ids
+actions.bulkRemove(item => item.done); // Remove by predicate
+
 // Query operations (don't trigger updates)
 const item = actions.find('1');
 const exists = actions.has('1');
 const count = actions.count();
 ```
 
+**New Methods in v0.2.3:**
+
+```typescript
+// Sort array with comparator function
+actions.sort((a, b) => a.priority - b.priority);
+// Supports undo/redo - entire sort operation is one history entry
+
+// Bulk update multiple items at once
+actions.bulkUpdate(['id1', 'id2', 'id3'], {
+  status: 'completed',
+  completedAt: Date.now()
+});
+// More efficient than calling update() multiple times
+
+// Bulk remove by ids or predicate
+actions.bulkRemove(['id1', 'id2']); // Remove specific ids
+actions.bulkRemove(item => item.done && item.age > 30); // Remove by condition
+// Both methods support undo/redo
+```
+
 **Features:**
 
 - **Less boilerplate**: No need to write `update()` for every operation
 - **Type-safe**: Full TypeScript inference for array items
-- **Undo/Redo compatible**: Works seamlessly with undoRedo plugin
-- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, etc.)
+- **Undo/Redo compatible**: All methods work seamlessly with undoRedo plugin
+- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, `items:sort`, etc.)
+- **Bulk operations**: Efficient bulk update/remove in v0.2.3
 
 ---
 
@@ -599,6 +745,27 @@ interface AsyncActionOptions {
 
   // Reset error on new request (default: true)
   resetErrorOnStart?: boolean;
+
+  // NEW in v0.2.3: Retry configuration
+  retry?: {
+    // Number of retry attempts (default: 3)
+    attempts?: number;
+    // Delay between retries in ms (default: 1000)
+    delay?: number;
+    // Backoff strategy: 'linear' | 'exponential' (default: 'exponential')
+    backoff?: 'linear' | 'exponential';
+    // Custom retry condition (default: retry on any error)
+    retryOn?: (error: Error) => boolean;
+  };
+
+  // NEW in v0.2.3: Debounce delay in milliseconds
+  // Waits for this duration of inactivity before executing
+  debounce?: number;
+}
+
+// NEW in v0.2.3: Async controller for cancellation
+interface AsyncController {
+  cancel(): void;
 }
 ```
 
@@ -686,6 +853,106 @@ const api = asyncActions(
 );
 
 // Now uses store.state.isLoading and store.state.lastError
+```
+
+**NEW in v0.2.3: Retry Logic**
+
+```typescript
+const api = asyncActions(
+  store,
+  {
+    fetchUsers: async () => {
+      const response = await fetch('/api/users');
+      if (!response.ok) throw new Error('Failed to fetch');
+      return { users: await response.json() };
+    }
+  },
+  {
+    retry: {
+      attempts: 3,           // Retry up to 3 times
+      delay: 1000,           // Wait 1s between retries
+      backoff: 'exponential' // 1s, 2s, 4s, 8s... (exponential backoff)
+    }
+  }
+);
+
+// Automatically retries on failure!
+await api.fetchUsers();
+// If it fails, retries 3 times before throwing
+
+// Custom retry condition
+const api2 = asyncActions(
+  store,
+  {
+    fetchData: async () => {
+      const res = await fetch('/api/data');
+      return { data: await res.json() };
+    }
+  },
+  {
+    retry: {
+      attempts: 5,
+      delay: 500,
+      backoff: 'linear', // 500ms, 1000ms, 1500ms, 2000ms...
+      retryOn: (error) => {
+        // Only retry on network errors, not 404s
+        return error.message.includes('network');
+      }
+    }
+  }
+);
+```
+
+**NEW in v0.2.3: Debouncing**
+
+```typescript
+const api = asyncActions(
+  store,
+  {
+    searchUsers: async (query: string) => {
+      const response = await fetch(`/api/users?q=${query}`);
+      return { results: await response.json() };
+    }
+  },
+  {
+    debounce: 300 // Wait 300ms of inactivity before executing
+  }
+);
+
+// Type fast - only last request executes!
+api.searchUsers('j');
+api.searchUsers('jo');
+api.searchUsers('joh');
+api.searchUsers('john'); // Only this one runs after 300ms
+```
+
+**NEW in v0.2.3: Manual Cancellation**
+
+```typescript
+const api = asyncActions(store, {
+  fetchData: async () => {
+    const response = await fetch('/api/data');
+    return { data: await response.json() };
+  }
+});
+
+// Start request and get controller
+const controller = api.fetchData();
+
+// Cancel if needed
+setTimeout(() => {
+  controller.cancel(); // Cancels in-flight request
+}, 1000);
+
+// Debounced actions also support cancellation
+const searchApi = asyncActions(
+  store,
+  { search: async (q: string) => { /* ... */ } },
+  { debounce: 300 }
+);
+
+const ctrl = searchApi.search('query');
+ctrl.cancel(); // Cancel pending/in-flight request
 ```
 
 **Features:**
@@ -1086,6 +1353,23 @@ const actions = arrayActions(todos, 'items', { idKey: 'id' });
 actions.add({ id: Date.now(), text, done: false });
 ```
 
+### From v0.2.2 to v0.2.3
+
+**New Features:**
+- **persist plugin** - `pick` and `omit` options for selective persistence (+8 tests)
+- **arrayActions** - `sort()`, `bulkUpdate()`, `bulkRemove()` methods (+13 tests)
+- **asyncActions** - Retry logic, debouncing, and cancellation (+14 tests)
+- **logger plugin** - Advanced filtering, performance tracking (+12 tests)
+- **Integration tests** - 5 new complex scenario tests (+11 tests)
+- 232 tests (was 174, +58 new tests)
+
+**Bug Fixes:**
+- Fixed unhandled promise rejection on cancellation (asyncActions)
+- Fixed debounce cancellation with promise chains
+- Fixed empty pick array handling (persist plugin)
+
+**No Breaking Changes** - Fully backward compatible
+
 ### From v0.2.1 to v0.2.2
 
 **Bug Fixes:**
@@ -1099,9 +1383,10 @@ actions.add({ id: Date.now(), text, done: false });
 
 ### From v0.2.x to v0.3.x (Planned)
 
-- Added DevTools API with `createDevTools()`
-- Added utility functions: `diff`, `applyPatch`, `getChangeSummary`
-- Enhanced `undoRedo` plugin with `compress` option
+- IndexedDB storage adapter
+- Computed/Derived State API
+- Selectors API with memoization
+- Multi-tab sync with BroadcastChannel
 
 ---
 
@@ -1109,7 +1394,8 @@ actions.add({ id: Date.now(), text, done: false });
 
 - **State updates**: ~0.037ms for simple updates
 - **Undo/Redo overhead**: ~0.05ms per operation
-- **Bundle size**: 12.07 KB gzipped (full package), 1.03 KB (plugins only)
+- **Bundle size**: 13.27 KB gzipped (full package with v0.2.3 features), 1.05 KB (plugins only)
 - **Memory**: History limited by `undoRedo({ limit })` option
+- **Test coverage**: 232 comprehensive tests
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.

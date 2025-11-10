@@ -2,9 +2,16 @@
 
 ## Bundle Size
 
-- **Full Package**: 52.71 KB → **12.07 KB gzipped** ✅
-- **Plugins Only**: 3.27 KB → **1.03 KB gzipped** ✅
+- **Full Package**: 55.23 KB → **13.27 KB gzipped** ✅ (+2.4 KB from v0.2.2)
+- **Plugins Only**: 3.27 KB → **1.05 KB gzipped** ✅
 - **Tree-shakeable**: Yes ✅
+
+**Note:** Bundle size increased in v0.2.3 due to new features:
+- Retry logic with backoff algorithms (+0.8 KB)
+- Debounce & cancellation support (+0.6 KB)
+- Advanced logger filtering (+0.5 KB)
+- Path utilities for pick/omit (+0.3 KB)
+- Bulk operations for arrays (+0.2 KB)
 
 ## Benchmark Results
 

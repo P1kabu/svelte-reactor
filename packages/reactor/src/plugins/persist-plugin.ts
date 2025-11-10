@@ -5,6 +5,7 @@
 import type { ReactorPlugin, PersistOptions, Middleware } from '../types/index.js';
 import { deepClone } from '../utils/index.js';
 import { pick, omit } from '../utils/path.js';
+import { IndexedDBStorageSync } from '../storage/indexeddb.js';
 
 /**
  * Enable state persistence using direct storage access
@@ -47,11 +48,12 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
   }
 
   let debounceTimer: any;
-  let storageBackend: Storage | null = null;
+  let storageBackend: Storage | IndexedDBStorageSync | null = null;
   let storageListener: ((e: StorageEvent) => void) | null = null;
+  let indexedDBInstance: IndexedDBStorageSync | null = null;
 
   // Get storage backend
-  function getStorage(): Storage | null {
+  function getStorage(): Storage | IndexedDBStorageSync | null {
     if (typeof window === 'undefined') return null;
 
     switch (storage) {
@@ -62,7 +64,14 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       case 'memory':
         return null; // In-memory storage not implemented yet
       case 'indexedDB':
-        return null; // IndexedDB not implemented yet
+        // Create IndexedDB storage instance
+        try {
+          indexedDBInstance = new IndexedDBStorageSync(options.indexedDB || {});
+          return indexedDBInstance;
+        } catch (error) {
+          console.error(`[persist:${key}] Failed to initialize IndexedDB:`, error);
+          return null;
+        }
       default:
         return window.localStorage;
     }
@@ -123,7 +132,7 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       let data: any = deepClone(state);
 
       // Apply pick/omit if specified
-      if (pickPaths && pickPaths.length > 0) {
+      if (pickPaths) {
         data = pick(data, pickPaths);
       } else if (omitPaths && omitPaths.length > 0) {
         data = omit(data, omitPaths);
@@ -229,6 +238,16 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       if (storageListener && typeof window !== 'undefined') {
         window.removeEventListener('storage', storageListener);
         storageListener = null;
+      }
+
+      // Close IndexedDB connection (flushes pending operations first)
+      if (indexedDBInstance) {
+        // Note: close() is async and flushes all pending writes before closing
+        // This ensures data integrity even if the app closes immediately after
+        indexedDBInstance.close().catch((error) => {
+          console.error(`[persist:${key}] Error closing IndexedDB:`, error);
+        });
+        indexedDBInstance = null;
       }
     },
   };

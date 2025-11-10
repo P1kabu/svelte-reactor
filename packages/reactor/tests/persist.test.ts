@@ -249,3 +249,279 @@ describe('Persist with other plugins', () => {
     expect(stored).toBeTruthy();
   });
 });
+
+describe('Persist with pick/omit (selective persistence)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('should only persist picked fields', () => {
+    interface AppState {
+      user: { name: string; token: string };
+      settings: { theme: string };
+      temp: { cache: string[] };
+    }
+
+    const store = createReactor<AppState>({
+      user: { name: 'John', token: 'secret123' },
+      settings: { theme: 'dark' },
+      temp: { cache: ['a', 'b'] },
+    }, {
+      plugins: [
+        persist({
+          key: 'test-pick',
+          pick: ['user.name', 'settings'],
+        }),
+      ],
+    });
+
+    // Update state
+    store.update((state) => {
+      state.user.name = 'Jane';
+      state.user.token = 'new-secret';
+      state.settings.theme = 'light';
+      state.temp.cache.push('c');
+    });
+
+    // Check what was persisted
+    const stored = localStorage.getItem('test-pick');
+    expect(stored).toBeTruthy();
+
+    const parsed = JSON.parse(stored!);
+
+    // Should have picked fields
+    expect(parsed.user.name).toBe('Jane');
+    expect(parsed.settings.theme).toBe('light');
+
+    // Should NOT have other fields
+    expect(parsed.user.token).toBeUndefined();
+    expect(parsed.temp).toBeUndefined();
+
+    store.destroy();
+  });
+
+  it('should omit specified fields from persistence', () => {
+    interface AppState {
+      user: { name: string; token: string };
+      settings: { theme: string };
+      temp: { cache: string[] };
+    }
+
+    const store = createReactor<AppState>({
+      user: { name: 'John', token: 'secret123' },
+      settings: { theme: 'dark' },
+      temp: { cache: ['a', 'b'] },
+    }, {
+      plugins: [
+        persist({
+          key: 'test-omit',
+          omit: ['user.token', 'temp'],
+        }),
+      ],
+    });
+
+    // Update state
+    store.update((state) => {
+      state.user.name = 'Jane';
+      state.user.token = 'new-secret';
+      state.settings.theme = 'light';
+    });
+
+    // Check what was persisted
+    const stored = localStorage.getItem('test-omit');
+    expect(stored).toBeTruthy();
+
+    const parsed = JSON.parse(stored!);
+
+    // Should have non-omitted fields
+    expect(parsed.user.name).toBe('Jane');
+    expect(parsed.settings.theme).toBe('light');
+
+    // Should NOT have omitted fields
+    expect(parsed.user.token).toBeUndefined();
+    expect(parsed.temp).toBeUndefined();
+
+    store.destroy();
+  });
+
+  it('should load state correctly with pick option', () => {
+    interface AppState {
+      count: number;
+      settings: { theme: string };
+    }
+
+    // First reactor - save with pick
+    const store1 = createReactor<AppState>({
+      count: 0,
+      settings: { theme: 'dark' },
+    }, {
+      plugins: [
+        persist({
+          key: 'test-pick-load',
+          pick: ['count', 'settings'],
+        }),
+      ],
+    });
+
+    store1.update((state) => {
+      state.count = 99;
+      state.settings.theme = 'light';
+    });
+
+    store1.destroy();
+
+    // Second reactor - should load only picked fields
+    const store2 = createReactor<AppState>({
+      count: 0,
+      settings: { theme: 'default' },
+    }, {
+      plugins: [
+        persist({
+          key: 'test-pick-load',
+          pick: ['count', 'settings'],
+        }),
+      ],
+    });
+
+    // Should load picked fields
+    expect(store2.state.count).toBe(99);
+    expect(store2.state.settings.theme).toBe('light');
+
+    store2.destroy();
+  });
+
+  it('should work with debounce and pick', async () => {
+    interface AppState {
+      count: number;
+      sensitive: string;
+    }
+
+    const store = createReactor<AppState>({
+      count: 0,
+      sensitive: 'secret',
+    }, {
+      plugins: [
+        persist({
+          key: 'test-debounce-pick',
+          pick: ['count'],
+          debounce: 50,
+        }),
+      ],
+    });
+
+    store.update((state) => {
+      state.count = 1;
+      state.sensitive = 'new-secret';
+    });
+
+    // Wait for debounce
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    const stored = localStorage.getItem('test-debounce-pick');
+    const parsed = JSON.parse(stored!);
+
+    expect(parsed.count).toBe(1);
+    expect(parsed.sensitive).toBeUndefined();
+
+    store.destroy();
+  });
+
+  it('should handle nested paths in pick', () => {
+    interface AppState {
+      deep: {
+        nested: {
+          value: number;
+          other: string;
+        };
+        shallow: string;
+      };
+      root: string;
+    }
+
+    const store = createReactor<AppState>({
+      deep: {
+        nested: { value: 42, other: 'test' },
+        shallow: 'shallow',
+      },
+      root: 'root',
+    }, {
+      plugins: [
+        persist({
+          key: 'test-nested-pick',
+          pick: ['deep.nested.value', 'root'],
+        }),
+      ],
+    });
+
+    store.update((state) => {
+      state.deep.nested.value = 99;
+      state.deep.nested.other = 'changed';
+      state.root = 'changed-root';
+    });
+
+    const stored = localStorage.getItem('test-nested-pick');
+    const parsed = JSON.parse(stored!);
+
+    expect(parsed.deep.nested.value).toBe(99);
+    expect(parsed.root).toBe('changed-root');
+    expect(parsed.deep.nested.other).toBeUndefined();
+    expect(parsed.deep.shallow).toBeUndefined();
+
+    store.destroy();
+  });
+
+  it('should handle empty pick array', () => {
+    const store = createReactor({ value: 42 }, {
+      plugins: [
+        persist({
+          key: 'test-empty-pick',
+          pick: [],
+        }),
+      ],
+    });
+
+    store.update((state) => {
+      state.value = 99;
+    });
+
+    const stored = localStorage.getItem('test-empty-pick');
+    const parsed = JSON.parse(stored!);
+
+    // Empty pick should result in almost empty object (except internal fields)
+    expect(parsed.value).toBeUndefined();
+
+    store.destroy();
+  });
+
+  it('should not use both pick and omit together', () => {
+    const store = createReactor({
+      a: 1,
+      b: 2,
+      c: 3,
+    }, {
+      plugins: [
+        persist({
+          key: 'test-pick-and-omit',
+          pick: ['a', 'b'],
+          omit: ['c'], // This should be ignored when pick is present
+        }),
+      ],
+    });
+
+    store.update((state) => {
+      state.a = 10;
+      state.b = 20;
+      state.c = 30;
+    });
+
+    const stored = localStorage.getItem('test-pick-and-omit');
+    const parsed = JSON.parse(stored!);
+
+    // Pick takes precedence
+    expect(parsed.a).toBe(10);
+    expect(parsed.b).toBe(20);
+    expect(parsed.c).toBeUndefined();
+
+    store.destroy();
+  });
+});

@@ -50,6 +50,19 @@ const store = createReactor({ theme: 'dark' }, {
   plugins: [persist({ key: 'app-settings' })]
 });
 // State automatically saved to localStorage
+
+// NEW in v0.2.3: Selective persistence with pick/omit
+const store2 = createReactor({
+  user: { name: 'John', token: 'secret123' },
+  settings: { theme: 'dark' }
+}, {
+  plugins: [
+    persist({
+      key: 'app',
+      omit: ['user.token'] // Don't persist sensitive data
+    })
+  ]
+});
 ```
 
 ### logger Plugin
@@ -61,9 +74,20 @@ const store = createReactor({ user: null }, {
   plugins: [logger()]
 });
 // All state changes logged to console
+
+// NEW in v0.2.3: Advanced filtering and performance tracking
+const store2 = createReactor({ count: 0 }, {
+  plugins: [
+    logger({
+      filter: (action) => action?.startsWith('user:'), // Only log user actions
+      trackPerformance: true,  // Track execution time
+      slowThreshold: 16,       // Warn if >16ms
+    })
+  ]
+});
 ```
 
-## Best Practices (v0.2.2)
+## Best Practices (v0.2.3)
 
 1. **Always use createReactor** for state management in Svelte 5 projects
 2. **Use .update()** for state changes, never mutate directly
@@ -177,6 +201,13 @@ const api = asyncActions(store, {
     const response = await fetch('/api/users');
     return { users: await response.json() };
   }
+}, {
+  // NEW in v0.2.3: Retry with exponential backoff
+  retry: {
+    attempts: 3,
+    delay: 1000,
+    backoff: 'exponential'
+  }
 });
 
 // Usage - automatic loading & error management!
@@ -190,6 +221,22 @@ try {
 } catch (error) {
   // store.state.error contains the error
 }
+
+// NEW in v0.2.3: Cancellation support
+const request = api.fetchUsers();
+request.cancel(); // Cancel in-flight request
+
+// NEW in v0.2.3: Debouncing for search
+const searchApi = asyncActions(store, {
+  search: async (query: string) => {
+    const res = await fetch(`/api/search?q=${query}`);
+    return { results: await res.json() };
+  }
+}, {
+  debounce: 300 // Wait 300ms before executing
+});
+
+searchApi.search('hello'); // Only last call executes after 300ms
 ```
 
 **Available options:**
@@ -197,6 +244,9 @@ try {
 - `errorKey` - Custom error field name (default: 'error')
 - `actionPrefix` - Action prefix for debugging (default: 'async')
 - `resetErrorOnStart` - Reset error on new request (default: true)
+- **NEW in v0.2.3:**
+  - `retry` - Retry configuration with attempts, delay, backoff
+  - `debounce` - Debounce delay in milliseconds
 
 ## Array Actions Helper
 
@@ -239,6 +289,23 @@ const count = actions.count();
 - `find(id)` - Find item by id
 - `has(id)` - Check if item exists
 - `count()` - Get array length
+- **NEW in v0.2.3:**
+  - `sort(compareFn)` - Sort array in-place with comparator
+  - `bulkUpdate(ids, updates)` - Update multiple items at once
+  - `bulkRemove(idsOrPredicate)` - Remove multiple items by ids or predicate
+
+**Example - Bulk operations and sorting:**
+```typescript
+// Sort by priority
+actions.sort((a, b) => a.priority - b.priority);
+
+// Update multiple todos at once
+actions.bulkUpdate(['1', '2', '3'], { done: true });
+
+// Remove multiple by ids or predicate
+actions.bulkRemove(['1', '2']);
+actions.bulkRemove(item => item.done);
+```
 
 ## Advanced Features
 
@@ -321,6 +388,6 @@ const store = createReactor({ data: null });
 
 ---
 
-**Version:** v0.2.2 (181 tests, all features stable)
+**Version:** v0.2.3 (232 tests, all features stable)
 
 **Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, DevTools integration, and automatic memory management.

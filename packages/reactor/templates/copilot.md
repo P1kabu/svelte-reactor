@@ -49,6 +49,16 @@ todos.update(s => ({ items: s.items.map(/* ... */) }));
 **Available methods:**
 `add`, `update`, `updateBy`, `remove`, `removeWhere`, `clear`, `toggle`, `set`, `filter`, `find`, `has`, `count`
 
+**NEW in v0.2.3:**
+`sort`, `bulkUpdate`, `bulkRemove`
+
+```typescript
+// Bulk operations (v0.2.3)
+actions.sort((a, b) => a.priority - b.priority);
+actions.bulkUpdate(['1', '2', '3'], { done: true });
+actions.bulkRemove(['1', '2']); // or predicate: item => item.done
+```
+
 ## Async Actions Helper
 
 ```typescript
@@ -104,6 +114,26 @@ async function fetchUsers() {
 - `errorKey` - Custom field name (default: 'error')
 - `actionPrefix` - Debugging prefix (default: 'async')
 
+**NEW in v0.2.3:**
+- `retry` - Retry configuration with exponential/linear backoff
+- `debounce` - Debounce delay in milliseconds
+
+```typescript
+// Retry with exponential backoff
+const api = asyncActions(store, actions, {
+  retry: { attempts: 3, delay: 1000, backoff: 'exponential' }
+});
+
+// Debouncing for search
+const searchApi = asyncActions(store, { search: async (q) => {...} }, {
+  debounce: 300
+});
+
+// Cancellation
+const request = api.fetchUsers();
+request.cancel(); // Cancel in-flight request
+```
+
 ## With Plugins
 
 ### Undo/Redo
@@ -140,6 +170,19 @@ const settings = createReactor({ theme: 'dark' }, {
 // State automatically saved to localStorage
 settings.update(s => ({ theme: 'light' }));
 
+// NEW in v0.2.3: Selective persistence with pick/omit
+const app = createReactor({
+  user: { name: 'John', token: 'secret123' },
+  settings: { theme: 'dark' }
+}, {
+  plugins: [
+    persist({
+      key: 'app',
+      omit: ['user.token'] // Don't persist sensitive data
+    })
+  ]
+});
+
 // ❌ BAD: Manual localStorage
 localStorage.setItem('theme', 'dark'); // Don't do this!
 ```
@@ -156,6 +199,17 @@ const store = createReactor({ user: null }, {
 });
 
 // All changes logged automatically
+
+// NEW in v0.2.3: Advanced filtering and performance tracking
+const store2 = createReactor({ count: 0 }, {
+  plugins: [
+    logger({
+      filter: (action) => action?.startsWith('user:'), // Only log user actions
+      trackPerformance: true,  // Track execution time
+      slowThreshold: 16,       // Warn if >16ms
+    })
+  ]
+});
 
 // ❌ BAD: Manual console.log everywhere
 console.log('before', user);
@@ -313,7 +367,7 @@ const app = createReactor({ user: null, settings: {} }, {
 // Tons of boilerplate code...
 ```
 
-## Common Mistakes (v0.2.2)
+## Common Mistakes (v0.2.3)
 
 ```typescript
 // ❌ BAD: Direct mutation
@@ -338,37 +392,53 @@ import { onDestroy } from 'svelte';
 onDestroy(() => store.destroy());
 ```
 
-## v0.2.2 Improvements
+## v0.2.3 Features
 
-### Memory Management
+### Selective Persistence (Security)
 ```typescript
-// ✅ ALWAYS destroy reactors to prevent memory leaks
-import { onDestroy } from 'svelte';
-
-const store = createReactor({ count: 0 });
-
-onDestroy(() => {
-  store.destroy(); // Clears subscribers and middlewares
+// ✅ Protect sensitive data from localStorage
+const store = createReactor({
+  user: { name: 'John', token: 'secret' },
+  settings: { theme: 'dark' }
+}, {
+  plugins: [
+    persist({
+      key: 'app',
+      omit: ['user.token'] // Don't save tokens!
+    })
+  ]
 });
 ```
 
-### Auto-Optimization
-- Automatically skips updates when state hasn't changed
-- Deep equality check prevents unnecessary re-renders
-- Better performance out of the box
-
-### Enhanced Error Handling
+### Retry & Debounce (Reliability)
 ```typescript
-// Better validation with helpful errors
-createReactor(null);
-// TypeError: initialState must be a non-null object
+// ✅ Automatic retry with exponential backoff
+const api = asyncActions(store, actions, {
+  retry: { attempts: 3, backoff: 'exponential' }
+});
 
-reactor.update('not a function');
-// TypeError: update() requires a function
+// ✅ Debounce search requests
+const searchApi = asyncActions(store, { search: async (q) => {...} }, {
+  debounce: 300
+});
+```
 
-// Context-aware error messages
-// [Reactor:counter] Cannot update destroyed reactor
-// [persist:todos] Storage quota exceeded in localStorage
+### Bulk Operations (Performance)
+```typescript
+// ✅ Update/remove multiple items efficiently
+actions.bulkUpdate(['1', '2', '3'], { done: true });
+actions.bulkRemove(item => item.done);
+actions.sort((a, b) => a.priority - b.priority);
+```
+
+### Performance Tracking
+```typescript
+// ✅ Monitor slow operations
+logger({
+  trackPerformance: true,
+  slowThreshold: 16, // Warn if >16ms
+  filter: (action) => !action?.includes('temp')
+})
 ```
 
 ## TypeScript
@@ -391,12 +461,14 @@ store.update(s => ({ ...s, count: s.count + 1 }));
 
 ---
 
-**Current Version:** v0.2.2 (181 tests, production-ready)
+**Current Version:** v0.2.3 (232 tests, production-ready)
 
 **Key Features:**
-- Memory leak prevention (auto-cleanup on destroy)
-- Performance optimization (skip unchanged updates)
-- Enhanced error handling (helpful validation messages)
+- Selective persistence with pick/omit (protect sensitive data)
+- Retry with exponential backoff (reliable network requests)
+- Debouncing and cancellation (optimize search and async ops)
+- Bulk operations (efficient multi-item updates)
+- Performance tracking (monitor slow operations)
 - Full Svelte stores API compatibility
 
 **Key Takeaway:** Use `createReactor()` for all state, never mutate directly, always destroy() on unmount, leverage plugins and helpers for common features.

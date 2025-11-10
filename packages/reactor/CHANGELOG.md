@@ -7,6 +7,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-11-10
+
+### Added
+
+- **persist Plugin Enhancement** - Selective persistence with `pick` and `omit` options
+  - `pick: string[]` - Only persist specific fields (supports dot notation)
+  - `omit: string[]` - Exclude specific fields from persistence (supports dot notation)
+  - Security: Prevent sensitive data (tokens, passwords) from being persisted
+  - Performance: Reduce localStorage usage by excluding temporary data
+  - Cannot use both `pick` and `omit` together
+  - 8 comprehensive tests added
+
+- **arrayActions Helper Enhancement** - Sorting and bulk operations
+  - `sort(compareFn)` - Sort array with comparator function (supports undo/redo)
+  - `bulkUpdate(ids, updates)` - Update multiple items at once
+  - `bulkRemove(idsOrPredicate)` - Remove multiple items by ids or predicate
+  - More efficient than calling individual methods multiple times
+  - All methods support undo/redo with single history entry
+  - 13 comprehensive tests added
+
+- **asyncActions Helper Enhancement** - Retry logic, debouncing, and cancellation
+  - Retry configuration with exponential/linear backoff strategies
+    - `retry.attempts` - Number of retry attempts (default: 3)
+    - `retry.delay` - Delay between retries in ms (default: 1000)
+    - `retry.backoff` - 'exponential' or 'linear' (default: 'exponential')
+    - `retry.retryOn` - Custom retry condition function
+  - Debouncing support with `debounce` option (in milliseconds)
+  - Request cancellation with `controller.cancel()`
+  - Returns AsyncController for manual cancellation
+  - 14 comprehensive tests added
+
+- **logger Plugin Enhancement** - Advanced filtering and performance tracking
+  - `filter(action, state, prevState)` - Filter function with access to action and state
+  - `trackPerformance` - Track execution time for each action
+  - `slowThreshold` - Warn if action execution time exceeds threshold (in ms)
+  - `includeTimestamp` - Add timestamp to logs
+  - `maxDepth` - Limit object depth in console (default: 3)
+  - 12 comprehensive tests added
+
+- **Integration Tests** - 5 comprehensive integration tests for v0.2.3 features
+  - Test complex scenarios combining multiple features
+  - Verify feature interactions work correctly
+
+### Fixed
+
+- **CRITICAL**: Fixed unhandled promise rejection when cancelling non-debounced async actions
+  - Properly handle promise chains during cancellation
+  - Added comprehensive error handling for all cancellation scenarios
+- **persist plugin**: Fixed empty `pick: []` array not working correctly
+- **asyncActions**: Fixed debounce cancellation not properly handling promise chains
+- **State consistency**: Fixed edge cases in state updates for bulk operations
+
+### Changed
+
+- Test count increased from 174 to 232 tests (+58 tests)
+- Bundle size increased from 10.87 KB to 13.27 KB gzipped (+2.4 KB)
+- Documentation updated with v0.2.3 features and examples
+- All new features are tree-shakeable
+
 ## [0.2.2] - 2025-10-18
 
 ### Fixed

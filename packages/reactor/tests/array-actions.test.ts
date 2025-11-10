@@ -295,4 +295,235 @@ describe('arrayActions', () => {
       }).toThrow("Field 'items' is not an array");
     });
   });
+
+  describe('New features: sort, bulkUpdate, bulkRemove', () => {
+    describe('sort()', () => {
+      it('should sort items by priority (ascending)', () => {
+        interface TodoWithPriority {
+          id: string;
+          text: string;
+          priority: number;
+        }
+
+        const store = createReactor<{ items: TodoWithPriority[] }>({ items: [] });
+        const actions = arrayActions(store, 'items', { idKey: 'id' });
+
+        actions.add({ id: '1', text: 'Low priority', priority: 3 });
+        actions.add({ id: '2', text: 'High priority', priority: 1 });
+        actions.add({ id: '3', text: 'Medium priority', priority: 2 });
+
+        actions.sort((a, b) => a.priority - b.priority);
+
+        expect(store.state.items[0].priority).toBe(1);
+        expect(store.state.items[1].priority).toBe(2);
+        expect(store.state.items[2].priority).toBe(3);
+      });
+
+      it('should sort items by date (descending - newest first)', () => {
+        interface TodoWithDate {
+          id: string;
+          text: string;
+          createdAt: number;
+        }
+
+        const store = createReactor<{ items: TodoWithDate[] }>({ items: [] });
+        const actions = arrayActions(store, 'items', { idKey: 'id' });
+
+        actions.add({ id: '1', text: 'Old task', createdAt: 1000 });
+        actions.add({ id: '2', text: 'New task', createdAt: 3000 });
+        actions.add({ id: '3', text: 'Middle task', createdAt: 2000 });
+
+        actions.sort((a, b) => b.createdAt - a.createdAt);
+
+        expect(store.state.items[0].createdAt).toBe(3000);
+        expect(store.state.items[1].createdAt).toBe(2000);
+        expect(store.state.items[2].createdAt).toBe(1000);
+      });
+
+      it('should sort items alphabetically', () => {
+        actions.add({ id: '1', text: 'Zebra', done: false });
+        actions.add({ id: '2', text: 'Apple', done: false });
+        actions.add({ id: '3', text: 'Mango', done: false });
+
+        actions.sort((a, b) => a.text.localeCompare(b.text));
+
+        expect(todos.state.items[0].text).toBe('Apple');
+        expect(todos.state.items[1].text).toBe('Mango');
+        expect(todos.state.items[2].text).toBe('Zebra');
+      });
+
+      it('should work with undo/redo', () => {
+        const todosWithUndo = createReactor<TodoState>(
+          { items: [] },
+          { plugins: [undoRedo({ limit: 10 })] }
+        );
+        const actionsWithUndo = arrayActions(todosWithUndo, 'items', { idKey: 'id' });
+
+        actionsWithUndo.add({ id: '1', text: 'C', done: false });
+        actionsWithUndo.add({ id: '2', text: 'A', done: false });
+        actionsWithUndo.add({ id: '3', text: 'B', done: false });
+
+        actionsWithUndo.sort((a, b) => a.text.localeCompare(b.text));
+
+        expect(todosWithUndo.state.items[0].text).toBe('A');
+
+        todosWithUndo.undo();
+
+        expect(todosWithUndo.state.items[0].text).toBe('C');
+      });
+    });
+
+    describe('bulkUpdate()', () => {
+      it('should update multiple items at once', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+        actions.add({ id: '2', text: 'Task 2', done: false });
+        actions.add({ id: '3', text: 'Task 3', done: false });
+
+        actions.bulkUpdate(['1', '2'], { done: true });
+
+        expect(todos.state.items[0].done).toBe(true);
+        expect(todos.state.items[1].done).toBe(true);
+        expect(todos.state.items[2].done).toBe(false);
+      });
+
+      it('should handle empty ids array', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+
+        expect(() => {
+          actions.bulkUpdate([], { done: true });
+        }).not.toThrow();
+
+        expect(todos.state.items[0].done).toBe(false);
+      });
+
+      it('should handle non-existent ids gracefully', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+
+        expect(() => {
+          actions.bulkUpdate(['1', '999', '888'], { done: true });
+        }).not.toThrow();
+
+        expect(todos.state.items[0].done).toBe(true);
+      });
+
+      it('should work with undo/redo', () => {
+        const todosWithUndo = createReactor<TodoState>(
+          { items: [] },
+          { plugins: [undoRedo({ limit: 10 })] }
+        );
+        const actionsWithUndo = arrayActions(todosWithUndo, 'items', { idKey: 'id' });
+
+        actionsWithUndo.add({ id: '1', text: 'Task 1', done: false });
+        actionsWithUndo.add({ id: '2', text: 'Task 2', done: false });
+
+        actionsWithUndo.bulkUpdate(['1', '2'], { done: true });
+
+        expect(todosWithUndo.state.items[0].done).toBe(true);
+        expect(todosWithUndo.state.items[1].done).toBe(true);
+
+        todosWithUndo.undo();
+
+        expect(todosWithUndo.state.items[0].done).toBe(false);
+        expect(todosWithUndo.state.items[1].done).toBe(false);
+      });
+
+      it('should have proper action name in history', () => {
+        const todosWithUndo = createReactor<TodoState>(
+          { items: [] },
+          { plugins: [undoRedo({ limit: 10 })] }
+        );
+        const actionsWithUndo = arrayActions(todosWithUndo, 'items', { idKey: 'id' });
+
+        actionsWithUndo.add({ id: '1', text: 'Task 1', done: false });
+        actionsWithUndo.bulkUpdate(['1'], { done: true });
+
+        const history = todosWithUndo.getHistory();
+        expect(history[1].action).toBe('items:bulkUpdate');
+      });
+    });
+
+    describe('bulkRemove()', () => {
+      it('should remove multiple items by ids', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+        actions.add({ id: '2', text: 'Task 2', done: false });
+        actions.add({ id: '3', text: 'Task 3', done: false });
+        actions.add({ id: '4', text: 'Task 4', done: false });
+
+        actions.bulkRemove(['1', '3']);
+
+        expect(todos.state.items.length).toBe(2);
+        expect(todos.state.items[0].id).toBe('2');
+        expect(todos.state.items[1].id).toBe('4');
+      });
+
+      it('should remove multiple items by predicate', () => {
+        actions.add({ id: '1', text: 'Task 1', done: true });
+        actions.add({ id: '2', text: 'Task 2', done: false });
+        actions.add({ id: '3', text: 'Task 3', done: true });
+        actions.add({ id: '4', text: 'Task 4', done: false });
+
+        actions.bulkRemove(item => item.done);
+
+        expect(todos.state.items.length).toBe(2);
+        expect(todos.state.items[0].id).toBe('2');
+        expect(todos.state.items[1].id).toBe('4');
+      });
+
+      it('should handle empty ids array', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+
+        expect(() => {
+          actions.bulkRemove([]);
+        }).not.toThrow();
+
+        expect(todos.state.items.length).toBe(1);
+      });
+
+      it('should handle non-existent ids gracefully', () => {
+        actions.add({ id: '1', text: 'Task 1', done: false });
+
+        expect(() => {
+          actions.bulkRemove(['999', '888']);
+        }).not.toThrow();
+
+        expect(todos.state.items.length).toBe(1);
+      });
+
+      it('should work with undo/redo', () => {
+        const todosWithUndo = createReactor<TodoState>(
+          { items: [] },
+          { plugins: [undoRedo({ limit: 10 })] }
+        );
+        const actionsWithUndo = arrayActions(todosWithUndo, 'items', { idKey: 'id' });
+
+        actionsWithUndo.add({ id: '1', text: 'Task 1', done: false });
+        actionsWithUndo.add({ id: '2', text: 'Task 2', done: false });
+        actionsWithUndo.add({ id: '3', text: 'Task 3', done: false });
+
+        actionsWithUndo.bulkRemove(['1', '2']);
+
+        expect(todosWithUndo.state.items.length).toBe(1);
+        expect(todosWithUndo.state.items[0].id).toBe('3');
+
+        todosWithUndo.undo();
+
+        expect(todosWithUndo.state.items.length).toBe(3);
+        expect(todosWithUndo.state.items[0].id).toBe('1');
+      });
+
+      it('should have proper action name in history', () => {
+        const todosWithUndo = createReactor<TodoState>(
+          { items: [] },
+          { plugins: [undoRedo({ limit: 10 })] }
+        );
+        const actionsWithUndo = arrayActions(todosWithUndo, 'items', { idKey: 'id' });
+
+        actionsWithUndo.add({ id: '1', text: 'Task 1', done: false });
+        actionsWithUndo.bulkRemove(['1']);
+
+        const history = todosWithUndo.getHistory();
+        expect(history[1].action).toBe('items:bulkRemove');
+      });
+    });
+  });
 });

@@ -15,15 +15,15 @@ A comprehensive state management library for Svelte 5 applications with built-in
 
 - **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
 - **Undo/Redo** - Full history management with batch operations
-- **Array Actions** - Helper for common CRUD operations (add, update, remove, toggle)
-- **Async Actions** - Automatic loading/error state management for async operations
+- **Array Actions** - Helper for CRUD operations with bulk updates, sorting, and filtering
+- **Async Actions** - Automatic loading/error states with retry, cancellation, and debounce
 - **Middleware** - Redux-style middleware for logging, effects, and more
-- **Persistence** - Built-in persist plugin for localStorage/sessionStorage
+- **Persistence** - Built-in persist plugin with selective pick/omit support
 - **DevTools** - Time-travel debugging and state inspection
 - **AI-Ready** - CLI to teach AI assistants (Claude, Cursor, Copilot) best practices
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - **10.87 KB gzipped** (full package), **1.05 KB** (plugins only)
+- **Tiny** - **13.27 KB gzipped** (full package), **1.05 KB** (plugins only)
 - **Tree-shakeable** - Import only what you need
 - **Zero dependencies** - Only requires Svelte 5
 
@@ -40,6 +40,17 @@ pnpm add svelte-reactor
 ```bash
 yarn add svelte-reactor
 ```
+
+## Upgrading
+
+Detailed upgrade guides for migrating between versions:
+
+📖 **[View All Upgrade Guides](./UPGRADES/)**
+
+- [v0.2.2](./UPGRADES/UPGRADE-0.2.2.md) - Bug fixes & stability improvements
+- [v0.2.3](./UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements (completed)
+
+For general migration tips, see [MIGRATION.md](./packages/reactor/MIGRATION.md).
 
 ## Live Demo
 
@@ -234,7 +245,7 @@ reactor.update(state => { state.temp = 123; }, 'skip-history'); // Won't add to 
 
 #### `persist(options)`
 
-Built-in state persistence to localStorage/sessionStorage with automatic cross-tab synchronization.
+Built-in state persistence to localStorage/sessionStorage with automatic cross-tab synchronization and selective persistence.
 
 ```typescript
 import { persist } from 'svelte-reactor/plugins';
@@ -247,6 +258,11 @@ const reactor = createReactor(initialState, {
       debounce: 300,
       compress: false, // Optional compression (v0.2.0+)
       migrations: {}, // Optional version migrations
+
+      // NEW in v0.2.3: Selective persistence
+      pick: ['user', 'settings'], // Only persist these fields
+      // OR
+      omit: ['tempData', 'cache'], // Persist everything except these
     }),
   ],
 });
@@ -257,10 +273,33 @@ const reactor = createReactor(initialState, {
 - **DevTools friendly**: Manual changes in DevTools are detected
 - **Debouncing**: Configurable debounce to reduce write frequency
 - **Migrations**: Schema versioning for backwards compatibility
+- **Selective persistence** (v0.2.3+): Use `pick` or `omit` to persist only specific fields
+
+**Selective Persistence Examples:**
+
+```typescript
+// Only persist user preferences
+persist({
+  key: 'app',
+  pick: ['theme', 'language', 'notifications']
+});
+
+// Persist everything except temporary data
+persist({
+  key: 'app',
+  omit: ['loading', 'error', 'tempResults']
+});
+
+// Deep path support
+persist({
+  key: 'app',
+  pick: ['user.name', 'user.email', 'settings.*']
+});
+```
 
 #### `logger(options?)`
 
-Log all state changes to console.
+Log all state changes to console with advanced filtering and performance tracking.
 
 ```typescript
 import { logger } from 'svelte-reactor/plugins';
@@ -269,8 +308,45 @@ const reactor = createReactor(initialState, {
   plugins: [
     logger({
       collapsed: true, // Collapse console groups
+
+      // NEW in v0.2.3: Advanced filtering
+      filter: (action, state, prevState) => {
+        // Only log specific actions
+        return action?.startsWith('user:') || false;
+      },
+
+      // Performance tracking
+      trackPerformance: true,   // Track execution time
+      slowThreshold: 16,        // Warn if update takes >16ms
+
+      // Output formatting
+      includeTimestamp: true,   // Add timestamps to logs
+      maxDepth: 3,              // Limit object depth in logs
     }),
   ],
+});
+```
+
+**Advanced Filtering Examples:**
+
+```typescript
+// Only log user-related actions
+logger({
+  filter: (action) => action?.includes('user')
+});
+
+// Log only when specific state changes
+logger({
+  filter: (action, state, prevState) => {
+    return state.users.length !== prevState.users.length;
+  }
+});
+
+// Performance monitoring for slow updates
+logger({
+  trackPerformance: true,
+  slowThreshold: 16, // Warn if >16ms (1 frame)
+  filter: (action) => !action?.startsWith('temp:')
 });
 ```
 
@@ -341,13 +417,14 @@ interface Todo {
   id: string;
   text: string;
   done: boolean;
+  priority: number;
 }
 
 const todos = createReactor({ items: [] as Todo[] });
 const actions = arrayActions(todos, 'items', { idKey: 'id' });
 
 // CRUD operations - no more manual update() calls!
-actions.add({ id: '1', text: 'Buy milk', done: false });
+actions.add({ id: '1', text: 'Buy milk', done: false, priority: 1 });
 actions.update('1', { done: true });
 actions.remove('1');
 actions.clear();
@@ -356,6 +433,12 @@ actions.clear();
 actions.toggle('1', 'done');                    // Toggle boolean field
 actions.filter(item => !item.done);              // Filter items
 actions.removeWhere(item => item.done);          // Remove by predicate
+
+// NEW in v0.2.3: Bulk operations and sorting
+actions.sort((a, b) => a.priority - b.priority); // Sort by priority
+actions.bulkUpdate(['1', '2', '3'], { done: true }); // Update multiple
+actions.bulkRemove(['1', '2']);                  // Remove multiple by IDs
+actions.bulkRemove(item => item.done);           // Remove by predicate
 
 // Query operations (don't trigger updates)
 const item = actions.find('1');                  // Find by id
@@ -368,6 +451,8 @@ const count = actions.count();                   // Get count
 - **Type-safe**: Full TypeScript inference for array items
 - **Undo/Redo compatible**: Works seamlessly with undoRedo plugin
 - **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, etc.)
+- **Bulk operations** (v0.2.3+): Update or remove multiple items at once
+- **Sorting** (v0.2.3+): In-place sorting with custom comparators
 
 **Available Methods:**
 
@@ -384,11 +469,16 @@ actions.filter(predicate)            // Filter items
 actions.find(id)                     // Find item by id
 actions.has(id)                      // Check if item exists
 actions.count()                      // Get array length
+
+// NEW in v0.2.3
+actions.sort(compareFn)              // Sort array in-place
+actions.bulkUpdate(ids, updates)     // Update multiple items by IDs
+actions.bulkRemove(idsOrPredicate)   // Remove multiple by IDs or predicate
 ```
 
 ## Async Actions Helper
 
-Automatic loading and error state management for async operations:
+Automatic loading and error state management for async operations with retry, cancellation, and debounce:
 
 ```typescript
 import { createReactor, asyncActions } from 'svelte-reactor';
@@ -419,6 +509,13 @@ const api = asyncActions(store, {
     const newUser = await response.json();
     return { users: [...store.state.users, newUser] };
   },
+}, {
+  // NEW in v0.2.3: Retry with exponential backoff
+  retry: {
+    attempts: 3,           // Retry up to 3 times
+    delay: 1000,           // Wait 1s between retries
+    backoff: 'exponential' // Double delay each time
+  }
 });
 
 // Usage - automatically handles loading & error states!
@@ -433,6 +530,27 @@ try {
   // store.state.loading is false
   // store.state.error contains the error
 }
+
+// NEW in v0.2.3: Cancellation support
+const request = api.fetchUsers();
+request.cancel(); // Cancel the request
+// request.abort - access to AbortController
+
+// NEW in v0.2.3: Debouncing for search
+const searchApi = asyncActions(store, {
+  search: async (query: string) => {
+    const response = await fetch(`/api/search?q=${query}`);
+    return { results: await response.json() };
+  }
+}, {
+  debounce: 300 // Wait 300ms before executing
+});
+
+// Only the last call executes after 300ms
+searchApi.search('h');
+searchApi.search('he');
+searchApi.search('hel');
+searchApi.search('hello'); // Only this one will execute
 ```
 
 **Features:**
@@ -441,6 +559,9 @@ try {
 - **Type-safe**: Full TypeScript inference for parameters and return values
 - **Customizable**: Configure loading/error field names
 - **Works with undo/redo**: Integrates seamlessly with other features
+- **Retry with backoff** (v0.2.3+): Automatic retry on failure with configurable strategy
+- **Cancellation** (v0.2.3+): Cancel pending requests with AbortController support
+- **Debouncing** (v0.2.3+): Delay execution and cancel previous pending calls
 
 **Options:**
 
@@ -450,6 +571,17 @@ const api = asyncActions(store, actions, {
   errorKey: 'lastError',         // Custom error field (default: 'error')
   actionPrefix: 'api',           // Custom action prefix (default: 'async')
   resetErrorOnStart: true,       // Reset error on new request (default: true)
+
+  // NEW in v0.2.3: Retry configuration
+  retry: {
+    attempts: 3,                 // Number of retry attempts (default: 3)
+    delay: 1000,                 // Delay between retries in ms (default: 1000)
+    backoff: 'exponential',      // 'linear' or 'exponential' (default: 'exponential')
+    retryOn: (error) => true,    // Custom retry condition
+  },
+
+  // NEW in v0.2.3: Debounce delay
+  debounce: 300,                 // Debounce delay in milliseconds
 });
 ```
 
@@ -489,7 +621,7 @@ Reactor is highly optimized for performance:
 - **Simple state update**: 26,884 ops/sec (~0.037ms)
 - **Update with undo/redo**: 11,636 ops/sec (~0.086ms)
 - **100 sequential updates**: 331 ops/sec (~3ms)
-- **Bundle size**: 10.87 KB gzipped (full package)
+- **Bundle size**: 13.27 KB gzipped (full package with v0.2.3 features)
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
 
@@ -616,7 +748,16 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ Enhanced error handling and validation
 - ✅ Persist plugin improvements (quota handling)
 
+### ✅ Phase 5.5: Feature Enhancements (v0.2.3)
+- ✅ Persist plugin selective persistence (pick/omit fields)
+- ✅ Array actions bulk operations (sort, bulkUpdate, bulkRemove)
+- ✅ Async actions retry with configurable backoff strategies
+- ✅ Async actions cancellation and debounce support
+- ✅ Logger advanced filtering and performance tracking
+- ✅ 58 additional tests for comprehensive coverage
+
 ### Phase 6: Future (v0.3.0+)
+- ⏳ IndexedDB storage support with quotas
 - ⏳ Multi-tab synchronization with BroadcastChannel
 - ⏳ Plugin ecosystem
 - ⏳ Visual DevTools UI
@@ -648,8 +789,9 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **181 tests** covering all features
+- **232 tests** covering all features
 - Unit tests for core reactor, plugins, utilities, helpers, and DevTools
+- Integration tests for complex real-world scenarios
 - Performance benchmarks for all operations
 - TypeScript type checking
 
