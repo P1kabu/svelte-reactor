@@ -12,12 +12,19 @@ This directory contains detailed upgrade guides for migrating between versions o
   - Enhanced error handling with context-aware messages
   - 181 tests passing
 
-- **[v0.2.3](./UPGRADE-0.2.3.md)** - Feature enhancements (Planned)
+- **[v0.2.3](./UPGRADE-0.2.3.md)** - Feature enhancements
   - persist plugin: Selective persistence with `pick`/`omit`
   - arrayActions: Sorting and bulk operations
   - asyncActions: Retry logic and request cancellation
   - logger plugin: Advanced filtering options
-  - 222 tests planned
+  - 232 tests passing
+
+- **[v0.2.4](./PLAN_v0.2.4.md)** - IndexedDB & DX improvements (Planned)
+  - IndexedDB storage support (50+ MB)
+  - TTL support for persist plugin
+  - Pagination helper for arrayActions
+  - ~280 tests planned
+  - [Quick Summary](./PLAN_v0.2.4_SUMMARY.md)
 
 ## How to Use
 
