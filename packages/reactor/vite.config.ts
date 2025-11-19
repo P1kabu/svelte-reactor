@@ -34,6 +34,6 @@ export default defineConfig({
       },
     },
     sourcemap: true,
-    minify: false,
+    minify: process.env.NODE_ENV === 'production' ? 'esbuild' : false,
   },
 });

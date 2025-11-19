@@ -2,11 +2,16 @@
 
 ## Bundle Size
 
-- **Full Package**: 65.94 KB → **14.68 KB gzipped** ✅ (+1.41 KB from v0.2.3)
+- **Full Package**: 39.02 KB → **11.80 KB gzipped** ✅ (-2.88 KB from v0.2.4)
 - **Plugins Only**: 3.27 KB → **1.05 KB gzipped** ✅
 - **Tree-shakeable**: Yes ✅
 
-**Note:** Bundle size increased in v0.2.4 due to new features:
+**Note:** Bundle size **reduced 19.6%** in v0.2.5 due to optimizations:
+- Minification enabled (+0% code, -19.6% bundle)
+- Removed unused exports from public API (-16% API surface)
+- Previous v0.2.4 size: 65.94 KB → 14.68 KB gzipped
+
+**Previous increases (v0.2.4):**
 - IndexedDB storage support (+1.2 KB, tree-shakeable, only when used)
 - Pagination helper for arrayActions (+0.41 KB, opt-in)
 - TTL (Time-To-Live) support (~0.1 KB)
@@ -19,6 +24,12 @@
 - Advanced logger filtering (+0.5 KB)
 - Path utilities for pick/omit (+0.3 KB)
 - Bulk operations for arrays (+0.2 KB)
+
+**Version History:**
+- **v0.2.5**: 11.80 KB (-19.6%) ← Current
+- v0.2.4: 14.68 KB (+10.6%)
+- v0.2.3: 13.27 KB (+9.3%)
+- v0.2.2: 12.14 KB (baseline)
 
 ## Benchmark Results
 
@@ -89,7 +100,7 @@
 
 ✅ **Update operations**: < 1ms for simple updates
 ✅ **Undo/Redo**: < 0.1ms overhead per operation
-✅ **Bundle size**: < 15KB gzipped (full package)
+✅ **Bundle size**: < 15KB gzipped (full package) - **Now 11.80 KB! 🎉**
 ✅ **Memory**: Reasonable memory usage with history limits
 
 ## Optimization Opportunities
