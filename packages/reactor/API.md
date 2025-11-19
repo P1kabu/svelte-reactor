@@ -728,6 +728,12 @@ interface ArrayActionsOptions {
 
   // Action prefix for undo/redo history (default: field name)
   actionPrefix?: string;
+
+  // NEW in v0.2.4: Pagination configuration (opt-in)
+  pagination?: {
+    pageSize?: number;    // Items per page (default: 20)
+    initialPage?: number; // Starting page number (default: 1)
+  };
 }
 ```
 
@@ -781,6 +787,27 @@ interface ArrayActions<T> {
 
   // Get array length
   count(): number;
+
+  // NEW in v0.2.4: Pagination methods (only available when pagination is enabled)
+  getPaginated?(): PaginatedResult<T>;
+  setPage?(page: number): void;
+  nextPage?(): boolean;
+  prevPage?(): boolean;
+  firstPage?(): void;
+  lastPage?(): void;
+}
+
+/**
+ * Paginated result with metadata (NEW in v0.2.4)
+ */
+interface PaginatedResult<T> {
+  items: T[];        // Items for current page
+  page: number;      // Current page number (1-indexed)
+  totalPages: number;// Total number of pages
+  totalItems: number;// Total number of items in array
+  hasNext: boolean;  // Whether next page exists
+  hasPrev: boolean;  // Whether previous page exists
+  pageSize: number;  // Items per page
 }
 ```
 
@@ -848,6 +875,89 @@ actions.bulkRemove(['id1', 'id2']); // Remove specific ids
 actions.bulkRemove(item => item.done && item.age > 30); // Remove by condition
 // Both methods support undo/redo
 ```
+
+**New Methods in v0.2.4: Pagination**
+
+```typescript
+import { createReactor, arrayActions } from 'svelte-reactor';
+
+interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+const todos = createReactor({ items: [] as Todo[] });
+
+// Enable pagination (opt-in)
+const paginated = arrayActions(todos, 'items', {
+  idKey: 'id',
+  pagination: {
+    pageSize: 20,      // Items per page (default: 20)
+    initialPage: 1     // Starting page (default: 1)
+  }
+});
+
+// Get paginated data with full metadata
+const result = paginated.getPaginated!();
+console.log(result);
+// {
+//   items: [...],        // Current page items
+//   page: 1,             // Current page (1-indexed)
+//   totalPages: 5,       // Total number of pages
+//   totalItems: 100,     // Total items in array
+//   hasNext: true,       // Whether next page exists
+//   hasPrev: false,      // Whether previous page exists
+//   pageSize: 20         // Items per page
+// }
+
+// Navigation methods
+paginated.nextPage!();    // Go to next page (returns false if on last page)
+paginated.prevPage!();    // Go to previous page (returns false if on first page)
+paginated.setPage!(5);    // Jump to specific page
+paginated.firstPage!();   // Jump to first page
+paginated.lastPage!();    // Jump to last page
+
+// Pagination works seamlessly with all arrayActions methods
+paginated.add({ id: '101', text: 'New task', done: false });
+paginated.sort((a, b) => a.text.localeCompare(b.text));
+paginated.filter(item => !item.done);
+// getPaginated() always returns current page after modifications
+
+// Real-world example: Svelte component
+/*
+<script lang="ts">
+  import { paginated } from './stores';
+
+  const { items, page, totalPages, hasNext, hasPrev } = $derived(
+    paginated.getPaginated!()
+  );
+</script>
+
+{#each items as todo}
+  <div>{todo.text}</div>
+{/each}
+
+<div class="pagination">
+  <button disabled={!hasPrev} onclick={() => paginated.prevPage!()}>
+    Previous
+  </button>
+  <span>Page {page} of {totalPages}</span>
+  <button disabled={!hasNext} onclick={() => paginated.nextPage!()}>
+    Next
+  </button>
+</div>
+*/
+```
+
+**Pagination Features:**
+- ✅ Opt-in (no overhead when not used)
+- ✅ Auto-clamping to valid page range (won't crash on invalid pages)
+- ✅ Works with all arrayActions methods (sort, filter, bulkUpdate, etc.)
+- ✅ 1-indexed pages (user-friendly: page 1, 2, 3...)
+- ✅ Complete metadata (totalPages, hasNext, hasPrev, totalItems)
+- ✅ Navigation methods return boolean success status
+- ✅ Safe for empty arrays (returns page 1 with 0 items)
 
 **Features:**
 

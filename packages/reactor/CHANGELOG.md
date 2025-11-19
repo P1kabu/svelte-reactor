@@ -7,6 +7,92 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-01-19
+
+### Added
+
+- **Derived Stores Export** - Convenience re-exports for single-import workflow
+  - `derived()` - Create computed stores from one or more stores
+  - `get()` - Get current value from any store (one-time read)
+  - `readonly()` - Create read-only version of a store
+  - All re-exported from `svelte/store` for convenience
+  - No need to import from both `svelte-reactor` and `svelte/store`
+  - Zero bundle size impact (re-exports only)
+  - Full TypeScript support
+
+- **IndexedDB Storage Support** - 50MB+ capacity for large datasets
+  - New `storage: 'indexedDB'` option for persist plugin
+  - `indexedDB` configuration object with database, storeName, and version
+  - Transparent async handling with in-memory cache
+  - Auto-flush pending writes on page unload (no data loss)
+  - Perfect for photos, documents, offline data, game saves
+  - Tree-shakeable (+1.2 KB gzipped only when used)
+  - 36 comprehensive tests covering all scenarios
+  - Full TypeScript support with configuration interface
+
+- **TTL (Time-To-Live) Support** - Auto-expire cached data
+  - `ttl` option in milliseconds for persist plugin
+  - `onExpire(key)` callback when data expires
+  - Automatic timestamp tracking and age checking
+  - Works with all storage types (localStorage, sessionStorage, indexedDB, memory)
+  - Perfect for API caches, session management, temporary data
+  - Compatible with migrations (TTL check runs before migrations)
+  - Zero bundle size impact (minimal code)
+  - 19 comprehensive tests including edge cases
+
+- **Pagination Helper** - Built-in pagination for arrayActions
+  - `pagination` option with `pageSize` and `initialPage` configuration
+  - `getPaginated()` method returning items with full metadata
+  - Navigation methods: `nextPage()`, `prevPage()`, `setPage()`, `firstPage()`, `lastPage()`
+  - 1-indexed pages (user-friendly)
+  - Auto-clamping to valid page range
+  - Works seamlessly with all arrayActions methods (sort, filter, etc.)
+  - Opt-in (no overhead when not used)
+  - 29 comprehensive tests covering all scenarios
+  - +0.41 KB gzipped
+
+- **Storage Type Safety** - TypeScript union types + runtime validation
+  - `storage` parameter now uses TypeScript union type
+  - Catches typos at compile time ('localstorage' ❌ → 'localStorage' ✅)
+  - Runtime validation for storage parameter
+  - Better IntelliSense autocomplete
+  - Zero bundle size impact (types only)
+
+- **AI Setup Fix** - `init-ai` now creates files AI assistants actually read
+  - **Claude Code**: Creates `.claude/README.md` (automatically read by Claude)
+  - **Cursor AI**: Creates `.cursorrules` (automatically read by Cursor)
+  - **GitHub Copilot**: Creates `.github/copilot-instructions.md`
+  - Added `--merge` flag to merge with existing files
+  - Added `--force` flag to overwrite existing files
+  - Better CLI output messages
+  - 10 new tests for CLI generators
+
+### Changed
+
+- Test count increased from 232 to 326 tests (+94 tests)
+  - +36 tests for IndexedDB storage
+  - +19 tests for TTL support
+  - +29 tests for pagination
+  - +10 tests for DX improvements
+- Bundle size increased from 13.27 KB to 14.68 KB gzipped (+1.41 KB, +10.6%)
+  - IndexedDB: +1.2 KB (tree-shakeable, only when used)
+  - Pagination: +0.41 KB (opt-in)
+  - TTL: minimal impact (~0.1 KB)
+  - Derived stores: 0 KB (re-exports only)
+- All new features are tree-shakeable and opt-in
+- Documentation comprehensively updated:
+  - README.md updated with all v0.2.4 features
+  - API.md updated with new options and methods
+  - All AI templates updated (CLAUDE.md, cursor.md, copilot.md)
+  - UPGRADE-0.2.4.md migration guide created
+
+### Fixed
+
+- **init-ai command**: Fixed file paths to match what AI assistants actually read
+  - Claude Code now reads `.claude/README.md` instead of `.claude/SVELTE_REACTOR_RULES.md`
+  - Cursor AI now reads `.cursorrules` instead of `.cursor/SVELTE_REACTOR_RULES.md`
+  - GitHub Copilot support added with `.github/copilot-instructions.md`
+
 ## [0.2.3] - 2025-11-10
 
 ### Added

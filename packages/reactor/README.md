@@ -11,21 +11,23 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.3
+## ✨ What's New in v0.2.4
 
-🔒 **Selective Persistence** - `pick`/`omit` options for security and performance
-📊 **Array Enhancements** - `sort()`, `bulkUpdate()`, `bulkRemove()` methods
-🔄 **Async Retry & Cancellation** - Retry logic, debouncing, and cancellation
-🎯 **Advanced Logger Filtering** - Filter by action/state, performance tracking
-🐛 **Critical Bug Fixes** - Unhandled rejection fixes, better error handling
-✅ **232 tests** (+58 new) - All features thoroughly tested
+🔗 **Derived Stores Export** - `derived()`, `get()`, `readonly()` from single import
+💾 **IndexedDB Storage** - 50MB+ capacity for large datasets (photos, documents, offline data)
+⏱️ **TTL (Time-To-Live)** - Auto-expire cached data with `ttl` and `onExpire` callback
+📄 **Pagination Helper** - Built-in pagination for large arrays with navigation
+🎯 **Storage Type Safety** - TypeScript union types + runtime validation
+🤖 **AI Setup Fix** - `init-ai` now creates files that AI assistants actually read
+✅ **326 tests** (+94 new) - All features thoroughly tested
 
 Previous updates:
+- **v0.2.3**: Selective persistence, retry/cancellation, bulk operations, advanced logger
 - **v0.2.2**: Memory leak fixes, performance optimization, enhanced validation
 - **v0.2.1**: Async Actions Helper, Array Actions Helper
 - **v0.2.0**: Full Svelte stores API compatibility
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[Upgrade Guide v0.2.3](../../UPGRADES/UPGRADE-0.2.3.md)**
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[Upgrade Guide v0.2.4](../../UPGRADES/UPGRADE-0.2.4.md)**
 
 ## 🚀 Features
 
@@ -42,7 +44,7 @@ Previous updates:
 - **🎮 DevTools** - Time-travel debugging and state inspection
 - **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
 - **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **13.5 KB gzipped** (full), tree-shakeable modules
+- **🪶 Lightweight** - **14.7 KB gzipped** (full), tree-shakeable modules
 - **0️⃣ Zero dependencies** - Only requires Svelte 5
 
 ## Installation
@@ -273,6 +275,25 @@ actions.bulkRemove(item => item.done); // Remove by predicate
 // Query operations
 const item = actions.find('1');
 const count = actions.count();
+
+// NEW in v0.2.4: Pagination for large datasets
+const paginated = arrayActions(todos, 'items', {
+  idKey: 'id',
+  pagination: {
+    pageSize: 20,      // Items per page
+    initialPage: 1     // Starting page
+  }
+});
+
+// Get paginated data with metadata
+const { items, page, totalPages, hasNext, hasPrev } = paginated.getPaginated();
+
+// Navigation
+paginated.nextPage();   // Go to next page (returns false if on last page)
+paginated.prevPage();   // Go to previous page (returns false if on first page)
+paginated.setPage(5);   // Jump to specific page
+paginated.firstPage();  // Jump to first page
+paginated.lastPage();   // Jump to last page
 ```
 
 #### `asyncActions(reactor, actions, options?)`
@@ -922,7 +943,7 @@ Reactor is highly optimized for performance:
 - **Simple state update**: 26,884 ops/sec (~0.037ms)
 - **Update with undo/redo**: 11,636 ops/sec (~0.086ms)
 - **100 sequential updates**: 331 ops/sec (~3ms)
-- **Bundle size**: 12.07 KB gzipped (full package)
+- **Bundle size**: 14.68 KB gzipped (full package, v0.2.4)
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
 
@@ -1039,7 +1060,16 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ **Advanced testing** - 3 complexity tests for concurrent operations
 - ✅ 172 tests (+23)
 
-### ✅ v0.2.3 - Feature Enhancements (Current)
+### ✅ v0.2.4 - DX Improvements & Advanced Features (Current)
+- ✅ **Derived Stores Export** - `derived()`, `get()`, `readonly()` from single import
+- ✅ **IndexedDB Storage** - 50MB+ capacity for large datasets
+- ✅ **TTL (Time-To-Live)** - Auto-expire cached data with `ttl` and `onExpire`
+- ✅ **Pagination Helper** - Built-in pagination for `arrayActions()`
+- ✅ **Storage Type Safety** - TypeScript union types + runtime validation
+- ✅ **AI Setup Fix** - `init-ai` creates files AI assistants actually read
+- ✅ 326 tests (+94)
+
+### ✅ v0.2.3 - Feature Enhancements (Released)
 - ✅ **Selective Persistence** - `pick`/`omit` options for security
 - ✅ **Array Enhancements** - `sort()`, `bulkUpdate()`, `bulkRemove()`
 - ✅ **Async Retry & Cancellation** - Retry logic, debouncing, cancellation
@@ -1091,10 +1121,10 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **232 tests** covering all features (+51 new in v0.2.3)
+- **326 tests** covering all features (+94 new in v0.2.4)
 - Unit tests for core reactor, plugins, helpers, utilities, and DevTools
 - Advanced complexity tests for edge cases and concurrent operations
-- Integration tests for v0.2.3 features
+- Integration tests for v0.2.4 features (TTL, pagination, IndexedDB)
 - Performance benchmarks for all operations
 - TypeScript type checking
 

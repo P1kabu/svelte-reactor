@@ -1,8 +1,8 @@
 # Upgrade Guide: v0.2.3 → v0.2.4
 
 **Release Date:** 2025-01-19
-**Status:** ✅ **DX Improvements + IndexedDB Documentation**
-**Tests:** 325 tests (+57 new) | **Bundle:** 14.27 KB gzipped (+1 KB)
+**Status:** ✅ **Complete - All Features Implemented**
+**Tests:** 326 tests (+94 new) | **Bundle:** 14.68 KB gzipped (+1.41 KB)
 
 ---
 
@@ -23,14 +23,16 @@
 
 ## 📦 What's New in v0.2.4
 
-This patch release focuses on **Developer Experience (DX) improvements** based on real production feedback from a 2000+ line migration.
+This release combines **Developer Experience (DX) improvements** with **powerful new features** for managing large datasets and cached data.
 
-### Key Improvements
+### Key Features
 
-1. ✅ **init-ai Command Fix** - Now creates files that AI assistants actually read
-2. ✅ **Derived Stores Export** - Single-import convenience: `import { derived } from 'svelte-reactor'`
-3. ✅ **Storage Type Safety** - TypeScript union types + runtime validation for storage parameter
-4. ✅ **IndexedDB Documentation** - Complete docs for 50MB+ storage capacity
+1. ✅ **Derived Stores Export** - Single-import convenience: `import { derived } from 'svelte-reactor'`
+2. ✅ **IndexedDB Storage** - 50MB+ capacity for photos, documents, offline data
+3. ✅ **TTL (Time-To-Live)** - Auto-expire cached data with `ttl` and `onExpire` callback
+4. ✅ **Pagination Helper** - Built-in pagination for large arrays
+5. ✅ **Storage Type Safety** - TypeScript union types + runtime validation
+6. ✅ **init-ai Command Fix** - Creates files that AI assistants actually read
 
 ---
 

@@ -2,11 +2,18 @@
 
 ## Bundle Size
 
-- **Full Package**: 55.23 KB → **13.27 KB gzipped** ✅ (+2.4 KB from v0.2.2)
+- **Full Package**: 65.94 KB → **14.68 KB gzipped** ✅ (+1.41 KB from v0.2.3)
 - **Plugins Only**: 3.27 KB → **1.05 KB gzipped** ✅
 - **Tree-shakeable**: Yes ✅
 
-**Note:** Bundle size increased in v0.2.3 due to new features:
+**Note:** Bundle size increased in v0.2.4 due to new features:
+- IndexedDB storage support (+1.2 KB, tree-shakeable, only when used)
+- Pagination helper for arrayActions (+0.41 KB, opt-in)
+- TTL (Time-To-Live) support (~0.1 KB)
+- Derived stores export (0 KB, re-exports only)
+- Storage type safety (0 KB, types only)
+
+**Previous increases (v0.2.3):**
 - Retry logic with backoff algorithms (+0.8 KB)
 - Debounce & cancellation support (+0.6 KB)
 - Advanced logger filtering (+0.5 KB)
