@@ -29,6 +29,18 @@ const store = createReactor(initialState, options);
   ```typescript
   import { simpleStore, derived, get } from 'svelte-reactor';
   const doubled = derived(count, $c => $c * 2);
+  console.log(get(doubled)); // Read value without subscribing
+  ```
+- `persistedStore(key, initialValue, options?)` - Simple persisted store (Svelte API)
+  ```typescript
+  const counter = persistedStore('counter', 0, { debounce: 300 });
+  ```
+- `persistedReactor(key, initialState, options?)` - Full reactor API with persistence
+  ```typescript
+  const app = persistedReactor('app', { count: 0 }, {
+    ttl: 60 * 60 * 1000,  // 1 hour
+    additionalPlugins: [undoRedo()]
+  });
   ```
 - `arrayActions(reactor, field, { idKey })` - CRUD operations for arrays
   - Methods: `add`, `update`, `remove`, `toggle`, `filter`, `find`, `has`, etc.

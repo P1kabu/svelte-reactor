@@ -23,6 +23,50 @@ counter.update(s => ({ value: s.value + 1 }));
 counter.subscribe(state => console.log(state.value));
 ```
 
+## Persisted Stores Helper
+
+```typescript
+import { persistedStore, persistedReactor } from 'svelte-reactor';
+
+// ✅ GOOD: Simple persisted store (Svelte stores API)
+const counter = persistedStore('counter', 0);
+counter.update(n => n + 1); // Auto-saved to localStorage
+
+// ✅ GOOD: With options (TTL, security, etc.)
+const settings = persistedStore('app-settings', { theme: 'dark' }, {
+  storage: 'localStorage',
+  debounce: 300,
+  ttl: 60 * 60 * 1000,  // 1 hour cache
+  omit: ['user.token']  // Security: exclude sensitive data
+});
+
+// ✅ GOOD: Full reactor API with persistence
+const app = persistedReactor(
+  'app-state',
+  { count: 0, user: { name: 'John' } },
+  {
+    storage: 'indexedDB',     // Large data support
+    ttl: 24 * 60 * 60 * 1000, // 24 hours
+    additionalPlugins: [undoRedo()]  // Add undo/redo
+  }
+);
+
+// Full reactor methods available
+app.undo();
+app.redo();
+app.update(state => { state.count++; });
+
+// ❌ BAD: Manual persist plugin for simple cases
+const counter = createReactor({ value: 0 }, {
+  plugins: [persist({ key: 'counter' })]
+}); // Too verbose!
+```
+
+**When to use:**
+- `persistedStore()` - Simple values, Svelte stores API
+- `persistedReactor()` - Complex state, need undo/redo
+- Manual `persist` plugin - Maximum control
+
 ## Array Actions Helper
 
 ```typescript
