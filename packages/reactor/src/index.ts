@@ -33,29 +33,13 @@ export type {
 // Helper types
 export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, PaginationOptions, PaginatedResult, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
 
-// History
-export { UndoRedoHistory as UndoRedoHistoryClass } from './history/undo-redo.js';
-
-// Middleware
-export { createMiddlewareChain, createLoggerMiddleware } from './middleware/index.js';
-
-// Utils
+// Utils (only essential utilities)
 export {
   deepClone,
   isEqual,
-  diff,
-  formatPath,
-  applyPatch,
-  getChangeSummary,
-  getPath,
-  setPath,
-  deletePath,
   pick,
   omit,
 } from './utils/index.js';
-
-// Utils types
-export type { DiffOperation, DiffEntry, DiffResult } from './utils/index.js';
 
 // DevTools
 export { createDevTools } from './devtools/index.js';
