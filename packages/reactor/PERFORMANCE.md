@@ -2,13 +2,14 @@
 
 ## Bundle Size
 
-- **Full Package**: 39.02 KB → **11.80 KB gzipped** ✅ (-2.88 KB from v0.2.4)
+- **Full Package**: 38.90 KB → **11.75 KB gzipped** ✅ (-2.93 KB from v0.2.4)
 - **Plugins Only**: 3.27 KB → **1.05 KB gzipped** ✅
 - **Tree-shakeable**: Yes ✅
 
-**Note:** Bundle size **reduced 19.6%** in v0.2.5 due to optimizations:
+**Note:** Bundle size **reduced 20%** in v0.2.5 due to optimizations:
 - Minification enabled (+0% code, -19.6% bundle)
-- Removed unused exports from public API (-16% API surface)
+- Aggressive API cleanup - removed all utility exports (-7% API surface)
+- Removed 15 unused/internal exports total (-27% API surface from 67 → 52)
 - Previous v0.2.4 size: 65.94 KB → 14.68 KB gzipped
 
 **Previous increases (v0.2.4):**
@@ -26,7 +27,7 @@
 - Bulk operations for arrays (+0.2 KB)
 
 **Version History:**
-- **v0.2.5**: 11.80 KB (-19.6%) ← Current
+- **v0.2.5**: 11.75 KB (-20.0%) ← Current
 - v0.2.4: 14.68 KB (+10.6%)
 - v0.2.3: 13.27 KB (+9.3%)
 - v0.2.2: 12.14 KB (baseline)
@@ -100,7 +101,7 @@
 
 ✅ **Update operations**: < 1ms for simple updates
 ✅ **Undo/Redo**: < 0.1ms overhead per operation
-✅ **Bundle size**: < 15KB gzipped (full package) - **Now 11.80 KB! 🎉**
+✅ **Bundle size**: < 15KB gzipped (full package) - **Now 11.75 KB! 🎉**
 ✅ **Memory**: Reasonable memory usage with history limits
 
 ## Optimization Opportunities
