@@ -78,7 +78,85 @@ const photos = createReactor({ items: [] }, {
     })
   ]
 });
+
+// NEW in v0.2.4: TTL (Time-To-Live) - Auto-expire cached data
+const apiCache = createReactor({ data: null }, {
+  plugins: [
+    persist({
+      key: 'api-cache',
+      ttl: 5 * 60 * 1000,  // Expire after 5 minutes
+      onExpire: (key) => {
+        console.log(`Cache ${key} expired, refreshing...`);
+        // Auto-refetch data when cache expires
+      }
+    })
+  ]
+});
+
+// Session with auto-logout
+const session = createReactor({ userId: null, token: null }, {
+  plugins: [
+    persist({
+      key: 'user-session',
+      storage: 'sessionStorage',
+      ttl: 30 * 60 * 1000,  // 30 minutes
+      omit: ['token'],       // Don't persist sensitive data
+      onExpire: () => {
+        window.location.href = '/login';  // Redirect on expiration
+      }
+    })
+  ]
+});
 ```
+
+### persistedStore / persistedReactor (Convenience Helpers)
+
+**NEW:** Simplified wrappers for creating persisted stores without manual plugin setup.
+
+```typescript
+import { persistedStore, persistedReactor } from 'svelte-reactor';
+
+// ✅ GOOD: Simple persisted store (Svelte stores API compatible)
+const counter = persistedStore('counter', 0);
+
+// ✅ GOOD: Persisted store with options
+const settings = persistedStore('app-settings', { theme: 'dark' }, {
+  storage: 'localStorage',
+  debounce: 300,
+  omit: ['user.token']  // Security: exclude sensitive data
+});
+
+// Usage - just like regular Svelte stores
+counter.update(n => n + 1);
+console.log($counter); // Use in Svelte components
+
+// ✅ GOOD: Full reactor API with persistence
+const app = persistedReactor(
+  'app-state',
+  { count: 0, user: { name: 'John' } },
+  {
+    storage: 'localStorage',
+    ttl: 60 * 60 * 1000,  // 1 hour cache
+    omit: ['user.token'],
+    additionalPlugins: [undoRedo()]  // Add undo/redo
+  }
+);
+
+// Full reactor methods available
+app.undo();
+app.redo();
+app.update(state => { state.count++; });
+
+// ❌ BAD: Manual persist plugin setup for simple cases
+const counter = createReactor({ value: 0 }, {
+  plugins: [persist({ key: 'counter' })]
+}); // Too verbose!
+```
+
+**When to use:**
+- **persistedStore** - Simple values, Svelte stores API, no undo/redo needed
+- **persistedReactor** - Complex state, need undo/redo, need full reactor API
+- **createReactor + persist plugin** - Maximum control, custom configuration
 
 ### logger Plugin
 ```typescript
@@ -443,6 +521,7 @@ const store = createReactor({ data: null });
 **NEW in v0.2.4:**
 - ✅ `derived`, `get`, `readonly` exported from svelte-reactor (single import!)
 - ✅ IndexedDB storage support (50MB+ capacity)
+- ✅ TTL (Time-To-Live) support for persist plugin - auto-expire cached data
 - ✅ Storage type safety with TypeScript union types
 - ✅ Runtime validation for storage parameter
 
