@@ -23,7 +23,7 @@ A comprehensive state management library for Svelte 5 applications with built-in
 - **AI-Ready** - CLI to teach AI assistants (Claude, Cursor, Copilot) best practices
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - **13.27 KB gzipped** (full package), **1.05 KB** (plugins only)
+- **Tiny** - **14.68 KB gzipped** (full package), **1.05 KB** (plugins only)
 - **Tree-shakeable** - Import only what you need
 - **Zero dependencies** - Only requires Svelte 5
 
@@ -47,8 +47,9 @@ Detailed upgrade guides for migrating between versions:
 
 📖 **[View All Upgrade Guides](./UPGRADES/)**
 
+- [v0.2.4](./UPGRADES/UPGRADE-0.2.4.md) - DX improvements & advanced features (current)
+- [v0.2.3](./UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements
 - [v0.2.2](./UPGRADES/UPGRADE-0.2.2.md) - Bug fixes & stability improvements
-- [v0.2.3](./UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements (completed)
 
 For general migration tips, see [MIGRATION.md](./packages/reactor/MIGRATION.md).
 
@@ -630,9 +631,9 @@ Reactor is highly optimized for performance:
 - **Simple state update**: 26,884 ops/sec (~0.037ms)
 - **Update with undo/redo**: 11,636 ops/sec (~0.086ms)
 - **100 sequential updates**: 331 ops/sec (~3ms)
-- **Bundle size**: 13.27 KB gzipped (full package with v0.2.3 features)
+- **Bundle size**: 14.68 KB gzipped (full package with v0.2.4 features)
 
-See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.
+See [packages/reactor/PERFORMANCE.md](./packages/reactor/PERFORMANCE.md) for detailed benchmarks.
 
 ## Examples
 
@@ -765,12 +766,21 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ Logger advanced filtering and performance tracking
 - ✅ 58 additional tests for comprehensive coverage
 
+### ✅ Phase 5.6: DX Improvements & Advanced Features (v0.2.4)
+- ✅ Derived stores export (`derived`, `get`, `readonly`) for single-import convenience
+- ✅ IndexedDB storage support (50MB+ capacity for large datasets)
+- ✅ TTL (Time-To-Live) support for auto-expiring cached data
+- ✅ Pagination helper for `arrayActions()` with built-in navigation
+- ✅ Storage type safety (TypeScript union types + runtime validation)
+- ✅ AI setup fix (`init-ai` creates files AI assistants actually read)
+- ✅ 94 additional tests for comprehensive coverage
+
 ### Phase 6: Future (v0.3.0+)
-- ⏳ IndexedDB storage support with quotas
 - ⏳ Multi-tab synchronization with BroadcastChannel
-- ⏳ Plugin ecosystem
+- ⏳ Plugin ecosystem and community plugins
 - ⏳ Visual DevTools UI
 - ⏳ Advanced selectors and computed state
+- ⏳ React/Vue adapters
 
 ## Development
 
@@ -798,9 +808,10 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **232 tests** covering all features
+- **373 tests** covering all features (+141 from v0.2.3)
 - Unit tests for core reactor, plugins, utilities, helpers, and DevTools
 - Integration tests for complex real-world scenarios
+- Stress tests for IndexedDB and large datasets
 - Performance benchmarks for all operations
 - TypeScript type checking
 
