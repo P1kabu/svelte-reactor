@@ -8,3 +8,8 @@ export {
   type IndexedDBConfig,
   type QuotaInfo
 } from './indexeddb.js';
+
+export {
+  MemoryStorage,
+  memoryStorage
+} from './memory-storage.js';

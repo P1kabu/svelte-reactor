@@ -502,6 +502,54 @@ gallery.update(state => {
 });
 ```
 
+**Memory Storage (v0.2.5):**
+
+```typescript
+// Example 4: In-memory storage (SSR-safe, testing, temporary state)
+import { createReactor } from 'svelte-reactor';
+import { persist } from 'svelte-reactor/plugins';
+
+// Use case 1: Testing without affecting real storage
+const testStore = createReactor(
+  { count: 0 },
+  {
+    plugins: [
+      persist({
+        key: 'test-data',
+        storage: 'memory'  // Won't affect localStorage
+      })
+    ]
+  }
+);
+
+// Use case 2: SSR (server-side rendering) compatibility
+// Memory storage works in Node.js environments (no window object required)
+const ssrStore = createReactor(
+  { user: null },
+  {
+    plugins: [
+      persist({
+        key: 'ssr-user',
+        storage: 'memory'  // SSR-safe!
+      })
+    ]
+  }
+);
+
+// Use case 3: Temporary state that shouldn't persist across reloads
+const sessionCache = createReactor(
+  { apiData: [] },
+  {
+    plugins: [
+      persist({
+        key: 'temp-cache',
+        storage: 'memory'  // Lost on page reload
+      })
+    ]
+  }
+);
+```
+
 **Storage Type Comparison:**
 
 | Storage Type | Capacity | Persistence | Best For |
@@ -509,12 +557,12 @@ gallery.update(state => {
 | `localStorage` | 5-10 MB | Forever | Settings, preferences |
 | `sessionStorage` | 5-10 MB | Tab session | Temporary data, forms |
 | `indexedDB` | 50+ MB | Forever | Large datasets, offline data |
-| `memory` | Unlimited | Runtime | Testing, SSR |
+| `memory` | Unlimited | Runtime only | Testing, SSR, temp state |
 
 **TTL Support (v0.2.4):**
 
 ```typescript
-// Example 4: API Cache with auto-expiration
+// Example 5: API Cache with auto-expiration
 const apiCache = createReactor(
   { users: [], lastFetch: null },
   {

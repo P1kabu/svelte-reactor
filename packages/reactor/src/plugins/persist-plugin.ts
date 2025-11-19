@@ -6,6 +6,7 @@ import type { ReactorPlugin, PersistOptions, Middleware } from '../types/index.j
 import { deepClone } from '../utils/index.js';
 import { pick, omit } from '../utils/path.js';
 import { IndexedDBStorageSync } from '../storage/indexeddb.js';
+import { memoryStorage } from '../storage/memory-storage.js';
 
 /**
  * Enable state persistence using direct storage access
@@ -70,6 +71,12 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
 
   // Get storage backend
   function getStorage(): Storage | IndexedDBStorageSync | null {
+    // Memory storage works in any environment (SSR-safe)
+    if (storage === 'memory') {
+      return memoryStorage;
+    }
+
+    // Other storage types require browser environment
     if (typeof window === 'undefined') return null;
 
     switch (storage) {
@@ -77,8 +84,6 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
         return window.localStorage;
       case 'sessionStorage':
         return window.sessionStorage;
-      case 'memory':
-        return null; // In-memory storage not implemented yet
       case 'indexedDB':
         // Create IndexedDB storage instance
         try {
