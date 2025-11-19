@@ -42,9 +42,18 @@ const store = createReactor(initialState, options);
     additionalPlugins: [undoRedo()]
   });
   ```
-- `arrayActions(reactor, field, { idKey })` - CRUD operations for arrays
+- `arrayActions(reactor, field, { idKey, pagination? })` - CRUD operations for arrays
   - Methods: `add`, `update`, `remove`, `toggle`, `filter`, `find`, `has`, etc.
   - **NEW in v0.2.3:** `sort`, `bulkUpdate`, `bulkRemove`
+  - **NEW in v0.2.4:** Pagination support for large datasets
+    ```typescript
+    const actions = arrayActions(todos, 'items', {
+      idKey: 'id',
+      pagination: { pageSize: 20 }
+    });
+    const { items, page, totalPages } = actions.getPaginated();
+    actions.nextPage(); actions.prevPage(); actions.setPage(5);
+    ```
 - `asyncActions(reactor, actions, options)` - Async operations with loading/error
   - Automatic `loading` and `error` state management
   - Options: `loadingKey`, `errorKey`, `actionPrefix`

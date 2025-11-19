@@ -218,7 +218,7 @@ persist({
 
 ### 6. 🎯 arrayActions: Pagination Helper
 **Пріоритет:** ⭐⭐⭐
-**Статус:** Нова функція
+**Статус:** ✅ Завершено
 **Час:** 1-2 дні
 
 **Опис:** Вбудована підтримка пагінації для великих масивів
@@ -229,7 +229,7 @@ const actions = arrayActions(todos, 'items', {
   idKey: 'id',
   pagination: {
     pageSize: 20,
-    prefetch: true // Підгружати наступну сторінку
+    initialPage: 1
   }
 });
 
@@ -237,13 +237,22 @@ const actions = arrayActions(todos, 'items', {
 actions.setPage(2); // Перейти на сторінку 2
 actions.nextPage();
 actions.prevPage();
+actions.firstPage();
+actions.lastPage();
 
 // Отримати дані
 const { items, page, totalPages, hasNext, hasPrev } = actions.getPaginated();
 ```
 
-**Тести:** +8 тестів
-**Bundle impact:** +0.5 KB
+**Реалізація:**
+- ✅ PaginationOptions з pageSize і initialPage
+- ✅ PaginatedResult з повними метаданими
+- ✅ Методи navigation (setPage, next, prev, first, last)
+- ✅ Auto-clamping до валідного діапазону
+- ✅ Opt-in (no overhead коли не використовується)
+
+**Тести:** ✅ +29 тестів (all scenarios covered)
+**Bundle impact:** +0.41 KB (+14.68 KB gzipped)
 
 ---
 

@@ -103,6 +103,35 @@ actions.bulkUpdate(['1', '2', '3'], { done: true });
 actions.bulkRemove(['1', '2']); // or predicate: item => item.done
 ```
 
+**NEW in v0.2.4:**
+Pagination for large datasets
+
+```typescript
+// Enable pagination (v0.2.4)
+const actions = arrayActions(todos, 'items', {
+  idKey: 'id',
+  pagination: {
+    pageSize: 20,    // Items per page
+    initialPage: 1   // Start on page 1
+  }
+});
+
+// Get paginated data
+const { items, page, totalPages, hasNext, hasPrev } = actions.getPaginated();
+
+// Navigation
+actions.nextPage();     // Go to next page
+actions.prevPage();     // Go to previous page
+actions.setPage(5);     // Jump to page 5
+actions.firstPage();    // Jump to first page
+actions.lastPage();     // Jump to last page
+
+// Display in UI
+console.log(`Page ${page} of ${totalPages}`);
+console.log(`Showing ${items.length} items`);
+if (hasNext) console.log('More items available');
+```
+
 ## Async Actions Helper
 
 ```typescript

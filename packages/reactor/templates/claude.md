@@ -435,6 +435,54 @@ actions.bulkRemove(['1', '2']);
 actions.bulkRemove(item => item.done);
 ```
 
+**NEW in v0.2.4 - Pagination for large datasets:**
+```typescript
+// Enable pagination
+const actions = arrayActions(todos, 'items', {
+  idKey: 'id',
+  pagination: {
+    pageSize: 20,      // Items per page
+    initialPage: 1     // Starting page
+  }
+});
+
+// Get paginated data
+const { items, page, totalPages, totalItems, hasNext, hasPrev } = actions.getPaginated();
+
+// Navigation
+actions.nextPage();     // Go to next page (returns false if on last page)
+actions.prevPage();     // Go to previous page (returns false if on first page)
+actions.setPage(5);     // Jump to specific page
+actions.firstPage();    // Jump to first page
+actions.lastPage();     // Jump to last page
+
+// Example UI implementation
+function PaginatedList() {
+  const { items, page, totalPages, hasNext, hasPrev } = actions.getPaginated();
+
+  return (
+    <div>
+      <ul>
+        {items.map(item => <li key={item.id}>{item.text}</li>)}
+      </ul>
+
+      <div class="pagination">
+        <button disabled={!hasPrev} onclick={() => actions.prevPage()}>Previous</button>
+        <span>Page {page} of {totalPages}</span>
+        <button disabled={!hasNext} onclick={() => actions.nextPage()}>Next</button>
+      </div>
+    </div>
+  );
+}
+```
+
+**Pagination features:**
+- ✅ Opt-in (no overhead when not used)
+- ✅ Auto-clamps to valid page range
+- ✅ Works with all arrayActions methods (sort, filter, etc.)
+- ✅ 1-indexed pages (user-friendly)
+- ✅ Complete metadata (totalPages, hasNext, hasPrev, etc.)
+
 ## Advanced Features
 
 ### Custom Plugins
