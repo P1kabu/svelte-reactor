@@ -31,7 +31,7 @@ export type {
 } from './types/index.js';
 
 // Helper types
-export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
+export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, PaginationOptions, PaginatedResult, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
 
 // History
 export { UndoRedoHistory as UndoRedoHistoryClass } from './history/undo-redo.js';
