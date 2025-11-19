@@ -33,14 +33,6 @@ export type {
 // Helper types
 export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, PaginationOptions, PaginatedResult, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
 
-// Utils (only essential utilities)
-export {
-  deepClone,
-  isEqual,
-  pick,
-  omit,
-} from './utils/index.js';
-
 // DevTools
 export { createDevTools } from './devtools/index.js';
 

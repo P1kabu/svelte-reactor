@@ -882,31 +882,6 @@ const unsubscribe = devtools.subscribe((state) => {
 devtools.reset();
 ```
 
-## Utilities
-
-Powerful utility functions for state management:
-
-```typescript
-import { diff, applyPatch, getChangeSummary, deepClone, isEqual } from 'svelte-reactor/utils';
-
-// State diffing
-const changes = diff(oldState, newState);
-console.log(changes); // { changes: [...], hasChanges: true }
-
-// Apply patches
-const newState = applyPatch(state, changes);
-
-// Get change summary
-const summary = getChangeSummary(changes);
-console.log(summary); // { added: 2, modified: 3, removed: 1 }
-
-// Deep clone
-const cloned = deepClone(state);
-
-// Deep equality
-const equal = isEqual(state1, state2);
-```
-
 ## Middleware
 
 Create custom middleware for advanced use cases:
