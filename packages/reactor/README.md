@@ -34,7 +34,7 @@ Previous updates:
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
-- **💾 Smart Persistence** - localStorage, sessionStorage (IndexedDB planned for v0.3.0)
+- **💾 Smart Persistence** - localStorage, sessionStorage, IndexedDB (50MB+ storage) ✨ NEW in v0.2.4
 - **🔒 Security First** - Exclude sensitive data (tokens, passwords) from persistence
 - **🔄 Network Resilience** - Retry logic with exponential backoff, request cancellation
 - **📊 Bulk Operations** - Sort, bulk update/remove for arrays
@@ -209,7 +209,7 @@ console.log(counter.get()); // 5
 
 #### `persistedStore(key, initialValue, options?)`
 
-Create a store that automatically persists to localStorage/sessionStorage (IndexedDB coming in v0.3.0).
+Create a store that automatically persists to localStorage, sessionStorage, or IndexedDB.
 
 **→ [See full example in Quick Start](./QUICK_START.md#persisted-store-auto-save-to-localstorage)**
 
@@ -217,7 +217,7 @@ Create a store that automatically persists to localStorage/sessionStorage (Index
 import { persistedStore } from 'svelte-reactor';
 
 const settings = persistedStore('app-settings', { theme: 'dark' }, {
-  storage: 'localStorage', // or 'sessionStorage' (indexedDB planned for v0.3.0)
+  storage: 'localStorage', // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
   debounce: 300,           // Save after 300ms of inactivity
 
   // NEW in v0.2.3: Security options
@@ -409,6 +409,139 @@ console.log(get(cartSummary)); // "2 items - $20.00"
 - `derived()` - Create computed stores from one or more stores
 - `get()` - Get current value from any store (one-time read)
 - `readonly()` - Create read-only version of a store
+
+---
+
+### 💾 IndexedDB Storage
+
+**NEW in v0.2.4:** Store large amounts of data (50MB+) with IndexedDB!
+
+IndexedDB provides significantly more storage capacity than localStorage (typically 5-10MB). Perfect for:
+- 📸 **Large datasets** - Photos, documents, media files
+- 📊 **Offline-first apps** - Cache API responses, sync data
+- 🎮 **Games** - Save states, assets, progress
+- 📝 **Rich content editors** - Store documents, drafts, history
+
+**Quick Start:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+const photos = persistedStore('my-photos', { items: [] }, {
+  storage: 'indexedDB',  // Use IndexedDB instead of localStorage
+  indexedDB: {
+    database: 'my-app',   // Optional: database name (default: 'svelte-reactor')
+    storeName: 'photos',  // Optional: store name (default: 'state')
+    version: 1            // Optional: database version (default: 1)
+  }
+});
+
+// Use it like any other store!
+photos.update(state => {
+  state.items.push({ id: 1, url: '...', size: 5000000 }); // 5MB photo
+});
+```
+
+**Storage Comparison:**
+
+| Feature | localStorage | sessionStorage | IndexedDB | memory |
+|---------|-------------|----------------|-----------|--------|
+| **Capacity** | 5-10 MB | 5-10 MB | 50+ MB | Unlimited |
+| **Persistence** | Forever | Tab session | Forever | Runtime only |
+| **Async** | No | No | Yes (transparent) | No |
+| **Performance** | Fast | Fast | Slower startup, fast after | Fastest |
+| **Use Case** | Settings | Temp data | Large datasets | Testing |
+
+**IndexedDB Configuration:**
+
+```typescript
+import { persistedReactor } from 'svelte-reactor';
+
+const store = persistedReactor('large-data', { documents: [] }, {
+  storage: 'indexedDB',
+  debounce: 500,  // Debounce writes for performance
+
+  indexedDB: {
+    database: 'my-app-db',      // Database name
+    storeName: 'app-state',     // Object store name
+    version: 1                  // Schema version
+  },
+
+  // Exclude sensitive data
+  omit: ['user.token', 'temp']
+});
+```
+
+**Real-world example - Photo Gallery:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+interface Photo {
+  id: string;
+  url: string;
+  thumbnail: string;
+  size: number;
+  metadata: Record<string, any>;
+}
+
+const gallery = persistedStore<{ photos: Photo[] }>(
+  'photo-gallery',
+  { photos: [] },
+  {
+    storage: 'indexedDB',
+    debounce: 1000,  // Save after 1s of inactivity
+    indexedDB: {
+      database: 'photo-app',
+      storeName: 'gallery-state',
+      version: 1
+    }
+  }
+);
+
+// Add photos - they're automatically persisted to IndexedDB
+gallery.update(state => {
+  state.photos.push({
+    id: crypto.randomUUID(),
+    url: 'blob:...',          // Large image data
+    thumbnail: 'data:...',
+    size: 5242880,            // 5MB
+    metadata: { /* ... */ }
+  });
+});
+
+// Access in Svelte components
+// {#each $gallery.photos as photo}
+//   <img src={photo.url} alt="Photo" />
+// {/each}
+```
+
+**Important Notes:**
+
+⚡ **Async Behavior:** IndexedDB operations are asynchronous, but svelte-reactor provides a synchronous-like API:
+- Reads happen instantly from an in-memory cache
+- Writes are batched and persisted in the background
+- All pending writes are automatically flushed on page unload
+
+🔒 **Data Safety:** The persist plugin tracks all pending writes and flushes them before cleanup, ensuring no data loss even if the app closes immediately after a write.
+
+📊 **Quota Management:** Browser quotas vary (typically 50MB-1GB). Use the storage estimate API to check available space:
+
+```typescript
+// Check storage quota
+if ('storage' in navigator && 'estimate' in navigator.storage) {
+  const estimate = await navigator.storage.estimate();
+  console.log(`Used: ${estimate.usage} bytes`);
+  console.log(`Quota: ${estimate.quota} bytes`);
+  console.log(`Available: ${estimate.quota - estimate.usage} bytes`);
+}
+```
+
+**When to use each storage type:**
+- **localStorage** - Settings, preferences, small data (< 1MB)
+- **sessionStorage** - Temporary data, form drafts, wizard state
+- **indexedDB** - Large datasets, offline data, media files (> 5MB)
+- **memory** - Testing, SSR, ephemeral state
 
 ---
 

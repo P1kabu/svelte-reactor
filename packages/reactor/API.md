@@ -339,7 +339,7 @@ reactor.undo(); // Back to value: 1
 
 ### persist
 
-Automatic state persistence to localStorage/sessionStorage with cross-tab synchronization.
+Automatic state persistence to localStorage, sessionStorage, or IndexedDB with cross-tab synchronization.
 
 ```typescript
 function persist<T extends object>(
@@ -355,7 +355,8 @@ interface PersistOptions {
   key: string;
 
   // Storage type (default: 'localStorage')
-  storage?: 'localStorage' | 'sessionStorage';
+  // NEW in v0.2.4: Added 'indexedDB' and 'memory'
+  storage?: 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory';
 
   // Debounce save in milliseconds (default: 0)
   debounce?: number;
@@ -365,6 +366,13 @@ interface PersistOptions {
 
   // Migration function
   migrate?: (stored: unknown, version: number) => unknown;
+
+  // NEW in v0.2.4: IndexedDB configuration (only used when storage='indexedDB')
+  indexedDB?: {
+    database?: string;   // Database name (default: 'svelte-reactor')
+    storeName?: string;  // Object store name (default: 'state')
+    version?: number;    // Database version (default: 1)
+  };
 
   // NEW in v0.2.3: Selective persistence
   // Pick specific fields to persist (dot notation supported)
@@ -447,6 +455,59 @@ const store2 = createReactor({
   ]
 });
 ```
+
+**IndexedDB Storage (v0.2.4):**
+
+```typescript
+// Example 3: Large dataset with IndexedDB (50MB+ capacity)
+import { createReactor } from 'svelte-reactor';
+import { persist } from 'svelte-reactor/plugins';
+
+interface Photo {
+  id: string;
+  url: string;
+  thumbnail: string;
+  size: number;
+}
+
+const gallery = createReactor<{ photos: Photo[] }>(
+  { photos: [] },
+  {
+    plugins: [
+      persist({
+        key: 'photo-gallery',
+        storage: 'indexedDB',  // Use IndexedDB for large data
+        debounce: 1000,        // Batch writes for performance
+
+        indexedDB: {
+          database: 'photo-app',      // Custom database name
+          storeName: 'gallery-data',  // Custom store name
+          version: 1                  // Schema version
+        }
+      })
+    ]
+  }
+);
+
+// Add large photos - automatically persisted to IndexedDB
+gallery.update(state => {
+  state.photos.push({
+    id: crypto.randomUUID(),
+    url: 'blob:...',       // Large image blob
+    thumbnail: 'data:...',
+    size: 5242880          // 5MB
+  });
+});
+```
+
+**Storage Type Comparison:**
+
+| Storage Type | Capacity | Persistence | Best For |
+|--------------|----------|-------------|----------|
+| `localStorage` | 5-10 MB | Forever | Settings, preferences |
+| `sessionStorage` | 5-10 MB | Tab session | Temporary data, forms |
+| `indexedDB` | 50+ MB | Forever | Large datasets, offline data |
+| `memory` | Unlimited | Runtime | Testing, SSR |
 
 ---
 

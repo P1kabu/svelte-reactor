@@ -63,6 +63,21 @@ const store2 = createReactor({
     })
   ]
 });
+
+// NEW in v0.2.4: IndexedDB for large datasets (50MB+)
+const photos = createReactor({ items: [] }, {
+  plugins: [
+    persist({
+      key: 'photos',
+      storage: 'indexedDB',  // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
+      indexedDB: {
+        database: 'my-app',
+        storeName: 'photos',
+        version: 1
+      }
+    })
+  ]
+});
 ```
 
 ### logger Plugin
@@ -87,7 +102,40 @@ const store2 = createReactor({ count: 0 }, {
 });
 ```
 
-## Best Practices (v0.2.3)
+## Derived Stores (v0.2.4)
+
+**NEW in v0.2.4:** `derived`, `get`, and `readonly` are now exported from `svelte-reactor` for single-import convenience!
+
+```typescript
+import { simpleStore, derived, get, readonly } from 'svelte-reactor';
+
+const count = simpleStore(0);
+const doubled = derived(count, $count => $count * 2);
+
+console.log(get(doubled)); // 0
+count.set(5);
+console.log(get(doubled)); // 10
+
+// Create readonly version
+const readonlyCount = readonly(count);
+```
+
+**Real-world example - Shopping Cart:**
+```typescript
+import { createReactor, derived, get } from 'svelte-reactor';
+
+const cart = createReactor<{ items: CartItem[] }>({ items: [] });
+
+// Derive total price
+const totalPrice = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+);
+
+console.log(get(totalPrice)); // Auto-updates when cart changes
+```
+
+## Best Practices (v0.2.4)
 
 1. **Always use createReactor** for state management in Svelte 5 projects
 2. **Use .update()** for state changes, never mutate directly
@@ -97,6 +145,8 @@ const store2 = createReactor({ count: 0 }, {
 6. **Always call destroy()** when component unmounts to prevent memory leaks
 7. **Use arrayActions() and asyncActions()** helpers to reduce boilerplate
 8. **Add action names** to update() calls for better debugging
+9. **NEW: Use derived stores** for computed values - they auto-update and are memoized
+10. **NEW: Use IndexedDB** for large datasets (>5MB) instead of localStorage
 
 ## Anti-patterns
 
@@ -388,6 +438,12 @@ const store = createReactor({ data: null });
 
 ---
 
-**Version:** v0.2.3 (232 tests, all features stable)
+**Version:** v0.2.4 (325 tests, all features stable)
+
+**NEW in v0.2.4:**
+- ✅ `derived`, `get`, `readonly` exported from svelte-reactor (single import!)
+- ✅ IndexedDB storage support (50MB+ capacity)
+- ✅ Storage type safety with TypeScript union types
+- ✅ Runtime validation for storage parameter
 
 **Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, DevTools integration, and automatic memory management.

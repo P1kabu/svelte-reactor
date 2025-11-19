@@ -17,11 +17,18 @@ const store = createReactor(initialState, options);
 ## Plugins
 
 - `undoRedo()` - Undo/redo functionality
-- `persist({ key, pick?, omit? })` - localStorage persistence (v0.2.3: selective persistence)
+- `persist({ key, storage?, pick?, omit? })` - Storage persistence
+  - **v0.2.3:** selective persistence (pick/omit)
+  - **v0.2.4:** IndexedDB support (50MB+) - `storage: 'indexedDB'`
 - `logger({ filter?, trackPerformance? })` - Console logging (v0.2.3: advanced filtering)
 
 ## Helpers
 
+- **NEW in v0.2.4:** `derived`, `get`, `readonly` - Svelte store utilities (single import!)
+  ```typescript
+  import { simpleStore, derived, get } from 'svelte-reactor';
+  const doubled = derived(count, $c => $c * 2);
+  ```
 - `arrayActions(reactor, field, { idKey })` - CRUD operations for arrays
   - Methods: `add`, `update`, `remove`, `toggle`, `filter`, `find`, `has`, etc.
   - **NEW in v0.2.3:** `sort`, `bulkUpdate`, `bulkRemove`
@@ -30,7 +37,7 @@ const store = createReactor(initialState, options);
   - Options: `loadingKey`, `errorKey`, `actionPrefix`
   - **NEW in v0.2.3:** `retry`, `debounce`, cancellation with `.cancel()`
 
-## Best Practices (v0.2.3)
+## Best Practices (v0.2.4)
 
 ✅ **DO:**
 - Use createReactor for reactive state
@@ -40,6 +47,8 @@ const store = createReactor(initialState, options);
 - Call destroy() when component unmounts (prevents memory leaks!)
 - Use arrayActions() and asyncActions() helpers
 - Add action names for better debugging
+- **NEW:** Use derived stores for computed values
+- **NEW:** Use IndexedDB for large datasets (>5MB)
 
 ❌ **DON'T:**
 - Mutate state directly
@@ -47,6 +56,28 @@ const store = createReactor(initialState, options);
 - Forget to destroy() reactor (memory leak!)
 - Persist sensitive data without encryption
 - Skip input validation (reactor validates automatically)
+
+## v0.2.4 Features (Latest)
+
+🔗 **Derived Stores:** Single import for all Svelte store utilities
+```typescript
+import { simpleStore, derived, get, readonly } from 'svelte-reactor';
+const doubled = derived(count, $c => $c * 2);
+```
+
+💾 **IndexedDB Storage:** 50MB+ capacity for large datasets
+```typescript
+persist({
+  key: 'photos',
+  storage: 'indexedDB',  // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
+  indexedDB: { database: 'my-app', storeName: 'photos' }
+})
+```
+
+🎯 **Storage Type Safety:** TypeScript types + runtime validation
+```typescript
+// TypeScript now catches typos: 'localstorage' ❌ → 'localStorage' ✅
+```
 
 ## v0.2.3 Features
 

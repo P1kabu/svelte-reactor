@@ -183,6 +183,21 @@ const app = createReactor({
   ]
 });
 
+// NEW in v0.2.4: IndexedDB for large datasets (50MB+)
+const photos = createReactor({ items: [] }, {
+  plugins: [
+    persist({
+      key: 'photos',
+      storage: 'indexedDB',  // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
+      indexedDB: {
+        database: 'my-app',
+        storeName: 'photos',
+        version: 1
+      }
+    })
+  ]
+});
+
 // ❌ BAD: Manual localStorage
 localStorage.setItem('theme', 'dark'); // Don't do this!
 ```
@@ -392,6 +407,71 @@ import { onDestroy } from 'svelte';
 onDestroy(() => store.destroy());
 ```
 
+## Derived Stores (v0.2.4)
+
+```typescript
+// NEW in v0.2.4: Import derived stores from svelte-reactor (single import!)
+import { simpleStore, derived, get, readonly } from 'svelte-reactor';
+
+// ✅ GOOD: Single import source
+const count = simpleStore(0);
+const doubled = derived(count, $c => $c * 2);
+
+console.log(get(doubled)); // 0
+count.set(5);
+console.log(get(doubled)); // 10
+
+// ❌ BAD: Multiple imports
+import { simpleStore } from 'svelte-reactor';
+import { derived, get } from 'svelte/store'; // Don't need this anymore!
+```
+
+**Real-world example - Shopping Cart:**
+```typescript
+import { createReactor, derived, get } from 'svelte-reactor';
+
+const cart = createReactor<{ items: CartItem[] }>({ items: [] });
+
+// Derive total price - auto-updates when cart changes
+const totalPrice = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+);
+
+console.log(get(totalPrice)); // $0.00
+// Add items...
+console.log(get(totalPrice)); // $120.00
+```
+
+## v0.2.4 Features
+
+### IndexedDB Storage (50MB+)
+```typescript
+// ✅ Store large datasets (photos, documents, offline data)
+const photos = createReactor({ items: [] }, {
+  plugins: [
+    persist({
+      key: 'photos',
+      storage: 'indexedDB',  // Much larger capacity than localStorage
+      indexedDB: { database: 'my-app', storeName: 'photos' }
+    })
+  ]
+});
+```
+
+### Derived Stores Export
+```typescript
+// ✅ Single import for all store utilities
+import { simpleStore, derived, get, readonly } from 'svelte-reactor';
+```
+
+### Storage Type Safety
+```typescript
+// ✅ TypeScript catches typos + runtime validation
+storage: 'indexedDB'  // Correct ✅
+storage: 'indexDB'    // Error: Type '"indexDB"' is not assignable to type 'StorageType' ❌
+```
+
 ## v0.2.3 Features
 
 ### Selective Persistence (Security)
@@ -461,7 +541,12 @@ store.update(s => ({ ...s, count: s.count + 1 }));
 
 ---
 
-**Current Version:** v0.2.3 (232 tests, production-ready)
+**Current Version:** v0.2.4 (325 tests, production-ready)
+
+**NEW in v0.2.4:**
+- ✅ Derived stores export (`derived`, `get`, `readonly`) - single import!
+- ✅ IndexedDB storage support (50MB+ capacity for large datasets)
+- ✅ Storage type safety with TypeScript union types + runtime validation
 
 **Key Features:**
 - Selective persistence with pick/omit (protect sensitive data)
