@@ -198,6 +198,31 @@ const photos = createReactor({ items: [] }, {
   ]
 });
 
+// NEW in v0.2.4: TTL (Time-To-Live) - Auto-expire cached data
+const apiCache = createReactor({ data: null }, {
+  plugins: [
+    persist({
+      key: 'api-cache',
+      ttl: 5 * 60 * 1000,  // Expire after 5 minutes
+      onExpire: (key) => {
+        console.log(`Cache ${key} expired, refreshing...`);
+      }
+    })
+  ]
+});
+
+// Session with auto-logout
+const session = createReactor({ userId: null }, {
+  plugins: [
+    persist({
+      key: 'user-session',
+      storage: 'sessionStorage',
+      ttl: 30 * 60 * 1000,  // 30 minutes
+      onExpire: () => window.location.href = '/login'
+    })
+  ]
+});
+
 // ❌ BAD: Manual localStorage
 localStorage.setItem('theme', 'dark'); // Don't do this!
 ```
@@ -546,6 +571,7 @@ store.update(s => ({ ...s, count: s.count + 1 }));
 **NEW in v0.2.4:**
 - ✅ Derived stores export (`derived`, `get`, `readonly`) - single import!
 - ✅ IndexedDB storage support (50MB+ capacity for large datasets)
+- ✅ TTL (Time-To-Live) support - auto-expire cached data with `ttl` and `onExpire`
 - ✅ Storage type safety with TypeScript union types + runtime validation
 
 **Key Features:**

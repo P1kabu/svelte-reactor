@@ -545,6 +545,137 @@ if ('storage' in navigator && 'estimate' in navigator.storage) {
 
 ---
 
+### ⏱️ Time-To-Live (TTL) Support
+
+**NEW in v0.2.4:** Automatically expire cached data after a specified time!
+
+TTL (Time-To-Live) enables automatic expiration of persisted data. Perfect for:
+- 🔄 **API Caches** - Auto-refresh stale data
+- 🔐 **Session Data** - Auto-logout after inactivity
+- 📝 **Temporary Storage** - Auto-cleanup of temporary data
+- 🎯 **Fresh Content** - Ensure users see up-to-date information
+
+**Quick Start:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+const apiCache = persistedStore('api-cache', { data: null }, {
+  ttl: 5 * 60 * 1000,  // 5 minutes in milliseconds
+  onExpire: (key) => {
+    console.log(`Cache expired: ${key}, fetching fresh data...`);
+    // Trigger data refresh
+  }
+});
+
+// Data persists for 5 minutes, then expires automatically
+apiCache.update(state => {
+  state.data = { users: ['Alice', 'Bob'], fetchedAt: Date.now() };
+});
+```
+
+**Real-world Example - API Cache with Auto-Refresh:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+interface CacheState {
+  users: User[];
+  lastFetch: number | null;
+}
+
+const userCache = persistedStore<CacheState>(
+  'user-cache',
+  { users: [], lastFetch: null },
+  {
+    storage: 'localStorage',
+    ttl: 5 * 60 * 1000,  // Cache expires after 5 minutes
+    onExpire: async (key) => {
+      console.log('User cache expired, refreshing...');
+      // Automatically refetch data when cache expires
+      await fetchUsers();
+    }
+  }
+);
+
+async function fetchUsers() {
+  const response = await fetch('/api/users');
+  const users = await response.json();
+
+  userCache.update(state => {
+    state.users = users;
+    state.lastFetch = Date.now();
+  });
+}
+
+// On app load:
+// - If cache is fresh (< 5 minutes old), use cached data ✅
+// - If cache expired, onExpire triggers and fetches fresh data 🔄
+```
+
+**Session Management with Auto-Logout:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+const session = persistedStore(
+  'user-session',
+  { isAuthenticated: false, userId: null, token: null },
+  {
+    storage: 'sessionStorage',
+    ttl: 30 * 60 * 1000,  // 30 minutes
+    omit: ['token'],      // Don't persist sensitive token
+    onExpire: (key) => {
+      console.log('Session expired, redirecting to login...');
+      window.location.href = '/login';
+    }
+  }
+);
+
+// User stays logged in for 30 minutes of inactivity
+// After 30 minutes, session expires and user is redirected to login
+```
+
+**TTL with IndexedDB:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+const offlineQueue = persistedStore(
+  'sync-queue',
+  { pendingActions: [] },
+  {
+    storage: 'indexedDB',
+    ttl: 24 * 60 * 60 * 1000,  // 24 hours
+    onExpire: (key) => {
+      console.log('Sync queue expired, clearing old data...');
+    }
+  }
+);
+
+// Offline actions persist for 24 hours, then auto-cleanup
+```
+
+**How TTL Works:**
+
+1. 📝 **On Write:** Timestamp is automatically added to persisted data
+2. 📖 **On Read:** Age is calculated and compared to TTL
+3. ⏰ **If Expired:**
+   - Data is removed from storage
+   - `onExpire` callback is called (if provided)
+   - Initial state is used instead
+4. ✅ **If Fresh:** Data is loaded normally
+
+**Important Notes:**
+
+- ⚡ **Zero TTL (`ttl: 0`):** Data expires immediately on next load
+- 🔒 **Callback Errors:** `onExpire` errors are caught and logged, won't break app
+- 🎯 **Works with all storage types:** localStorage, sessionStorage, indexedDB, memory
+- 🔄 **Compatible with migrations:** TTL check happens before migrations run
+- 🛡️ **Type Safe:** TypeScript enforces non-negative numbers
+
+---
+
 ### Core API
 
 #### `createReactor(initialState, options?)`

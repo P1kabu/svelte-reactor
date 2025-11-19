@@ -40,11 +40,18 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     deserialize,
     pick: pickPaths,
     omit: omitPaths,
+    ttl,
+    onExpire,
   } = options;
 
   // Validate debounce
   if (typeof debounce !== 'number' || debounce < 0) {
     throw new TypeError(`[persist] options.debounce must be a non-negative number, got ${debounce}`);
+  }
+
+  // Validate TTL
+  if (ttl !== undefined && (typeof ttl !== 'number' || ttl < 0)) {
+    throw new TypeError(`[persist] options.ttl must be a non-negative number, got ${ttl}`);
   }
 
   // Validate storage type
@@ -102,6 +109,35 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
         data = JSON.parse(data);
       }
 
+      // Check TTL expiration
+      if (ttl !== undefined && data.__timestamp) {
+        const now = Date.now();
+        const age = now - data.__timestamp;
+
+        if (age >= ttl) {
+          // Data has expired
+          console.warn(`[persist:${key}] Data expired (age: ${age}ms, ttl: ${ttl}ms)`);
+
+          // Call onExpire callback if provided
+          if (onExpire) {
+            try {
+              onExpire(key);
+            } catch (error) {
+              console.error(`[persist:${key}] Error in onExpire callback:`, error);
+            }
+          }
+
+          // Remove expired data
+          try {
+            storageBackend.removeItem(key);
+          } catch {
+            // Ignore removal errors
+          }
+
+          return null;
+        }
+      }
+
       // Handle migrations
       if (version && migrations && data.__version !== version) {
         const currentVersion = data.__version || 0;
@@ -113,12 +149,20 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
         data.__version = version;
       }
 
-      // Custom deserializer
+      // Custom deserializer (apply before removing metadata)
+      let result = data;
       if (deserialize) {
-        data = deserialize(data);
+        result = deserialize(data);
       }
 
-      return data;
+      // Remove internal metadata before returning
+      // Need to check if result is an object to avoid errors
+      if (result && typeof result === 'object') {
+        const { __timestamp, __version, ...cleanData } = result as any;
+        return cleanData as T;
+      }
+
+      return result as T;
     } catch (error) {
       console.error(`[persist:${key}] Failed to load state from ${storage}:`, error);
       // Try to recover by clearing corrupted data
@@ -155,6 +199,11 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       // Add version
       if (version) {
         data.__version = version;
+      }
+
+      // Add timestamp for TTL
+      if (ttl !== undefined) {
+        data.__timestamp = Date.now();
       }
 
       let serialized = JSON.stringify(data);

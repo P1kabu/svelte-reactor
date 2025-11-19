@@ -279,6 +279,20 @@ export interface PersistOptions {
     /** Database version (default: 1) */
     version?: number;
   };
+
+  /**
+   * Time-to-live in milliseconds (NEW in v0.2.4)
+   * After this time, the stored data will be considered expired and removed
+   * @example
+   * ttl: 5 * 60 * 1000 // 5 minutes
+   */
+  ttl?: number;
+
+  /**
+   * Callback when stored data expires (NEW in v0.2.4)
+   * @param key - The storage key that expired
+   */
+  onExpire?: (key: string) => void;
 }
 
 /**

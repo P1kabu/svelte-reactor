@@ -382,6 +382,14 @@ interface PersistOptions {
   // Note: Cannot use both pick and omit
   omit?: string[];
 
+  // NEW in v0.2.4: Time-to-live in milliseconds
+  // After this time, stored data is considered expired and removed
+  ttl?: number;
+
+  // NEW in v0.2.4: Callback when stored data expires
+  // Called when TTL expires and data is removed from storage
+  onExpire?: (key: string) => void;
+
   // Custom serialization (optional)
   serialize?: (state: T) => unknown;
 
@@ -508,6 +516,80 @@ gallery.update(state => {
 | `sessionStorage` | 5-10 MB | Tab session | Temporary data, forms |
 | `indexedDB` | 50+ MB | Forever | Large datasets, offline data |
 | `memory` | Unlimited | Runtime | Testing, SSR |
+
+**TTL Support (v0.2.4):**
+
+```typescript
+// Example 4: API Cache with auto-expiration
+const apiCache = createReactor(
+  { users: [], lastFetch: null },
+  {
+    plugins: [
+      persist({
+        key: 'api-cache',
+        ttl: 5 * 60 * 1000,  // Expire after 5 minutes
+        onExpire: (key) => {
+          console.log(`Cache ${key} expired, fetching fresh data...`);
+          // Trigger data refresh
+        }
+      })
+    ]
+  }
+);
+
+// Example 5: Session with auto-logout
+const session = createReactor(
+  { isAuthenticated: false, userId: null, token: null },
+  {
+    plugins: [
+      persist({
+        key: 'user-session',
+        storage: 'sessionStorage',
+        ttl: 30 * 60 * 1000,    // 30 minutes
+        omit: ['token'],         // Don't persist sensitive token
+        onExpire: () => {
+          window.location.href = '/login';  // Redirect on expiration
+        }
+      })
+    ]
+  }
+);
+
+// Example 6: TTL with IndexedDB (long-term cache)
+const offlineData = createReactor(
+  { cachedPages: [] },
+  {
+    plugins: [
+      persist({
+        key: 'offline-cache',
+        storage: 'indexedDB',
+        ttl: 24 * 60 * 60 * 1000,  // 24 hours
+        indexedDB: {
+          database: 'app-cache',
+          storeName: 'pages'
+        }
+      })
+    ]
+  }
+);
+```
+
+**How TTL Works:**
+
+1. **On Write:** Timestamp is automatically added when state is saved
+2. **On Read:** Age is calculated and compared against TTL
+3. **If Expired:**
+   - Data is removed from storage
+   - `onExpire` callback is invoked (if provided)
+   - Initial state is used instead of expired data
+4. **If Fresh:** Data loads normally
+
+**TTL Notes:**
+- ⚡ Works with all storage types (localStorage, sessionStorage, indexedDB, memory)
+- 🔒 `onExpire` errors are caught and logged, won't crash app
+- ✅ Compatible with migrations, pick/omit, and all other persist features
+- 🎯 TTL of `0` means data expires immediately on next load
+- 🛡️ TypeScript enforces non-negative numbers
 
 ---
 

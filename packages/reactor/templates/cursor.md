@@ -17,9 +17,10 @@ const store = createReactor(initialState, options);
 ## Plugins
 
 - `undoRedo()` - Undo/redo functionality
-- `persist({ key, storage?, pick?, omit? })` - Storage persistence
+- `persist({ key, storage?, pick?, omit?, ttl?, onExpire? })` - Storage persistence
   - **v0.2.3:** selective persistence (pick/omit)
   - **v0.2.4:** IndexedDB support (50MB+) - `storage: 'indexedDB'`
+  - **v0.2.4:** TTL support - auto-expire cached data with `ttl` and `onExpire`
 - `logger({ filter?, trackPerformance? })` - Console logging (v0.2.3: advanced filtering)
 
 ## Helpers
@@ -71,6 +72,25 @@ persist({
   key: 'photos',
   storage: 'indexedDB',  // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
   indexedDB: { database: 'my-app', storeName: 'photos' }
+})
+```
+
+⏱️ **TTL (Time-To-Live):** Auto-expire cached data
+```typescript
+// API cache with 5-minute expiration
+persist({
+  key: 'api-cache',
+  ttl: 5 * 60 * 1000,  // 5 minutes
+  onExpire: (key) => console.log(`Cache ${key} expired`)
+})
+
+// Session with auto-logout
+persist({
+  key: 'session',
+  storage: 'sessionStorage',
+  ttl: 30 * 60 * 1000,  // 30 minutes
+  omit: ['token'],
+  onExpire: () => window.location.href = '/login'
 })
 ```
 
