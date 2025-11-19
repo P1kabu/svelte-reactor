@@ -7,6 +7,7 @@ import { deepClone } from '../utils/index.js';
 import { pick, omit } from '../utils/path.js';
 import { IndexedDBStorageSync } from '../storage/indexeddb.js';
 import { memoryStorage } from '../storage/memory-storage.js';
+import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
 
 /**
  * Enable state persistence using direct storage access
@@ -106,13 +107,36 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       const item = storageBackend.getItem(key);
       if (!item) return null;
 
-      let data = JSON.parse(item);
-
-      // Handle compression (basic implementation)
-      if (compress && typeof data === 'string') {
-        // Decompress if needed (not implemented - just parse again)
-        data = JSON.parse(data);
+      // Handle decompression
+      let jsonString: string;
+      if (compress) {
+        // Decompress from UTF16
+        try {
+          const decompressed = decompressFromUTF16(item);
+          if (decompressed) {
+            // Validate decompressed data is valid JSON
+            try {
+              JSON.parse(decompressed);
+              jsonString = decompressed;
+            } catch {
+              // Decompression returned garbage - use original (backward compatibility)
+              console.warn(`[persist:${key}] Decompressed data is invalid, using uncompressed fallback`);
+              jsonString = item;
+            }
+          } else {
+            // Decompression returned null - try direct parse (backward compatibility)
+            console.warn(`[persist:${key}] Failed to decompress, trying uncompressed fallback`);
+            jsonString = item;
+          }
+        } catch (error) {
+          console.warn(`[persist:${key}] Decompression error, using uncompressed fallback:`, error);
+          jsonString = item;
+        }
+      } else {
+        jsonString = item;
       }
+
+      let data = JSON.parse(jsonString);
 
       // Check TTL expiration
       if (ttl !== undefined && data.__timestamp) {
@@ -211,15 +235,18 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
         data.__timestamp = Date.now();
       }
 
-      let serialized = JSON.stringify(data);
+      const jsonString = JSON.stringify(data);
 
-      // Handle compression (basic implementation)
+      // Handle compression
+      let finalString: string;
       if (compress) {
-        // Compress if needed (not implemented - just stringify again)
-        serialized = JSON.stringify(serialized);
+        // Compress to UTF16 (safe for all storage types)
+        finalString = compressToUTF16(jsonString);
+      } else {
+        finalString = jsonString;
       }
 
-      storageBackend.setItem(key, serialized);
+      storageBackend.setItem(key, finalString);
     } catch (error) {
       // Check if quota exceeded
       const isQuotaExceeded =

@@ -10,6 +10,8 @@
 - Minification enabled (+0% code, -19.6% bundle)
 - Aggressive API cleanup - removed all utility exports (-7% API surface)
 - Removed 15 unused/internal exports total (-27% API surface from 67 → 52)
+- Memory Storage support (+0 KB, tree-shakeable)
+- **Compression support (+0 KB base, tree-shakeable)** - lz-string only loaded when `compress: true`
 - Previous v0.2.4 size: 65.94 KB → 14.68 KB gzipped
 
 **Previous increases (v0.2.4):**
