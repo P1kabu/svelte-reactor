@@ -73,9 +73,18 @@ npx svelte-reactor init-ai
 
 This interactive CLI will generate AI instructions tailored to your preferred assistant:
 
-- **Claude Code**: Creates `.claude/SVELTE_REACTOR_RULES.md`
-- **Cursor AI**: Creates `.cursorrules`
+- **Claude Code**: Creates `.claude/README.md` (automatically read by Claude)
+- **Cursor AI**: Creates `.cursorrules` (automatically read by Cursor)
 - **GitHub Copilot**: Creates `.github/copilot-instructions.md`
+
+**Advanced options:**
+```bash
+# Merge with existing AI instructions
+npx svelte-reactor init-ai --merge
+
+# Overwrite existing files
+npx svelte-reactor init-ai --force
+```
 
 After setup, your AI will automatically:
 - Use `createReactor()` for state management

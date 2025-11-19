@@ -14,6 +14,10 @@ Complete API documentation for svelte-reactor.
 - [Helpers](#helpers)
   - [arrayActions](#arrayactions)
   - [asyncActions](#asyncactions)
+- [Svelte Store Utilities](#svelte-store-utilities)
+  - [derived](#derived)
+  - [get](#get)
+  - [readonly](#readonly)
 - [DevTools](#devtools)
   - [createDevTools](#createdevtools)
   - [ReactorDevTools Interface](#reactordevtools-interface)
@@ -968,6 +972,187 @@ ctrl.cancel(); // Cancel pending/in-flight request
 1. **Start**: Sets `loading: true`, optionally resets `error: null`
 2. **Success**: Sets `loading: false`, `error: null`, applies returned state
 3. **Error**: Sets `loading: false`, `error: <Error>`
+
+---
+
+## Svelte Store Utilities
+
+**NEW in v0.2.4:** Re-exported from `svelte/store` for convenience.
+
+All svelte-reactor stores are 100% compatible with Svelte's store API. These utilities are re-exported so you can import everything from a single source.
+
+### derived
+
+Create a store whose value is computed from one or more other stores.
+
+```typescript
+function derived<S extends Stores, T>(
+  stores: S,
+  fn: (values: StoresValues<S>) => T,
+  initial_value?: T
+): Readable<T>
+```
+
+**Parameters:**
+
+- `stores: S` - One or more stores to derive from (single store or array)
+- `fn: (values: StoresValues<S>) => T` - Function that computes the derived value
+- `initial_value?: T` - Optional initial value (computed immediately if not provided)
+
+**Returns:** `Readable<T>` - A readonly store with the computed value
+
+**Examples:**
+
+```typescript
+import { simpleStore, derived } from 'svelte-reactor';
+
+// Single store
+const count = simpleStore(0);
+const doubled = derived(count, $count => $count * 2);
+
+// Multiple stores
+const firstName = simpleStore('John');
+const lastName = simpleStore('Doe');
+const fullName = derived(
+  [firstName, lastName],
+  ([$first, $last]) => `${$first} ${$last}`
+);
+
+// With initial value
+const delayedCount = derived(count, $count => $count * 2, 0);
+```
+
+**With createReactor:**
+
+```typescript
+import { createReactor, derived } from 'svelte-reactor';
+
+interface CartState {
+  items: Array<{ price: number; quantity: number }>;
+}
+
+const cart = createReactor<CartState>({ items: [] });
+
+const totalPrice = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+);
+
+const totalItems = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.quantity, 0)
+);
+
+const cartSummary = derived(
+  [totalPrice, totalItems],
+  ([$price, $items]) => ({ price: $price, items: $items })
+);
+```
+
+---
+
+### get
+
+Get the current value from a store without subscribing.
+
+```typescript
+function get<T>(store: Readable<T>): T
+```
+
+**Parameters:**
+
+- `store: Readable<T>` - Any Svelte store (writable, readable, or derived)
+
+**Returns:** `T` - The current value of the store
+
+**Examples:**
+
+```typescript
+import { simpleStore, derived, get } from 'svelte-reactor';
+
+const count = simpleStore(42);
+console.log(get(count)); // 42
+
+const doubled = derived(count, $count => $count * 2);
+console.log(get(doubled)); // 84
+
+count.set(100);
+console.log(get(count)); // 100
+console.log(get(doubled)); // 200
+```
+
+**With createReactor:**
+
+```typescript
+import { createReactor, get } from 'svelte-reactor';
+
+const user = createReactor({ name: 'John', age: 30 });
+
+console.log(get(user)); // { name: 'John', age: 30 }
+
+user.update(state => {
+  state.age = 31;
+});
+
+console.log(get(user).age); // 31
+```
+
+**Note:** `get()` subscribes, reads the value, and immediately unsubscribes. For frequent reads, consider using a regular subscription.
+
+---
+
+### readonly
+
+Create a readonly version of a store.
+
+```typescript
+function readonly<T>(store: Readable<T>): Readable<T>
+```
+
+**Parameters:**
+
+- `store: Readable<T>` - Any Svelte store
+
+**Returns:** `Readable<T>` - A readonly store (no `set` or `update` methods)
+
+**Examples:**
+
+```typescript
+import { simpleStore, readonly, get } from 'svelte-reactor';
+
+const count = simpleStore(0);
+const readonlyCount = readonly(count);
+
+// readonlyCount has no set() or update() methods
+// readonlyCount.set(5); // TypeScript error
+
+// But subscribing and reading work
+readonlyCount.subscribe(value => console.log(value));
+console.log(get(readonlyCount)); // 0
+
+// Changes to original are reflected
+count.set(42);
+console.log(get(readonlyCount)); // 42
+```
+
+**Use cases:**
+
+- Expose state to components without allowing modifications
+- Create public API for a private writable store
+- Prevent accidental state mutations
+
+```typescript
+// Private writable store
+const _settings = simpleStore({ theme: 'dark', lang: 'en' });
+
+// Public readonly export
+export const settings = readonly(_settings);
+
+// Only internal code can modify
+export function setTheme(theme: string) {
+  _settings.update(s => { s.theme = theme; });
+}
+```
 
 ---
 

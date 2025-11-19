@@ -47,6 +47,15 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     throw new TypeError(`[persist] options.debounce must be a non-negative number, got ${debounce}`);
   }
 
+  // Validate storage type
+  const VALID_STORAGE_TYPES = ['localStorage', 'sessionStorage', 'indexedDB', 'memory'] as const;
+  if (!VALID_STORAGE_TYPES.includes(storage as any)) {
+    throw new TypeError(
+      `[persist] Invalid storage type: "${storage}". ` +
+      `Must be one of: ${VALID_STORAGE_TYPES.join(', ')}`
+    );
+  }
+
   let debounceTimer: any;
   let storageBackend: Storage | IndexedDBStorageSync | null = null;
   let storageListener: ((e: StorageEvent) => void) | null = null;

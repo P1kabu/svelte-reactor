@@ -14,7 +14,9 @@ prog.version('0.2.3');
 prog
   .command('init-ai')
   .describe('Generate AI assistant instructions for svelte-reactor')
-  .action(async () => {
+  .option('--force', 'Overwrite existing configuration files')
+  .option('--merge', 'Merge with existing configuration files')
+  .action(async (opts) => {
     console.log('\n' + kleur.bold().cyan('🚀 Svelte Reactor - AI Setup') + '\n');
 
     const response = await prompts([
@@ -42,7 +44,7 @@ prog
       copilot: generateCopilot
     };
 
-    await generators[response.provider]();
+    await generators[response.provider](opts);
   });
 
 prog.parse(process.argv);

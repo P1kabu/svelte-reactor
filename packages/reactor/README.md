@@ -30,6 +30,7 @@ Previous updates:
 ## 🚀 Features
 
 - **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
+- **🔗 Derived Stores** - `derived()`, `get()`, `readonly()` exported for single-import convenience
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
@@ -76,11 +77,20 @@ npx svelte-reactor init-ai
 ```
 
 This will generate AI instructions for:
-- **Claude Code** - `.claude/SVELTE_REACTOR_RULES.md`
-- **Cursor AI** - `.cursorrules`
+- **Claude Code** - `.claude/README.md` (automatically read by Claude)
+- **Cursor AI** - `.cursorrules` (automatically read by Cursor)
 - **GitHub Copilot** - `.github/copilot-instructions.md`
 
 Your AI assistant will then understand svelte-reactor patterns and suggest optimal code!
+
+**Advanced options:**
+```bash
+# Merge with existing AI instructions
+npx svelte-reactor init-ai --merge
+
+# Overwrite existing files
+npx svelte-reactor init-ai --force
+```
 
 ## 📖 Quick Start
 
@@ -314,6 +324,91 @@ api.searchUsers('john'); // Only this one runs after 300ms
 const controller = api.fetchUsers();
 controller.cancel(); // Cancel in-flight request
 ```
+
+---
+
+### 🔗 Derived Stores
+
+**NEW in v0.2.4:** `derived`, `get`, and `readonly` are now exported from `svelte-reactor` for convenience!
+
+All svelte-reactor stores are 100% compatible with Svelte's store API, including `derived()` stores. You can now import everything from a single source:
+
+```typescript
+import { simpleStore, derived, get, readonly } from 'svelte-reactor';
+
+// Create base stores
+const firstName = simpleStore('John');
+const lastName = simpleStore('Doe');
+
+// Derive computed values
+const fullName = derived(
+  [firstName, lastName],
+  ([$first, $last]) => `${$first} ${$last}`
+);
+
+console.log(get(fullName)); // "John Doe"
+
+firstName.set('Jane');
+console.log(get(fullName)); // "Jane Doe"
+
+// Create readonly versions
+const readonlyName = readonly(fullName);
+// readonlyName has no .set() or .update() methods
+```
+
+**Real-world example - Shopping Cart:**
+
+```typescript
+import { createReactor, derived, get } from 'svelte-reactor';
+
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+const cart = createReactor<{ items: CartItem[] }>({
+  items: []
+});
+
+// Derive total items
+const totalItems = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.quantity, 0)
+);
+
+// Derive total price
+const totalPrice = derived(
+  cart,
+  $cart => $cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+);
+
+// Combine derived stores
+const cartSummary = derived(
+  [totalItems, totalPrice],
+  ([$items, $price]) => `${$items} items - $${$price.toFixed(2)}`
+);
+
+// Add items to cart
+cart.update(state => {
+  state.items.push({ id: 1, name: 'Product A', price: 10, quantity: 2 });
+});
+
+console.log(get(cartSummary)); // "2 items - $20.00"
+```
+
+**Why use derived stores?**
+- ✅ **Automatic updates** - Recomputes when dependencies change
+- ✅ **Memoization** - Only recomputes when inputs change
+- ✅ **Composable** - Combine multiple stores easily
+- ✅ **Type-safe** - Full TypeScript support
+- ✅ **Single import** - No need to import from `svelte/store`
+
+**Exported utilities:**
+- `derived()` - Create computed stores from one or more stores
+- `get()` - Get current value from any store (one-time read)
+- `readonly()` - Create read-only version of a store
 
 ---
 

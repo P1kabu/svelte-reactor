@@ -22,6 +22,7 @@ export type {
   ReactorInspection,
   UndoRedoOptions,
   PersistOptions,
+  StorageType,
   LoggerOptions,
   SyncOptions,
   ReactorDevTools,
@@ -58,3 +59,8 @@ export type { DiffOperation, DiffEntry, DiffResult } from './utils/index.js';
 
 // DevTools
 export { createDevTools } from './devtools/index.js';
+
+// Svelte store utilities
+// Re-export from svelte/store for convenience - all svelte-reactor stores are compatible
+export { derived, get, readonly } from 'svelte/store';
+export type { Readable } from 'svelte/store';

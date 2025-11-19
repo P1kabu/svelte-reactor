@@ -222,6 +222,17 @@ export interface UndoRedoOptions {
 }
 
 /**
+ * Supported storage types for persistence
+ *
+ * @remarks
+ * - `localStorage` - Browser localStorage (default, 5-10MB limit)
+ * - `sessionStorage` - Browser sessionStorage (cleared on tab close)
+ * - `indexedDB` - Browser IndexedDB (50MB+ limit, async)
+ * - `memory` - In-memory storage (for testing/SSR)
+ */
+export type StorageType = 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory';
+
+/**
  * Options for persist plugin
  */
 export interface PersistOptions {
@@ -229,7 +240,7 @@ export interface PersistOptions {
   key: string;
 
   /** Storage type (default: 'localStorage') */
-  storage?: 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory';
+  storage?: StorageType;
 
   /** Debounce writes in milliseconds (default: 0) */
   debounce?: number;
