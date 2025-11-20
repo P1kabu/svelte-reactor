@@ -71,8 +71,8 @@ export function quotaExceededExample() {
       plugins: [
         persist({
           key: 'app-data',
-          storage: mockStorage as Storage,
-          onError: (error, key) => {
+          storage: mockStorage as any, // Mock storage for testing
+          onError: (error: Error, key: string) => {
             errorCount++;
             console.error(`❌ [Persist] Failed to save ${key}:`, error.message);
 
@@ -155,8 +155,8 @@ export function fallbackStorageExample() {
       plugins: [
         persist({
           key: 'fallback-test',
-          storage: currentStorage,
-          onError: (error, key) => {
+          storage: currentStorage as any, // Custom storage for testing
+          onError: (error: Error, key: string) => {
             if (!hasStorageError) {
               console.warn('⚠️  Primary storage failed, switching to memory storage');
               hasStorageError = true;
@@ -457,8 +457,8 @@ export function safeStorageWrapperExample() {
       plugins: [
         persist({
           key: 'safe-storage-test',
-          storage: safeStorage,
-          onError: (error) => {
+          storage: safeStorage as any, // Custom SafeStorage wrapper
+          onError: (error: Error) => {
             console.error('❌ Persist error:', error.message);
           }
         })
