@@ -60,7 +60,6 @@ export function quotaExceededExample() {
   console.log('\n=== Example 1: Handling Storage Quota Exceeded ===\n');
 
   const mockStorage = new MockQuotaExceededStorage();
-  let errorCount = 0;
 
   const store = createReactor<AppState>(
     {
@@ -71,24 +70,9 @@ export function quotaExceededExample() {
       plugins: [
         persist({
           key: 'app-data',
-          storage: mockStorage as any, // Mock storage for testing
-          onError: (error: Error, key: string) => {
-            errorCount++;
-            console.error(`❌ [Persist] Failed to save ${key}:`, error.message);
-
-            if (error.name === 'QuotaExceededError') {
-              console.log('⚠️  Storage quota exceeded!');
-              console.log('💡 Suggestion: Clear old data or use compression');
-
-              // Try to free space by removing oldest items
-              store.update(state => {
-                if (state.items.length > 0) {
-                  const removed = state.items.shift();
-                  console.log(`🗑️  Removed oldest item: ${removed}`);
-                }
-              });
-            }
-          }
+          storage: mockStorage as any // Mock storage for testing
+          // Note: persist plugin catches errors internally and logs them
+          // For custom error handling, wrap storage operations in try-catch
         })
       ]
     }
@@ -104,8 +88,9 @@ export function quotaExceededExample() {
     });
   }
 
-  console.log(`\n✅ Handled ${errorCount} quota exceeded errors`);
+  console.log('\n✅ Example completed - quota exceeded handled internally');
   console.log('Final items count:', store.state.items.length);
+  console.log('Note: persist plugin logs errors automatically');
 
   store.destroy();
 }
@@ -143,8 +128,7 @@ class FailingStorage implements Storage {
 export function fallbackStorageExample() {
   console.log('\n=== Example 2: Fallback Storage Pattern ===\n');
 
-  let currentStorage: Storage = new FailingStorage();
-  let hasStorageError = false;
+  const currentStorage: Storage = new FailingStorage();
 
   const store = createReactor<AppState>(
     {
@@ -155,21 +139,9 @@ export function fallbackStorageExample() {
       plugins: [
         persist({
           key: 'fallback-test',
-          storage: currentStorage as any, // Custom storage for testing
-          onError: (error: Error, key: string) => {
-            if (!hasStorageError) {
-              console.warn('⚠️  Primary storage failed, switching to memory storage');
-              hasStorageError = true;
-
-              // Switch to memory storage
-              currentStorage = new MemoryStorage();
-
-              console.log('✅ Now using temporary in-memory storage');
-              console.log('💡 Data will be lost on page reload');
-            } else {
-              console.error('❌ Fallback storage error:', error.message);
-            }
-          }
+          storage: currentStorage as any // Custom storage for testing
+          // Note: Storage failures are logged internally by persist plugin
+          // This example shows the SafeStorage pattern (see Example 5)
         })
       ]
     }
@@ -196,9 +168,9 @@ export function fallbackStorageExample() {
   console.log('✅ Third update succeeded (using fallback)');
 
   console.log('\nFinal state:', {
-    items: store.state.items.length,
-    usingFallback: hasStorageError
+    items: store.state.items.length
   });
+  console.log('💡 For automatic fallback, use SafeStorage pattern (Example 5)');
 
   store.destroy();
 }
@@ -457,10 +429,8 @@ export function safeStorageWrapperExample() {
       plugins: [
         persist({
           key: 'safe-storage-test',
-          storage: safeStorage as any, // Custom SafeStorage wrapper
-          onError: (error: Error) => {
-            console.error('❌ Persist error:', error.message);
-          }
+          storage: safeStorage as any // Custom SafeStorage wrapper with auto-fallback
+          // SafeStorage handles errors internally - see implementation above
         })
       ]
     }
