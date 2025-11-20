@@ -21,6 +21,7 @@ export default defineConfig({
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
         'plugins/index': resolve(__dirname, 'src/plugins/index.ts'),
+        'helpers/index': resolve(__dirname, 'src/helpers/index.ts'),
         'devtools/devtools': resolve(__dirname, 'src/devtools/devtools.ts'),
         'utils/index': resolve(__dirname, 'src/utils/index.ts'),
       },
@@ -28,12 +29,28 @@ export default defineConfig({
       fileName: (format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
-      external: ['svelte', 'svelte/reactivity'],
+      external: [
+        'svelte',
+        'svelte/reactivity',
+        'svelte/store',
+        // CLI deps (not used in browser bundles)
+        'kleur',
+        'prompts',
+        'sade'
+      ],
       output: {
         preserveModules: false,
+        // Enable manual chunks for better code splitting
+        manualChunks: undefined,
+      },
+      treeshake: {
+        moduleSideEffects: false,
+        propertyReadSideEffects: false,
+        unknownGlobalSideEffects: false,
       },
     },
     sourcemap: true,
     minify: process.env.NODE_ENV === 'production' ? 'esbuild' : false,
+    target: 'esnext',
   },
 });

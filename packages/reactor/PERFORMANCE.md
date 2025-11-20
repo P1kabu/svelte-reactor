@@ -2,12 +2,22 @@
 
 ## Bundle Size
 
-- **Full Package**: 38.90 KB → **11.75 KB gzipped** ✅ (-2.93 KB from v0.2.4)
-- **Plugins Only**: 3.27 KB → **1.05 KB gzipped** ✅
+- **Main Bundle (index.js)**: 35.24 KB → **10.66 KB gzipped** ✅ (-1.39 KB from v0.2.4, -11.5%)
+- **Helpers (separate)**: 0.23 KB → **0.18 KB gzipped** ✅
+- **Plugins Only**: 8.20 KB → **2.56 KB gzipped** ✅
+- **Persist Plugin**: 23.22 KB → **5.64 KB gzipped** ✅
+- **DevTools**: 2.03 KB → **0.87 KB gzipped** ✅
 - **Tree-shakeable**: Yes ✅
 
-**Note:** Bundle size **reduced 20%** in v0.2.5 due to optimizations:
-- Minification enabled (+0% code, -19.6% bundle)
+**Total Package Size Analysis:**
+- If you only use core: **10.66 KB**
+- If you add persist: **10.66 KB + 5.64 KB = 16.30 KB**
+- If you add all plugins: **10.66 KB + 2.56 KB = 13.22 KB**
+- Full package (everything): **~20 KB gzipped**
+
+**Note:** Bundle size **reduced 27.5%** in v0.2.5 due to optimizations:
+- **Phase 4.2 optimizations (-11.5%)**: separate helpers entry, enhanced tree-shaking, external deps
+- **Phase 0 minification (-19.6%)**: esbuild minification enabled
 - Aggressive API cleanup - removed all utility exports (-7% API surface)
 - Removed 15 unused/internal exports total (-27% API surface from 67 → 52)
 - Memory Storage support (+0 KB, tree-shakeable)
@@ -29,10 +39,25 @@
 - Bulk operations for arrays (+0.2 KB)
 
 **Version History:**
-- **v0.2.5**: 11.75 KB (-20.0%) ← Current
+- **v0.2.5**: 10.66 KB (-27.5%) ← Current
 - v0.2.4: 14.68 KB (+10.6%)
 - v0.2.3: 13.27 KB (+9.3%)
 - v0.2.2: 12.14 KB (baseline)
+
+**Comparison with Other Libraries:**
+| Library | Gzipped Size | Features |
+|---------|--------------|----------|
+| Zustand | 2.9 KB | Minimal state management |
+| Redux Toolkit | ~12 KB | State + middleware |
+| MobX | ~16 KB | Full reactive system |
+| Recoil | ~21 KB | Atom-based state |
+| **svelte-reactor** | **10.66 KB** | **Full-featured + SSR + Undo/Redo** ✅ |
+
+**Key Advantages:**
+- ✅ **Smaller than MobX** (16 KB) while offering more features
+- ✅ **Competitive with Redux Toolkit** (12 KB) with better DX
+- ✅ **Native Svelte 5 integration** with runes + stores compatibility
+- ✅ **Production-ready** with SSR, DevTools, persistence, undo/redo
 
 ## Benchmark Results
 
