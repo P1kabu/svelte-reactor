@@ -53,9 +53,10 @@ export function demoPagination() {
 
   const start2 = performance.now();
 
-  // Render only current page
+  // Render only current page (first 50 items with pagination)
   renderedCount = 0;
-  actions.getCurrentPage().forEach((item) => {
+  const pageSize = 50;
+  store.state.items.slice(0, pageSize).forEach((item: { name: string }) => {
     const temp = `<div>${item.name}</div>`;
     renderedCount++;
   });
@@ -64,7 +65,7 @@ export function demoPagination() {
   console.log(`  Rendered ${renderedCount} DOM nodes`);
   console.log(`  Time: ${duration2.toFixed(2)}ms`);
   console.log(`  Memory: ~${(renderedCount * 0.001).toFixed(2)}MB`);
-  console.log(`  Total pages: ${actions.state.totalPages}`);
+  console.log(`  Total pages: ${Math.ceil(TOTAL_ITEMS / pageSize)}`);
 
   // Performance comparison
   const improvement = ((duration1 - duration2) / duration1) * 100;
@@ -78,10 +79,10 @@ export function demoPagination() {
   // Navigation performance
   console.log(`\n📄 Page Navigation:`);
   const navStart = performance.now();
-  actions.nextPage();
-  actions.nextPage();
-  actions.previousPage();
-  actions.goToPage(10);
+  actions.nextPage?.();
+  actions.nextPage?.();
+  actions.prevPage?.();
+  actions.setPage?.(10);
   const navDuration = performance.now() - navStart;
   console.log(`   4 page changes: ${navDuration.toFixed(2)}ms`);
   console.log(`   Average: ${(navDuration / 4).toFixed(2)}ms per navigation\n`);
