@@ -5,7 +5,7 @@
  */
 
 // Core utilities (used by reactor, history, plugins)
-export { deepClone, isEqual } from './clone.js';
+export { deepClone, smartClone, isEqual } from './clone.js';
 
 // Path utilities (used by persist plugin for pick/omit options)
 export { pick, omit, getPath, setPath, deletePath } from './path.js';
