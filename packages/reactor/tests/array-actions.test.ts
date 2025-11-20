@@ -292,7 +292,7 @@ describe('arrayActions', () => {
       expect(() => {
         const invalidActions = arrayActions(invalidStore, 'items' as any);
         invalidActions.add({ id: '1', text: 'Test', done: false });
-      }).toThrow("Field 'items' is not an array");
+      }).toThrow("[arrayActions:add] Field 'items' must be an array");
     });
   });
 

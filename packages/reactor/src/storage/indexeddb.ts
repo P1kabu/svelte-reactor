@@ -54,7 +54,20 @@ export class IndexedDBStorage {
    */
   private async init(): Promise<void> {
     if (typeof indexedDB === 'undefined') {
-      throw new Error('IndexedDB is not available in this environment');
+      throw new Error(
+        `[IndexedDBStorage] IndexedDB is not available in this environment.\n` +
+        `  Environment: ${typeof window === 'undefined' ? 'Server-side (SSR)' : 'Browser without IndexedDB support'}\n\n` +
+        `Possible solutions:\n` +
+        `  1. Use memory storage for SSR: persist({ storage: 'memory' })\n` +
+        `  2. Use localStorage as fallback: persist({ storage: 'localStorage' })\n` +
+        `  3. Check browser compatibility: IndexedDB requires modern browsers\n\n` +
+        `Tip: Detect environment before using IndexedDB:\n` +
+        `  if (typeof indexedDB !== 'undefined') {\n` +
+        `    // Use IndexedDB\n` +
+        `  } else {\n` +
+        `    // Use fallback storage\n` +
+        `  }`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -87,7 +100,20 @@ export class IndexedDBStorage {
     await this.ready;
 
     if (!this.db) {
-      throw new Error('IndexedDB is not initialized');
+      throw new Error(
+        `[IndexedDBStorage:getItem] Database not initialized.\n` +
+        `  Database: ${this.dbName}\n` +
+        `  Store: ${this.storeName}\n` +
+        `  Key: ${key}\n\n` +
+        `Possible causes:\n` +
+        `  1. Database failed to open (check browser console for errors)\n` +
+        `  2. User denied storage permission\n` +
+        `  3. Private browsing mode may restrict IndexedDB\n\n` +
+        `Tip: Wait for initialization:\n` +
+        `  const storage = new IndexedDBStorage();\n` +
+        `  await storage.ready; // Wait for init\n` +
+        `  const value = await storage.getItem(key);`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -112,7 +138,19 @@ export class IndexedDBStorage {
     await this.ready;
 
     if (!this.db) {
-      throw new Error('IndexedDB is not initialized');
+      throw new Error(
+        `[IndexedDBStorage:setItem] Database not initialized.\n` +
+        `  Database: ${this.dbName}\n` +
+        `  Store: ${this.storeName}\n` +
+        `  Key: ${key}\n\n` +
+        `Possible causes:\n` +
+        `  1. Database failed to open (check browser console for errors)\n` +
+        `  2. User denied storage permission\n` +
+        `  3. Private browsing mode may restrict IndexedDB\n\n` +
+        `Tip: Check storage quota if writes are failing:\n` +
+        `  const quota = await storage.getQuota();\n` +
+        `  console.log('Storage used:', quota.percentage + '%');`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -137,7 +175,16 @@ export class IndexedDBStorage {
     await this.ready;
 
     if (!this.db) {
-      throw new Error('IndexedDB is not initialized');
+      throw new Error(
+        `[IndexedDBStorage:removeItem] Database not initialized.\n` +
+        `  Database: ${this.dbName}\n` +
+        `  Store: ${this.storeName}\n` +
+        `  Key: ${key}\n\n` +
+        `Possible causes:\n` +
+        `  1. Database failed to open (check browser console for errors)\n` +
+        `  2. User denied storage permission\n` +
+        `  3. Private browsing mode may restrict IndexedDB`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -162,7 +209,15 @@ export class IndexedDBStorage {
     await this.ready;
 
     if (!this.db) {
-      throw new Error('IndexedDB is not initialized');
+      throw new Error(
+        `[IndexedDBStorage:clear] Database not initialized.\n` +
+        `  Database: ${this.dbName}\n` +
+        `  Store: ${this.storeName}\n\n` +
+        `Possible causes:\n` +
+        `  1. Database failed to open (check browser console for errors)\n` +
+        `  2. User denied storage permission\n` +
+        `  3. Private browsing mode may restrict IndexedDB`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -187,7 +242,15 @@ export class IndexedDBStorage {
     await this.ready;
 
     if (!this.db) {
-      throw new Error('IndexedDB is not initialized');
+      throw new Error(
+        `[IndexedDBStorage:keys] Database not initialized.\n` +
+        `  Database: ${this.dbName}\n` +
+        `  Store: ${this.storeName}\n\n` +
+        `Possible causes:\n` +
+        `  1. Database failed to open (check browser console for errors)\n` +
+        `  2. User denied storage permission\n` +
+        `  3. Private browsing mode may restrict IndexedDB`
+      );
     }
 
     return new Promise((resolve, reject) => {
@@ -273,7 +336,11 @@ export class IndexedDBStorage {
    */
   static async deleteDatabase(dbName: string): Promise<void> {
     if (typeof indexedDB === 'undefined') {
-      throw new Error('IndexedDB is not available in this environment');
+      throw new Error(
+        `[IndexedDBStorage:deleteDatabase] IndexedDB is not available in this environment.\n` +
+        `  Environment: ${typeof window === 'undefined' ? 'Server-side (SSR)' : 'Browser without IndexedDB support'}\n\n` +
+        `Tip: This operation requires a browser environment with IndexedDB support.`
+      );
     }
 
     return new Promise((resolve, reject) => {

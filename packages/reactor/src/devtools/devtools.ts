@@ -83,7 +83,17 @@ export function createDevTools<T extends object>(
 
       // Validate data
       if (!data.state) {
-        throw new Error('Invalid import data: missing state');
+        const receivedKeys = Object.keys(data).join(', ') || '(empty object)';
+        throw new Error(
+          `[DevTools:importState] Invalid import data: missing "state" field.\n` +
+          `  Received keys: ${receivedKeys}\n\n` +
+          `Expected format:\n` +
+          `  {\n` +
+          `    "state": { /* your state data */ },\n` +
+          `    "name": "reactor-name" (optional)\n` +
+          `  }\n\n` +
+          `Tip: Export state first using exportState() to see the correct format.`
+        );
       }
 
       // Import state

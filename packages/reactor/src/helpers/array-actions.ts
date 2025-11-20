@@ -212,7 +212,14 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
   const getArray = (): T[] => {
     const value = reactor.state[field];
     if (!Array.isArray(value)) {
-      throw new Error(`Field '${String(field)}' is not an array`);
+      const actualType = value === null ? 'null' : value === undefined ? 'undefined' : typeof value;
+      throw new TypeError(
+        `[arrayActions] Field '${String(field)}' must be an array.\n` +
+        `  Current type: ${actualType}\n` +
+        `  Current value: ${JSON.stringify(value)}\n\n` +
+        `Tip: Initialize your state with an array:\n` +
+        `  const store = createReactor({ ${String(field)}: [] });`
+      );
     }
     return value as T[];
   };
@@ -222,7 +229,14 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
       reactor.update((state) => {
         const arr = state[field] as T[];
         if (!Array.isArray(arr)) {
-          throw new Error(`Field '${String(field)}' is not an array`);
+          const actualType = arr === null ? 'null' : arr === undefined ? 'undefined' : typeof arr;
+          throw new TypeError(
+            `[arrayActions:add] Field '${String(field)}' must be an array.\n` +
+            `  Current type: ${actualType}\n` +
+            `  Action: add\n\n` +
+            `Tip: Initialize your state with an array:\n` +
+            `  const store = createReactor({ ${String(field)}: [] });`
+          );
         }
         arr.push(item);
       }, `${actionPrefix}:add`);

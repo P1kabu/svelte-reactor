@@ -207,7 +207,14 @@ export function asyncActions<
 
       const executeAction = async (): Promise<any> => {
         if (cancelled) {
-          throw new Error('Action cancelled');
+          throw new Error(
+            `[asyncActions:${name}] Action cancelled.\n` +
+            `  Action: ${name}\n` +
+            `  Reason: cancel() was called before action started\n\n` +
+            `Tip: Handle cancellation in your code:\n` +
+            `  try { await actions.${name}(); }\n` +
+            `  catch (error) { /* Handle cancellation */ }`
+          );
         }
 
         // Set loading state and optionally reset error
@@ -225,7 +232,13 @@ export function asyncActions<
             : await action(...args);
 
           if (cancelled) {
-            throw new Error('Action cancelled');
+            throw new Error(
+              `[asyncActions:${name}] Action cancelled.\n` +
+              `  Action: ${name}\n` +
+              `  Reason: cancel() was called during action execution\n\n` +
+              `Tip: Check for cancellation in long-running operations:\n` +
+              `  if (abortController.signal.aborted) return;`
+            );
           }
 
           // Apply result to state and clear loading
