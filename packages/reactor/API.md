@@ -843,6 +843,182 @@ logger({
 - **Debouncing**: Configurable debounce to reduce write frequency
 - **Migrations**: Schema versioning for backwards compatibility
 
+### multiTabSync
+
+**NEW in v0.2.5** - Synchronize state across browser tabs and windows in real-time.
+
+```typescript
+function multiTabSync<T extends object>(
+  options?: SyncOptions
+): ReactorPlugin<T>
+```
+
+**SyncOptions:**
+
+```typescript
+interface SyncOptions {
+  // Sync key (default: reactor name)
+  // Reactors with the same key will sync with each other
+  key?: string;
+
+  // Enable BroadcastChannel API (default: true)
+  // Falls back to localStorage events if not available
+  broadcast?: boolean;
+
+  // Sync debounce in milliseconds (default: 100)
+  // Reduces broadcast frequency for rapid updates
+  debounce?: number;
+}
+```
+
+**Example:**
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+import { persist, multiTabSync } from 'svelte-reactor/plugins';
+
+// Basic usage - sync across tabs
+const counter = createReactor(
+  { count: 0 },
+  {
+    name: 'counter',
+    plugins: [
+      persist({ key: 'counter' }),       // Persist to localStorage
+      multiTabSync({ key: 'counter' })   // Sync across tabs
+    ],
+  }
+);
+
+// Update in one tab
+counter.update(s => { s.count++; });
+
+// All other tabs automatically receive the update! ✨
+```
+
+**Advanced Usage:**
+
+```typescript
+// Shopping cart synchronized across tabs
+const cart = createReactor(
+  { items: [], total: 0 },
+  {
+    name: 'shopping-cart',
+    plugins: [
+      persist({
+        key: 'cart',
+        storage: 'localStorage'
+      }),
+      multiTabSync({
+        key: 'cart',
+        debounce: 200  // Reduce sync frequency
+      })
+    ],
+  }
+);
+
+// User adds item in Tab 1
+cart.update(s => {
+  s.items.push({ id: 1, name: 'Book', price: 20 });
+  s.total = s.items.reduce((sum, item) => sum + item.price, 0);
+});
+
+// Cart in Tab 2 automatically updates! 🎉
+```
+
+**Use Cases:**
+
+```typescript
+// 1. Multi-tab dashboards
+const dashboard = createReactor(dashboardState, {
+  plugins: [
+    multiTabSync({ key: 'dashboard' })
+  ]
+});
+
+// 2. Collaborative editing (same user, multiple tabs)
+const editor = createReactor(editorState, {
+  plugins: [
+    persist({ key: 'draft' }),
+    multiTabSync({ key: 'draft', debounce: 500 })
+  ]
+});
+
+// 3. Authentication state
+const auth = createReactor({ user: null, token: null }, {
+  plugins: [
+    persist({ key: 'auth', omit: ['token'] }),
+    multiTabSync({ key: 'auth' })
+  ]
+});
+
+// User logs out in one tab -> all tabs redirect to login
+auth.update(s => { s.user = null; s.token = null; });
+```
+
+**Browser Compatibility:**
+
+- **BroadcastChannel API** (primary): Chrome 54+, Firefox 38+, Safari 15.4+
+- **localStorage events** (fallback): All modern browsers
+- **SSR-safe**: Gracefully handles server-side rendering
+
+**Features:**
+
+- **Real-time sync**: State changes instantly broadcast to all tabs
+- **Automatic fallback**: Uses localStorage events if BroadcastChannel unavailable
+- **Infinite loop prevention**: Smart detection prevents sync loops
+- **Debouncing**: Configurable to reduce network/CPU usage
+- **SSR compatible**: No crashes in server environments
+- **Zero configuration**: Works out of the box with reactor name
+
+**Performance:**
+
+```typescript
+// Optimize for high-frequency updates
+multiTabSync({
+  key: 'realtime-data',
+  debounce: 300  // Max 3 syncs per second
+})
+
+// Optimize for instant sync
+multiTabSync({
+  key: 'critical-state',
+  debounce: 0    // Immediate sync
+})
+```
+
+**Integration with persist plugin:**
+
+```typescript
+// Best practice: Use same key for persist + sync
+const store = createReactor(state, {
+  plugins: [
+    persist({
+      key: 'my-app',
+      storage: 'localStorage',
+      debounce: 500
+    }),
+    multiTabSync({
+      key: 'my-app',  // Same key!
+      debounce: 100   // Faster sync than persist
+    })
+  ]
+});
+
+// Why?
+// - persist saves to storage (slow, debounced)
+// - multiTabSync broadcasts changes (fast)
+// - Other tabs receive broadcast immediately
+// - Then load from storage on refresh
+```
+
+**Important Notes:**
+
+- Synced updates do NOT trigger `onChange` callbacks (to avoid confusion)
+- Synced updates DO trigger Svelte reactivity (components re-render)
+- Each reactor needs the same `key` to sync together
+- Different keys = isolated sync channels
+- Cleanup is automatic on reactor.destroy()
+
 ---
 
 ## Helpers
