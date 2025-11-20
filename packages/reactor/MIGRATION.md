@@ -1,5 +1,58 @@
 # 📦 Migration Guide
 
+## Upgrading to v0.2.5
+
+v0.2.5 is **100% backward compatible** - no breaking changes! Simply update and optionally enable new features.
+
+### What's New (Optional Features)
+
+**1. Data Compression (40-70% storage reduction)**
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+// Enable compression for large data
+const store = persistedStore('big-data', largeState, {
+  compress: true  // NEW: LZ-string compression
+});
+```
+
+**2. Memory Storage (Testing & SSR)**
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+// Use in-memory storage (no localStorage)
+const store = persistedStore('test-data', initialState, {
+  storage: 'memory'  // NEW: In-memory backend
+});
+```
+
+**3. Multi-Tab Synchronization**
+```typescript
+import { createReactor } from 'svelte-reactor';
+import { persist, multiTabSync } from 'svelte-reactor/plugins';
+
+const store = createReactor({ count: 0 }, {
+  plugins: [
+    persist({ key: 'counter' }),
+    multiTabSync({ key: 'counter' })  // NEW: Real-time sync across tabs
+  ]
+});
+```
+
+**4. Bundle Size Optimization**
+```typescript
+// v0.2.5: 27.4% smaller bundle (14.68 KB → 10.66 KB gzipped)
+// Separate entry points for tree-shaking:
+
+import { createReactor } from 'svelte-reactor';              // Core: 10.66 KB
+import { persistedStore } from 'svelte-reactor/helpers';     // +0.18 KB
+import { logger, undoRedo } from 'svelte-reactor/plugins';   // +2.56 KB
+```
+
+**No changes required** - all existing code works as-is! ✅
+
+---
+
 ## From Svelte Writable Stores
 
 ### Before (Svelte stores)

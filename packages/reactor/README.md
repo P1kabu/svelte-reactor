@@ -11,23 +11,28 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.4
+## ✨ What's New in v0.2.5 - "Polish & Power"
 
-🔗 **Derived Stores Export** - `derived()`, `get()`, `readonly()` from single import
-💾 **IndexedDB Storage** - 50MB+ capacity for large datasets (photos, documents, offline data)
-⏱️ **TTL (Time-To-Live)** - Auto-expire cached data with `ttl` and `onExpire` callback
-📄 **Pagination Helper** - Built-in pagination for large arrays with navigation
-🎯 **Storage Type Safety** - TypeScript union types + runtime validation
-🤖 **AI Setup Fix** - `init-ai` now creates files that AI assistants actually read
-✅ **326 tests** (+94 new) - All features thoroughly tested
+📦 **27.4% Smaller Bundle** - 14.68 KB → **10.66 KB gzipped** (Phase 0 + Phase 4.2 optimizations)
+📚 **3 Comprehensive Guides** - [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
+🗜️ **Data Compression** - Built-in LZ-string compression (40-70% size reduction, tree-shakeable)
+💾 **Memory Storage** - In-memory storage backend for testing and SSR
+🔄 **Multi-Tab Sync** - Real-time state synchronization across browser tabs
+⚡ **612x Faster Cloning** - Large array performance optimization (Phase 4.1)
+🎯 **Better Error Messages** - Contextual errors with suggestions and fixes
+✅ **435 tests** (+109 new) - All features thoroughly tested
 
-Previous updates:
+**Documentation (3161+ lines):**
+- 📖 **[PLUGINS.md](./PLUGINS.md)** - Complete plugin development guide with 4 working examples
+- 🚀 **[PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md)** - Optimization strategies with 5 runnable demos
+- 🛡️ **[ERROR_HANDLING.md](./ERROR_HANDLING.md)** - Error handling patterns with 20 examples across 4 categories
+
+Previous versions:
+- **v0.2.4**: IndexedDB storage, TTL, pagination, derived stores export, 326 tests
 - **v0.2.3**: Selective persistence, retry/cancellation, bulk operations, advanced logger
 - **v0.2.2**: Memory leak fixes, performance optimization, enhanced validation
-- **v0.2.1**: Async Actions Helper, Array Actions Helper
-- **v0.2.0**: Full Svelte stores API compatibility
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[Upgrade Guide v0.2.4](../../UPGRADES/UPGRADE-0.2.4.md)**
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.5 Plan](../../UPGRADES/PLAN_v0.2.5.md)**
 
 ## 🚀 Features
 
@@ -36,7 +41,9 @@ Previous updates:
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
-- **💾 Smart Persistence** - localStorage, sessionStorage, IndexedDB (50MB+ storage) ✨ NEW in v0.2.4
+- **💾 Smart Persistence** - localStorage, sessionStorage, IndexedDB (50MB+), **Memory Storage** ✨ NEW in v0.2.5
+- **🗜️ Data Compression** - Built-in LZ compression (40-70% smaller, tree-shakeable) ✨ NEW in v0.2.5
+- **🔄 Multi-Tab Sync** - Real-time synchronization across browser tabs ✨ NEW in v0.2.5
 - **🔒 Security First** - Exclude sensitive data (tokens, passwords) from persistence
 - **🔄 Network Resilience** - Retry logic with exponential backoff, request cancellation
 - **📊 Bulk Operations** - Sort, bulk update/remove for arrays
@@ -44,7 +51,8 @@ Previous updates:
 - **🎮 DevTools** - Time-travel debugging and state inspection
 - **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
 - **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **14.7 KB gzipped** (full), tree-shakeable modules
+- **🪶 Lightweight** - **10.66 KB gzipped** (core), tree-shakeable modules ✨ 27.4% smaller in v0.2.5
+- **📚 Rich Documentation** - 3+ comprehensive guides (plugins, performance, error handling)
 - **0️⃣ Zero dependencies** - Only requires Svelte 5
 
 ## Installation

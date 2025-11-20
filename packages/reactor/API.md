@@ -1,6 +1,20 @@
 # API Reference
 
-Complete API documentation for svelte-reactor.
+Complete API documentation for svelte-reactor v0.2.5.
+
+## What's New in v0.2.5
+
+🎉 **Major improvements** in v0.2.5 - "Polish & Power":
+
+- **📦 27.4% Smaller Bundle**: 14.68 KB → 10.66 KB gzipped
+- **🗜️ Data Compression**: `compress: true` option for 40-70% storage reduction (tree-shakeable)
+- **💾 Memory Storage**: In-memory storage backend for testing and SSR (`storage: 'memory'`)
+- **🔄 Multi-Tab Sync**: Real-time state sync across tabs (`multiTabSync` plugin)
+- **⚡ 612x Faster Cloning**: Optimized large array performance
+- **🎯 Better Error Messages**: Contextual errors with actionable suggestions
+- **📚 3 New Guides**: [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
+
+👉 See [v0.2.5 Plan](../../UPGRADES/PLAN_v0.2.5.md) for complete changelog.
 
 ## Table of Contents
 
@@ -10,6 +24,7 @@ Complete API documentation for svelte-reactor.
 - [Plugins](#plugins)
   - [undoRedo](#undoredo)
   - [persist](#persist)
+  - [multiTabSync](#multitabsync) ✨ NEW in v0.2.5
   - [logger](#logger)
 - [Helpers](#helpers)
   - [arrayActions](#arrayactions)

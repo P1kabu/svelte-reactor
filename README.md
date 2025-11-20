@@ -11,6 +11,21 @@
 
 A comprehensive state management library for Svelte 5 applications with built-in undo/redo, middleware, persistence, and DevTools support.
 
+## ✨ What's New in v0.2.5 - "Polish & Power"
+
+🎉 **Major Release** with performance and DX improvements:
+
+- **📦 27.4% Smaller**: 14.68 KB → **10.66 KB gzipped** (core bundle)
+- **🗜️ Data Compression**: Built-in LZ compression (40-70% storage reduction, tree-shakeable)
+- **💾 Memory Storage**: In-memory backend for testing and SSR (`storage: 'memory'`)
+- **🔄 Multi-Tab Sync**: Real-time state synchronization across browser tabs
+- **⚡ 612x Faster**: Optimized cloning for large arrays (Phase 4.1)
+- **🎯 Better Errors**: Contextual error messages with actionable suggestions
+- **📚 3 New Guides**: Complete documentation for plugins, performance, and error handling
+- **✅ 435 Tests**: +109 new tests, all passing
+
+👉 [Full Changelog](./UPGRADES/PLAN_v0.2.5.md) | [Quick Start](./packages/reactor/QUICK_START.md) | [API Reference](./packages/reactor/API.md)
+
 ## Features
 
 - **Svelte 5 Runes** - Built specifically for `$state`, `$derived`, and `$effect`
@@ -18,13 +33,15 @@ A comprehensive state management library for Svelte 5 applications with built-in
 - **Array Actions** - Helper for CRUD operations with bulk updates, sorting, and filtering
 - **Async Actions** - Automatic loading/error states with retry, cancellation, and debounce
 - **Middleware** - Redux-style middleware for logging, effects, and more
-- **Persistence** - Built-in persist plugin with selective pick/omit support
+- **Persistence** - localStorage, sessionStorage, IndexedDB (50MB+), **Memory** ✨ NEW
+- **Compression** - Built-in LZ compression for storage (40-70% smaller) ✨ NEW
+- **Multi-Tab Sync** - Real-time synchronization across tabs ✨ NEW
 - **DevTools** - Time-travel debugging and state inspection
 - **AI-Ready** - CLI to teach AI assistants (Claude, Cursor, Copilot) best practices
 - **Type-safe** - Full TypeScript support with excellent type inference
 - **SSR-safe** - Works seamlessly with SvelteKit
-- **Tiny** - **14.68 KB gzipped** (full package), **1.05 KB** (plugins only)
-- **Tree-shakeable** - Import only what you need
+- **Tiny** - **10.66 KB gzipped** (core), **2.56 KB** (plugins), tree-shakeable ✨ 27.4% smaller
+- **Rich Documentation** - 3+ comprehensive guides (3161+ lines) ✨ NEW
 - **Zero dependencies** - Only requires Svelte 5
 
 ## Installation
@@ -47,7 +64,8 @@ Detailed upgrade guides for migrating between versions:
 
 📖 **[View All Upgrade Guides](./UPGRADES/)**
 
-- [v0.2.4](./UPGRADES/UPGRADE-0.2.4.md) - DX improvements & advanced features (current)
+- **[v0.2.5](./UPGRADES/PLAN_v0.2.5.md)** - "Polish & Power" release (current) ✨
+- [v0.2.4](./UPGRADES/UPGRADE-0.2.4.md) - DX improvements & advanced features
 - [v0.2.3](./UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements
 - [v0.2.2](./UPGRADES/UPGRADE-0.2.2.md) - Bug fixes & stability improvements
 

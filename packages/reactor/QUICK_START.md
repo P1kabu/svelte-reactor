@@ -279,7 +279,12 @@ export function validate() {
 
 ## Next Steps
 
-- [Full API Reference](./API.md)
-- [Migration Guide](./MIGRATION.md)
-- [Plugin Development](./PLUGINS.md)
-- [Examples](../../examples)
+**📚 Comprehensive Guides (v0.2.5):**
+- 📖 [Plugin Development Guide](./PLUGINS.md) - Create custom plugins with 4 working examples
+- 🚀 [Performance Optimization Guide](./PERFORMANCE_GUIDE.md) - Optimization strategies with 5 demos
+- 🛡️ [Error Handling Guide](./ERROR_HANDLING.md) - Error patterns with 20 examples
+
+**📖 Core Documentation:**
+- [Full API Reference](./API.md) - Complete API documentation
+- [Migration Guide](./MIGRATION.md) - Migrate from other state libraries
+- [Examples](../../examples) - Real-world usage examples
