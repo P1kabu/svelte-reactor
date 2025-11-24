@@ -7,7 +7,7 @@
 export { createReactor } from './core/reactor.svelte.js';
 
 // Helpers (convenient wrappers)
-export { simpleStore, persistedStore, persistedReactor, arrayActions, asyncActions } from './helpers/index.js';
+export { simpleStore, persistedStore, persistedReactor, arrayActions, asyncActions, computedStore } from './helpers/index.js';
 
 // Types
 export type {
@@ -32,7 +32,7 @@ export type {
 } from './types/index.js';
 
 // Helper types
-export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, PaginationOptions, PaginatedResult, AsyncActions, AsyncActionOptions, AsyncState } from './helpers/index.js';
+export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOptions, PaginationOptions, PaginatedResult, AsyncActions, AsyncActionOptions, AsyncState, ComputedStoreOptions } from './helpers/index.js';
 
 // DevTools
 export { createDevTools } from './devtools/index.js';
@@ -44,3 +44,6 @@ export { batch, batchAll, batched, debouncedBatch } from './utils/batch.js';
 // Re-export from svelte/store for convenience - all svelte-reactor stores are compatible
 export { derived, get, readonly } from 'svelte/store';
 export type { Readable } from 'svelte/store';
+
+// Utility functions
+export { isEqual } from './utils/clone.js';
