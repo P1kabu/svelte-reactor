@@ -64,6 +64,10 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
         timestamp: Date.now(),
         action,
       });
+      // Update current state even in batch mode
+      this.current = deepClone(nextState);
+      // Clear future (can't redo after new change)
+      this.future = [];
       return;
     }
 
@@ -177,13 +181,16 @@ export class UndoRedoHistory<T> implements IUndoRedoHistory<T> {
     this.batchMode = false;
 
     if (this.batchBuffer.length > 0) {
-      // Save only the first state in batch
+      // Save only the first state (before batch) to past
       const firstEntry = this.batchBuffer[0];
       this.past.push({
         state: firstEntry.state,
         timestamp: Date.now(),
         action: 'batch',
       });
+
+      // Note: this.current already contains the final state after all batch updates
+      // because each push() call in batch mode updated this.current
 
       // Enforce limit
       if (this.past.length > this.limit) {

@@ -61,6 +61,11 @@ export function createReactor<T extends object>(
   // Subscribers for Svelte stores compatibility
   const subscribers = new Set<(value: T) => void>();
 
+  // Batching state
+  let batchDepth = 0;
+  let batchStartState: T | undefined;
+  let batchEndState: T | undefined;
+
   // Plugin context
   const pluginContext: PluginContext<T> = {
     state,
@@ -181,8 +186,17 @@ export function createReactor<T extends object>(
       // Run after middlewares
       middlewareChain.runAfter(prevState, nextState, action);
 
-      // Notify subscribers
-      notifySubscribers(nextState, prevState, action);
+      // Handle batching
+      if (batchDepth > 0) {
+        // We're in a batch, store states for later notification
+        if (!batchStartState) {
+          batchStartState = prevState;
+        }
+        batchEndState = nextState;
+      } else {
+        // Not in a batch, notify immediately
+        notifySubscribers(nextState, prevState, action);
+      }
     } catch (error) {
       const actionName = action ? ` (action: "${action}")` : '';
       console.error(`[Reactor:${name}] Update failed${actionName}:`, error);
@@ -267,20 +281,34 @@ export function createReactor<T extends object>(
   }
 
   /**
-   * Batch multiple updates into single history entry
+   * Batch multiple updates into single history entry and notification
    */
   function batch(fn: () => void): void {
-    if (!history) {
-      // No history, just run the function
-      fn();
-      return;
+    // Start batching
+    batchDepth++;
+
+    // Start history batch if available
+    if (history) {
+      history.startBatch();
     }
 
-    history.startBatch();
     try {
       fn();
     } finally {
-      history.endBatch();
+      // End history batch if available
+      if (history) {
+        history.endBatch();
+      }
+
+      // End batching
+      batchDepth--;
+
+      // If this is the outermost batch and we have accumulated changes, notify once
+      if (batchDepth === 0 && batchStartState && batchEndState) {
+        notifySubscribers(batchEndState, batchStartState, 'batch');
+        batchStartState = undefined;
+        batchEndState = undefined;
+      }
     }
   }
 

@@ -36,6 +36,9 @@ export type { WritableStore, PersistedStoreOptions, ArrayActions, ArrayActionsOp
 // DevTools
 export { createDevTools } from './devtools/index.js';
 
+// Batch utilities
+export { batch, batchAll, batched, debouncedBatch } from './utils/batch.js';
+
 // Svelte store utilities
 // Re-export from svelte/store for convenience - all svelte-reactor stores are compatible
 export { derived, get, readonly } from 'svelte/store';
