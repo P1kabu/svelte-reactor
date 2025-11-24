@@ -59,7 +59,7 @@ const store = createReactor(initialState, options);
   - Options: `loadingKey`, `errorKey`, `actionPrefix`
   - **NEW in v0.2.3:** `retry`, `debounce`, cancellation with `.cancel()`
 
-## Best Practices (v0.2.4)
+## Best Practices (v0.2.5)
 
 ✅ **DO:**
 - Use createReactor for reactive state
@@ -69,8 +69,9 @@ const store = createReactor(initialState, options);
 - Call destroy() when component unmounts (prevents memory leaks!)
 - Use arrayActions() and asyncActions() helpers
 - Add action names for better debugging
-- **NEW:** Use derived stores for computed values
-- **NEW:** Use IndexedDB for large datasets (>5MB)
+- Use derived stores for computed values
+- Use IndexedDB for large datasets (>5MB)
+- **NEW:** Use selective subscriptions for performance (form fields, component optimization)
 
 ❌ **DON'T:**
 - Mutate state directly
@@ -79,7 +80,40 @@ const store = createReactor(initialState, options);
 - Persist sensitive data without encryption
 - Skip input validation (reactor validates automatically)
 
-## v0.2.4 Features (Latest)
+## v0.2.5 Features (Latest)
+
+🎯 **Selective Subscriptions:** Subscribe to specific state fields
+```typescript
+import { createReactor, isEqual } from 'svelte-reactor';
+
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  count: 0
+});
+
+// Only fires when name changes
+store.subscribe({
+  selector: state => state.user.name,
+  onChanged: (name, prevName) => console.log(`${prevName} → ${name}`)
+});
+
+store.update(s => { s.count++; });        // ❌ NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Called!
+
+// Deep equality for arrays/objects
+store.subscribe({
+  selector: state => state.items,
+  onChanged: (items) => console.log('Items changed!'),
+  equalityFn: isEqual,  // Deep comparison
+  fireImmediately: false  // Don't fire on mount
+});
+```
+
+⚡ **Critical Path Optimizations:** 2-10x faster updates
+
+📦 **Batch Utilities:** Optimized batch operations
+
+## v0.2.4 Features
 
 🔗 **Derived Stores:** Single import for all Svelte store utilities
 ```typescript
@@ -200,5 +234,5 @@ form.update(s => ({ ...s, name: 'John' }));
 
 ---
 
-**Current Version:** v0.2.3 (232 tests, production-ready)
-**Key Updates:** Selective persistence, retry/debounce, bulk operations, performance tracking
+**Current Version:** v0.2.5 (461 tests, production-ready)
+**Key Updates:** Selective subscriptions, critical path optimizations, batch utilities

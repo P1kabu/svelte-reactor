@@ -180,6 +180,90 @@ const store2 = createReactor({ count: 0 }, {
 });
 ```
 
+## Selective Subscriptions (v0.2.5)
+
+**NEW in v0.2.5:** Subscribe to specific parts of state for performance optimization!
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+import { isEqual } from 'svelte-reactor';
+
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  settings: { theme: 'dark' },
+  count: 0
+});
+
+// ✅ GOOD: Subscribe to specific field - callback only fires when that field changes
+store.subscribe({
+  selector: state => state.user.name,
+  onChanged: (name, prevName) => {
+    console.log(`Name changed: ${prevName} → ${name}`);
+  }
+});
+
+store.update(s => { s.count++; });        // ❌ Callback NOT called
+store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
+
+// ❌ BAD: Standard subscription - fires on ANY change
+store.subscribe(state => {
+  console.log(state.user.name); // Fires even when count or age changes!
+});
+```
+
+**Options:**
+- `selector` - Function to select specific part of state
+- `onChanged` - Callback with (newValue, prevValue) when selected value changes
+- `fireImmediately` - Call callback immediately with initial value (default: true)
+- `equalityFn` - Custom equality comparison (default: `===`)
+
+**Use deep equality for arrays/objects:**
+```typescript
+// Deep equality check for array changes
+store.subscribe({
+  selector: state => state.items,
+  onChanged: (items, prevItems) => {
+    console.log('Items actually changed!');
+  },
+  equalityFn: isEqual  // Deep comparison - won't fire if content is same
+});
+
+store.update(s => { s.items = [1, 2, 3]; }); // ✅ Fires
+store.update(s => { s.items = [1, 2, 3]; }); // ❌ Doesn't fire (deep equal)
+store.update(s => { s.items = [1, 2, 3, 4]; }); // ✅ Fires (different)
+```
+
+**Real-world example - Form validation:**
+```typescript
+const form = createReactor({
+  name: '',
+  email: '',
+  age: 0,
+  metadata: { lastSaved: Date.now() }
+});
+
+// Only validate email when email field changes
+store.subscribe({
+  selector: state => state.email,
+  onChanged: (email) => {
+    if (!email.includes('@')) {
+      console.error('Invalid email');
+    }
+  },
+  fireImmediately: false  // Don't validate on mount
+});
+
+// Won't trigger email validation
+form.update(s => { s.metadata.lastSaved = Date.now(); });
+```
+
+**When to use:**
+- 🎯 **Form fields** - Validate only the field that changed
+- 🎯 **Component optimization** - Component only needs specific state slice
+- 🎯 **Expensive computations** - Only recompute when dependencies change
+- 🎯 **Multiple subscriptions** - Different components watch different fields
+
 ## Derived Stores (v0.2.4)
 
 **NEW in v0.2.4:** `derived`, `get`, and `readonly` are now exported from `svelte-reactor` for single-import convenience!
@@ -213,7 +297,7 @@ const totalPrice = derived(
 console.log(get(totalPrice)); // Auto-updates when cart changes
 ```
 
-## Best Practices (v0.2.4)
+## Best Practices (v0.2.5)
 
 1. **Always use createReactor** for state management in Svelte 5 projects
 2. **Use .update()** for state changes, never mutate directly
@@ -223,8 +307,9 @@ console.log(get(totalPrice)); // Auto-updates when cart changes
 6. **Always call destroy()** when component unmounts to prevent memory leaks
 7. **Use arrayActions() and asyncActions()** helpers to reduce boilerplate
 8. **Add action names** to update() calls for better debugging
-9. **NEW: Use derived stores** for computed values - they auto-update and are memoized
-10. **NEW: Use IndexedDB** for large datasets (>5MB) instead of localStorage
+9. **Use derived stores** for computed values - they auto-update and are memoized
+10. **Use IndexedDB** for large datasets (>5MB) instead of localStorage
+11. **NEW: Use selective subscriptions** when you only need specific fields - massive performance boost!
 
 ## Anti-patterns
 
@@ -564,13 +649,17 @@ const store = createReactor({ data: null });
 
 ---
 
-**Version:** v0.2.4 (325 tests, all features stable)
+**Version:** v0.2.5 (461 tests, all features stable)
 
-**NEW in v0.2.4:**
+**NEW in v0.2.5:**
+- 🎯 **Selective Subscriptions** - Subscribe to specific state fields for performance
+- ⚡ **Critical Path Optimizations** - 2-10x faster state updates
+- 📦 **Batch Utilities** - Optimized batch state operations
+
+**Also in v0.2.4:**
 - ✅ `derived`, `get`, `readonly` exported from svelte-reactor (single import!)
 - ✅ IndexedDB storage support (50MB+ capacity)
 - ✅ TTL (Time-To-Live) support for persist plugin - auto-expire cached data
 - ✅ Storage type safety with TypeScript union types
-- ✅ Runtime validation for storage parameter
 
 **Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, DevTools integration, and automatic memory management.

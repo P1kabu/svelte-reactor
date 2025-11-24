@@ -505,6 +505,48 @@ import { onDestroy } from 'svelte';
 onDestroy(() => store.destroy());
 ```
 
+## Selective Subscriptions (v0.2.5)
+
+```typescript
+// NEW in v0.2.5: Subscribe to specific state fields for performance
+import { createReactor, isEqual } from 'svelte-reactor';
+
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  settings: { theme: 'dark' },
+  count: 0
+});
+
+// ✅ GOOD: Only fires when name changes
+store.subscribe({
+  selector: state => state.user.name,
+  onChanged: (name, prevName) => {
+    console.log(`Name: ${prevName} → ${name}`);
+  }
+});
+
+store.update(s => { s.count++; });        // ❌ NOT called
+store.update(s => { s.user.age = 31; });  // ❌ NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Called!
+
+// ❌ BAD: Standard subscription fires on ANY change
+store.subscribe(state => {
+  console.log(state.user.name); // Fires even when count changes!
+});
+```
+
+**Options:**
+- `selector` - Select specific state part
+- `onChanged` - Callback with (newValue, prevValue)
+- `fireImmediately` - Fire on mount (default: true)
+- `equalityFn` - Custom equality (use `isEqual` for deep comparison)
+
+**Use cases:**
+- 🎯 Form field validation (only validate changed field)
+- 🎯 Component optimization (subscribe to needed slice)
+- 🎯 Expensive computations (only when dependencies change)
+- 🎯 Multiple independent subscriptions
+
 ## Derived Stores (v0.2.4)
 
 ```typescript
@@ -539,6 +581,35 @@ const totalPrice = derived(
 console.log(get(totalPrice)); // $0.00
 // Add items...
 console.log(get(totalPrice)); // $120.00
+```
+
+## v0.2.5 Features
+
+### Selective Subscriptions
+```typescript
+// ✅ Subscribe to specific fields - massive performance boost
+store.subscribe({
+  selector: state => state.user.email,
+  onChanged: (email) => validateEmail(email),
+  fireImmediately: false
+});
+```
+
+### Critical Path Optimizations
+- 2-10x faster state updates
+- Optimized subscription system
+- Reduced memory allocations
+
+### Batch Utilities
+```typescript
+import { batch } from 'svelte-reactor';
+
+// Efficient batch operations
+batch(store, (state) => {
+  state.user.name = 'John';
+  state.user.age = 30;
+  state.settings.theme = 'dark';
+}); // Single notification to subscribers
 ```
 
 ## v0.2.4 Features
@@ -639,9 +710,14 @@ store.update(s => ({ ...s, count: s.count + 1 }));
 
 ---
 
-**Current Version:** v0.2.4 (325 tests, production-ready)
+**Current Version:** v0.2.5 (461 tests, production-ready)
 
-**NEW in v0.2.4:**
+**NEW in v0.2.5:**
+- 🎯 **Selective Subscriptions** - Subscribe to specific state fields for performance
+- ⚡ **Critical Path Optimizations** - 2-10x faster state updates
+- 📦 **Batch Utilities** - Optimized batch state operations
+
+**Also in v0.2.4:**
 - ✅ Derived stores export (`derived`, `get`, `readonly`) - single import!
 - ✅ IndexedDB storage support (50MB+ capacity for large datasets)
 - ✅ TTL (Time-To-Live) support - auto-expire cached data with `ttl` and `onExpire`

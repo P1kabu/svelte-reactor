@@ -13,6 +13,7 @@ Real-world examples and patterns for using svelte-reactor.
   - [Shopping Cart](#shopping-cart)
   - [Canvas Editor](#canvas-editor)
 - [Patterns](#patterns)
+  - [Selective Subscriptions](#selective-subscriptions) ✨ NEW in v0.2.5
   - [Custom Middleware](#custom-middleware)
   - [Derived State](#derived-state)
   - [Action Tracking](#action-tracking)
@@ -979,6 +980,209 @@ Simple drawing app with undo/redo.
 ---
 
 ## Patterns
+
+### Selective Subscriptions
+
+**NEW in v0.2.5** - Subscribe to specific parts of state for better performance.
+
+#### Pattern 1: Form Field Validation
+
+Only validate fields that actually changed.
+
+```typescript
+import { createReactor, isEqual } from 'svelte-reactor';
+
+interface FormState {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  name: string;
+  errors: Record<string, string>;
+}
+
+const form = createReactor<FormState>({
+  email: '',
+  password: '',
+  confirmPassword: '',
+  name: '',
+  errors: {}
+});
+
+// Validate email only when it changes
+form.subscribe({
+  selector: state => state.email,
+  onChanged: (email) => {
+    if (!email.includes('@')) {
+      form.update(s => { s.errors.email = 'Invalid email'; });
+    } else {
+      form.update(s => { delete s.errors.email; });
+    }
+  }
+});
+
+// Validate password match only when passwords change
+form.subscribe({
+  selector: state => [state.password, state.confirmPassword],
+  onChanged: ([pwd, confirm]) => {
+    if (pwd !== confirm) {
+      form.update(s => { s.errors.password = 'Passwords do not match'; });
+    } else {
+      form.update(s => { delete s.errors.password; });
+    }
+  },
+  equalityFn: isEqual  // Deep comparison for array
+});
+
+// Name changes don't trigger email or password validation! ⚡
+```
+
+#### Pattern 2: Component Performance Optimization
+
+React only to specific state changes in components.
+
+```svelte
+<script lang="ts">
+  import { createReactor } from 'svelte-reactor';
+  import { onMount } from 'svelte';
+
+  interface AppState {
+    user: { name: string; avatar: string };
+    posts: Post[];
+    notifications: number;
+    theme: 'light' | 'dark';
+  }
+
+  export let store: Reactor<AppState>;
+
+  // User profile component only cares about user data
+  let userName = $state('');
+  let userAvatar = $state('');
+
+  onMount(() => {
+    // Subscribe only to user changes
+    const unsubscribe = store.subscribe({
+      selector: state => state.user,
+      onChanged: (user) => {
+        userName = user.name;
+        userAvatar = user.avatar;
+      }
+    });
+
+    return unsubscribe;
+  });
+
+  // Posts/notifications/theme changes don't re-render this component! ⚡
+</script>
+
+<div class="user-profile">
+  <img src={userAvatar} alt={userName} />
+  <h3>{userName}</h3>
+</div>
+```
+
+#### Pattern 3: Derived Computations
+
+Compute expensive derived values only when dependencies change.
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+
+interface AnalyticsState {
+  events: Event[];
+  config: Config;
+  metadata: Metadata;
+}
+
+const analytics = createReactor<AnalyticsState>({
+  events: [],
+  config: {},
+  metadata: {}
+});
+
+// Expensive computation - only run when events change
+analytics.subscribe({
+  selector: state => state.events,
+  onChanged: (events) => {
+    // Expensive aggregation
+    const stats = computeStatistics(events);
+    const trends = analyzeTrends(events);
+    updateDashboard(stats, trends);
+  }
+});
+
+// Config/metadata changes don't trigger expensive recomputation! ⚡
+```
+
+#### Pattern 4: Multiple Independent Subscriptions
+
+Monitor different parts of state independently.
+
+```typescript
+const store = createReactor({
+  auth: { user: null, token: '' },
+  ui: { sidebar: 'open', theme: 'dark' },
+  data: { items: [], loading: false }
+});
+
+// Auth subscription
+store.subscribe({
+  selector: state => state.auth.user,
+  onChanged: (user) => {
+    if (user) {
+      initializeUserSession(user);
+    } else {
+      cleanupUserSession();
+    }
+  }
+});
+
+// UI subscription
+store.subscribe({
+  selector: state => state.ui.theme,
+  onChanged: (theme) => {
+    document.body.className = theme;
+  }
+});
+
+// Data subscription
+store.subscribe({
+  selector: state => state.data.loading,
+  onChanged: (loading) => {
+    if (loading) showSpinner();
+    else hideSpinner();
+  }
+});
+
+// Each subscription is independent and only fires when relevant! 🎯
+```
+
+#### Pattern 5: Debounced Updates with fireImmediately
+
+Control when validation/updates should happen.
+
+```typescript
+// Don't validate on mount, only on actual changes
+form.subscribe({
+  selector: state => state.email,
+  onChanged: (email) => validateEmail(email),
+  fireImmediately: false  // Wait for user input
+});
+
+// Do show initial notification count
+store.subscribe({
+  selector: state => state.notifications,
+  onChanged: (count) => updateBadge(count),
+  fireImmediately: true  // Show count immediately (default)
+});
+```
+
+**Performance tips:**
+- ⚡ Use selective subscriptions for expensive operations
+- 🎯 Prefer multiple selective subscriptions over one "watch all" subscription
+- 🔍 Use `isEqual` for deep comparison of arrays/objects
+- ⏱️ Set `fireImmediately: false` for validation/effects that shouldn't run on mount
+
+---
 
 ### Custom Middleware
 
