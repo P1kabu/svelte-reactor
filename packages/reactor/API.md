@@ -6,7 +6,8 @@ Complete API documentation for svelte-reactor v0.2.5.
 
 🎉 **Major improvements** in v0.2.5 - "Polish & Power":
 
-- **📦 27.4% Smaller Bundle**: 14.68 KB → 10.66 KB gzipped
+- **🎯 Selective Subscriptions**: Subscribe to specific state parts, callback fires only when selected value changes
+- **📦 25% Smaller Bundle**: 14.68 KB → 11.04 KB gzipped (Phase 0 + 4.2 optimizations)
 - **🗜️ Data Compression**: `compress: true` option for 40-70% storage reduction (tree-shakeable)
 - **💾 Memory Storage**: In-memory storage backend for testing and SSR (`storage: 'memory'`)
 - **🔄 Multi-Tab Sync**: Real-time state sync across tabs (`multiTabSync` plugin)
@@ -203,6 +204,125 @@ counter.batch(() => {
 });
 // Only one undo needed to revert all 3 increments
 ```
+
+#### subscribe(callback)
+
+**NEW in v0.2.5:** Enhanced with selective subscription support!
+
+Subscribe to state changes. Supports both standard (entire state) and selective (specific parts) subscriptions.
+
+**Standard subscription:**
+
+```typescript
+function subscribe(callback: (state: T) => void, invalidate?: () => void): () => void
+```
+
+**Parameters:**
+- `callback: (state: T) => void` - Called with entire state on every change
+- `invalidate?: () => void` - Optional invalidate function (Svelte stores compatibility)
+
+**Returns:** Unsubscribe function
+
+**Example:**
+
+```typescript
+const counter = createReactor({ value: 0, name: 'Counter' });
+
+// Subscribe to all changes
+const unsubscribe = counter.subscribe(state => {
+  console.log('State:', state); // { value: 0, name: 'Counter' }
+});
+
+counter.update(s => { s.value++; }); // Callback fires
+counter.update(s => { s.name = 'New Counter'; }); // Callback fires
+
+// Clean up
+unsubscribe();
+```
+
+**Selective subscription:** ✨ NEW in v0.2.5
+
+```typescript
+function subscribe<R>(options: SelectiveSubscribeOptions<T, R>): () => void
+
+interface SelectiveSubscribeOptions<T, R> {
+  // Extract specific value from state
+  selector: (state: T) => R;
+
+  // Called only when selected value changes
+  onChanged: (value: R, prevValue?: R) => void;
+
+  // Fire callback immediately with current value (default: true)
+  fireImmediately?: boolean;
+
+  // Custom equality check (default: ===)
+  equalityFn?: (a: R, b: R) => boolean;
+}
+```
+
+**Parameters:**
+- `selector` - Function that extracts the value to observe
+- `onChanged` - Callback that receives the selected value (not entire state)
+- `fireImmediately` - Whether to call callback immediately (default: `true`)
+- `equalityFn` - Custom equality function for comparing values (default: `(a, b) => a === b`)
+
+**Returns:** Unsubscribe function
+
+**Example:**
+
+```typescript
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  count: 0
+});
+
+// Subscribe only to user.name
+const unsubscribe = store.subscribe({
+  selector: state => state.user.name,
+  onChanged: (name, prevName) => {
+    console.log(`Name changed: ${prevName} → ${name}`);
+  }
+});
+
+store.update(s => { s.count++; });        // ❌ Callback NOT called
+store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
+
+unsubscribe();
+```
+
+**Advanced example with custom equality:**
+
+```typescript
+import { isEqual } from 'svelte-reactor';
+
+store.subscribe({
+  selector: state => state.items,
+  onChanged: (items) => console.log('Items:', items),
+
+  // Use deep equality for arrays/objects
+  equalityFn: isEqual,
+
+  // Don't fire immediately
+  fireImmediately: false
+});
+
+// Array reference changes but content is same
+store.update(s => { s.items = [1, 2, 3]; });
+store.update(s => { s.items = [1, 2, 3]; }); // ❌ Not called (deep equal)
+
+store.update(s => { s.items = [1, 2, 3, 4]; }); // ✅ Called (content changed)
+```
+
+**Why use selective subscriptions?**
+- ⚡ **Performance** - Avoid unnecessary re-renders/computations
+- 🎯 **Precision** - React only to relevant changes
+- 🧩 **Composable** - Multiple selective subscriptions per store
+- 🔌 **Compatible** - Works with `derived()`, `get()`, etc.
+
+**See [EXAMPLES.md](./EXAMPLES.md#selective-subscriptions) for more patterns**
+
+---
 
 #### undo()
 

@@ -13,14 +13,15 @@
 
 ## ✨ What's New in v0.2.5 - "Polish & Power"
 
-📦 **27.4% Smaller Bundle** - 14.68 KB → **10.66 KB gzipped** (Phase 0 + Phase 4.2 optimizations)
+🎯 **Selective Subscriptions** - Subscribe to specific state parts, callback fires only when selected value changes (Phase 3.1)
+📦 **25% Smaller Bundle** - 14.68 KB → **11.04 KB gzipped** (Phase 0 + Phase 4.2 optimizations)
 📚 **3 Comprehensive Guides** - [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
 🗜️ **Data Compression** - Built-in LZ-string compression (40-70% size reduction, tree-shakeable)
 💾 **Memory Storage** - In-memory storage backend for testing and SSR
 🔄 **Multi-Tab Sync** - Real-time state synchronization across browser tabs
 ⚡ **612x Faster Cloning** - Large array performance optimization (Phase 4.1)
 🎯 **Better Error Messages** - Contextual errors with suggestions and fixes
-✅ **435 tests** (+109 new) - All features thoroughly tested
+✅ **461 tests** (+135 new) - All features thoroughly tested
 
 **Documentation (3161+ lines):**
 - 📖 **[PLUGINS.md](./PLUGINS.md)** - Complete plugin development guide with 4 working examples
@@ -37,6 +38,7 @@ Previous versions:
 ## 🚀 Features
 
 - **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
+- **🎯 Selective Subscriptions** - Subscribe to specific state parts for better performance ✨ NEW in v0.2.5
 - **🔗 Derived Stores** - `derived()`, `get()`, `readonly()` exported for single-import convenience
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
@@ -51,7 +53,7 @@ Previous versions:
 - **🎮 DevTools** - Time-travel debugging and state inspection
 - **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
 - **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **10.66 KB gzipped** (core), tree-shakeable modules ✨ 27.4% smaller in v0.2.5
+- **🪶 Lightweight** - **11.04 KB gzipped** (core), tree-shakeable modules ✨ 25% smaller in v0.2.5
 - **📚 Rich Documentation** - 3+ comprehensive guides (plugins, performance, error handling)
 - **0️⃣ Zero dependencies** - Only requires Svelte 5
 
@@ -438,6 +440,87 @@ console.log(get(cartSummary)); // "2 items - $20.00"
 - `derived()` - Create computed stores from one or more stores
 - `get()` - Get current value from any store (one-time read)
 - `readonly()` - Create read-only version of a store
+
+---
+
+### 🎯 Selective Subscriptions
+
+**NEW in v0.2.5:** Subscribe to specific parts of state for better performance!
+
+Instead of subscribing to the entire state, you can subscribe to just the parts you care about. The callback only fires when the selected value changes.
+
+**Basic example:**
+
+```typescript
+import { createReactor } from 'svelte-reactor';
+
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  count: 0
+});
+
+// Selective subscribe - only fires when user.name changes
+store.subscribe({
+  selector: state => state.user.name,
+  onChanged: (name, prevName) => {
+    console.log(`Name: ${prevName} → ${name}`);
+  }
+});
+
+store.update(s => { s.count++; });        // ❌ Callback NOT called
+store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
+```
+
+**Advanced options:**
+
+```typescript
+import { isEqual } from 'svelte-reactor';
+
+store.subscribe({
+  selector: state => state.items,
+  onChanged: (items) => console.log(items),
+
+  // Don't fire immediately (default: true)
+  fireImmediately: false,
+
+  // Custom equality (useful for arrays/objects)
+  equalityFn: isEqual  // Deep comparison
+});
+```
+
+**Why use selective subscriptions?**
+- ⚡ **Performance** - Avoid unnecessary re-renders and computations
+- 🎯 **Precision** - React only to relevant state changes
+- 🧩 **Composable** - Multiple selective subscriptions per store
+- 🔌 **Svelte-compatible** - Works seamlessly with `derived()`, `get()`, etc.
+
+**Real-world example - Form validation:**
+
+```typescript
+const form = createReactor({
+  name: '',
+  email: '',
+  password: '',
+  confirmPassword: ''
+});
+
+// Validate each field independently
+form.subscribe({
+  selector: s => s.email,
+  onChanged: (email) => validateEmail(email)
+});
+
+form.subscribe({
+  selector: s => [s.password, s.confirmPassword],
+  onChanged: ([pwd, confirm]) => validatePasswordMatch(pwd, confirm),
+  equalityFn: isEqual  // Deep comparison for arrays
+});
+
+// Changes to 'name' don't trigger email or password validation! 🎯
+```
+
+**See [EXAMPLES.md](./EXAMPLES.md#selective-subscriptions) for more patterns**
 
 ---
 
