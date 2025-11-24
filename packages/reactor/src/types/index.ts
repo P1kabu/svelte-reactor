@@ -13,14 +13,62 @@ export type Subscriber<T> = (value: T) => void;
 export type Unsubscriber = () => void;
 
 /**
+ * Options for selective subscriptions
+ */
+export interface SelectiveSubscribeOptions<T extends object, R> {
+  /** Function that extracts the value you want to observe */
+  selector: (state: T) => R;
+
+  /** Callback that receives only the selected value */
+  onChanged: (value: R, prevValue?: R) => void;
+
+  /**
+   * Fire callback immediately with current value
+   * @default true
+   */
+  fireImmediately?: boolean;
+
+  /**
+   * Custom equality function to determine if value changed
+   * @default (a, b) => a === b
+   */
+  equalityFn?: (a: R, b: R) => boolean;
+}
+
+/**
  * Reactor instance returned by createReactor
  */
 export interface Reactor<T extends object> {
   /** Reactive state (Svelte $state) */
   readonly state: T;
 
-  /** Subscribe to state changes (Svelte stores API compatible) */
-  subscribe(subscriber: Subscriber<T>): Unsubscriber;
+  /**
+   * Subscribe to state changes (Svelte stores API compatible)
+   *
+   * @overload Subscribe to entire state
+   * @param subscriber Callback that receives the entire state
+   * @param invalidate Optional invalidate function (Svelte stores compatibility)
+   * @returns Unsubscribe function
+   *
+   * @overload Selective subscribe to specific part of state
+   * @param options Selective subscription options with selector and callback
+   * @returns Unsubscribe function
+   *
+   * @example Standard subscribe
+   * ```ts
+   * store.subscribe(state => console.log(state))
+   * ```
+   *
+   * @example Selective subscribe
+   * ```ts
+   * store.subscribe({
+   *   selector: state => state.user.name,
+   *   onChanged: (name, prevName) => console.log(name)
+   * })
+   * ```
+   */
+  subscribe(subscriber: Subscriber<T>, invalidate?: () => void): Unsubscriber;
+  subscribe<R>(options: SelectiveSubscribeOptions<T, R>): Unsubscriber;
 
   /** Update state using an updater function */
   update(updater: (state: T) => void, action?: string): void;

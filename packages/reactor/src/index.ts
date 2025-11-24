@@ -28,6 +28,7 @@ export type {
   ReactorDevTools,
   Subscriber,
   Unsubscriber,
+  SelectiveSubscribeOptions,
 } from './types/index.js';
 
 // Helper types
