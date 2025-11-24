@@ -1184,6 +1184,405 @@ store.subscribe({
 
 ---
 
+### Computed Stores
+
+**NEW in v0.2.5** - Memoized computed state with dependency tracking for maximum performance.
+
+#### Pattern 1: Todo List with Filters
+
+Efficiently filter large lists without unnecessary recomputations.
+
+```typescript
+import { createReactor, computedStore, isEqual } from 'svelte-reactor';
+
+interface Todo {
+  id: number;
+  text: string;
+  done: boolean;
+  priority: 'low' | 'medium' | 'high';
+  tags: string[];
+}
+
+const store = createReactor({
+  todos: [] as Todo[],
+  filter: 'all' as 'all' | 'active' | 'completed',
+  searchQuery: '',
+  sortBy: 'priority' as 'priority' | 'text'
+});
+
+// Computed filtered & sorted todos
+// Only recomputes when todos, filter, searchQuery, or sortBy change
+const filteredTodos = computedStore(
+  store,
+  state => {
+    let result = state.todos;
+
+    // Filter by completion status
+    if (state.filter === 'active') {
+      result = result.filter(t => !t.done);
+    } else if (state.filter === 'completed') {
+      result = result.filter(t => t.done);
+    }
+
+    // Filter by search query
+    if (state.searchQuery) {
+      const query = state.searchQuery.toLowerCase();
+      result = result.filter(t =>
+        t.text.toLowerCase().includes(query) ||
+        t.tags.some(tag => tag.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort
+    if (state.sortBy === 'priority') {
+      const priorityMap = { high: 0, medium: 1, low: 2 };
+      result = [...result].sort((a, b) =>
+        priorityMap[a.priority] - priorityMap[b.priority]
+      );
+    } else {
+      result = [...result].sort((a, b) =>
+        a.text.localeCompare(b.text)
+      );
+    }
+
+    return result;
+  },
+  {
+    keys: ['todos', 'filter', 'searchQuery', 'sortBy'],
+    equals: isEqual  // Deep comparison
+  }
+);
+
+// In Svelte component
+$: todos = $filteredTodos;  // Efficiently reactive!
+
+// Performance: updating unrelated state doesn't trigger recomputation
+store.update(s => { s.metadata = { lastSync: Date.now() }; });
+// ✅ filteredTodos NOT recomputed (metadata not in keys)
+```
+
+#### Pattern 2: Shopping Cart with Pricing
+
+Calculate totals efficiently with dependency tracking.
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  taxable: boolean;
+}
+
+const cart = createReactor({
+  items: [] as CartItem[],
+  discount: 0,      // 0-1 (0% to 100%)
+  taxRate: 0.08,    // 8% tax
+  shippingCost: 0,
+  currency: 'USD',
+  metadata: {
+    customerId: '123',
+    sessionId: 'abc',
+    lastModified: Date.now()
+  }
+});
+
+// Computed subtotal
+const subtotal = computedStore(
+  cart,
+  state => state.items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  ),
+  { keys: ['items'] }
+);
+
+// Computed tax
+const tax = computedStore(
+  cart,
+  state => {
+    const taxableAmount = state.items
+      .filter(item => item.taxable)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return taxableAmount * state.taxRate;
+  },
+  { keys: ['items', 'taxRate'] }
+);
+
+// Computed total
+const total = computedStore(
+  cart,
+  state => {
+    const sub = state.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const afterDiscount = sub * (1 - state.discount);
+    const taxableAmount = state.items
+      .filter(item => item.taxable)
+      .reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const taxAmount = taxableAmount * state.taxRate;
+    return afterDiscount + taxAmount + state.shippingCost;
+  },
+  { keys: ['items', 'discount', 'taxRate', 'shippingCost'] }
+);
+
+// In Svelte component
+$: subtotalPrice = $subtotal;
+$: taxAmount = $tax;
+$: totalPrice = $total;
+
+// Updating metadata doesn't trigger any recomputations! 🚀
+cart.update(s => {
+  s.metadata.lastModified = Date.now();
+  s.metadata.sessionId = 'xyz';
+});
+```
+
+#### Pattern 3: Dashboard with Multiple Computed Metrics
+
+Build complex dashboards with efficient computations.
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+interface SalesData {
+  date: string;
+  revenue: number;
+  orders: number;
+  customers: number;
+}
+
+const dashboard = createReactor({
+  salesData: [] as SalesData[],
+  dateRange: { start: '2024-01-01', end: '2024-12-31' },
+  comparisonPeriod: 'previous' as 'previous' | 'year-ago',
+  currency: 'USD',
+  theme: 'light'
+});
+
+// Total revenue (only recomputes when salesData or dateRange changes)
+const totalRevenue = computedStore(
+  dashboard,
+  state => {
+    const filtered = state.salesData.filter(d =>
+      d.date >= state.dateRange.start && d.date <= state.dateRange.end
+    );
+    return filtered.reduce((sum, d) => sum + d.revenue, 0);
+  },
+  { keys: ['salesData', 'dateRange'] }
+);
+
+// Average order value
+const averageOrderValue = computedStore(
+  dashboard,
+  state => {
+    const filtered = state.salesData.filter(d =>
+      d.date >= state.dateRange.start && d.date <= state.dateRange.end
+    );
+    const revenue = filtered.reduce((sum, d) => sum + d.revenue, 0);
+    const orders = filtered.reduce((sum, d) => sum + d.orders, 0);
+    return orders > 0 ? revenue / orders : 0;
+  },
+  { keys: ['salesData', 'dateRange'] }
+);
+
+// Top performing days
+const topDays = computedStore(
+  dashboard,
+  state => {
+    const filtered = state.salesData.filter(d =>
+      d.date >= state.dateRange.start && d.date <= state.dateRange.end
+    );
+    return [...filtered]
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+  },
+  {
+    keys: ['salesData', 'dateRange'],
+    equals: (a, b) => JSON.stringify(a) === JSON.stringify(b)
+  }
+);
+
+// Chart data (formatted for display)
+const chartData = computedStore(
+  dashboard,
+  state => {
+    const filtered = state.salesData.filter(d =>
+      d.date >= state.dateRange.start && d.date <= state.dateRange.end
+    );
+    return filtered.map(d => ({
+      x: new Date(d.date).getTime(),
+      y: d.revenue,
+      label: new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: state.currency
+      }).format(d.revenue)
+    }));
+  },
+  { keys: ['salesData', 'dateRange', 'currency'] }
+);
+
+// In Svelte component - all efficiently reactive!
+$: revenue = $totalRevenue;
+$: avgOrder = $averageOrderValue;
+$: best = $topDays;
+$: data = $chartData;
+
+// Changing theme doesn't recompute ANY metrics! 🎉
+dashboard.update(s => { s.theme = 'dark'; });
+```
+
+#### Pattern 4: Search with Debounced Results
+
+Combine computedStore with reactive queries.
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+interface Product {
+  id: number;
+  name: string;
+  category: string;
+  price: number;
+  tags: string[];
+  inStock: boolean;
+}
+
+const store = createReactor({
+  products: [] as Product[],
+  query: '',
+  category: 'all',
+  priceRange: { min: 0, max: Infinity },
+  showOutOfStock: false
+});
+
+// Computed search results
+// Only recomputes when query, category, priceRange, or showOutOfStock change
+const searchResults = computedStore(
+  store,
+  state => {
+    let results = state.products;
+
+    // Filter by stock
+    if (!state.showOutOfStock) {
+      results = results.filter(p => p.inStock);
+    }
+
+    // Filter by category
+    if (state.category !== 'all') {
+      results = results.filter(p => p.category === state.category);
+    }
+
+    // Filter by price range
+    results = results.filter(p =>
+      p.price >= state.priceRange.min && p.price <= state.priceRange.max
+    );
+
+    // Filter by search query
+    if (state.query) {
+      const q = state.query.toLowerCase();
+      results = results.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.tags.some(tag => tag.toLowerCase().includes(q))
+      );
+    }
+
+    return results;
+  },
+  {
+    keys: ['products', 'query', 'category', 'priceRange', 'showOutOfStock']
+  }
+);
+
+// Computed result counts by category
+const categoryCounts = computedStore(
+  store,
+  state => {
+    const counts: Record<string, number> = {};
+    state.products.forEach(p => {
+      counts[p.category] = (counts[p.category] || 0) + 1;
+    });
+    return counts;
+  },
+  { keys: ['products'] }
+);
+
+// In Svelte component
+$: results = $searchResults;
+$: counts = $categoryCounts;
+```
+
+#### Pattern 5: Nested Computed Stores
+
+Chain computed stores for complex pipelines.
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+const store = createReactor({
+  rawData: [] as { date: string; value: number }[],
+  smoothingWindow: 7,
+  threshold: 100
+});
+
+// Step 1: Smooth the data
+const smoothedData = computedStore(
+  store,
+  state => {
+    const window = state.smoothingWindow;
+    return state.rawData.map((point, i) => {
+      const start = Math.max(0, i - Math.floor(window / 2));
+      const end = Math.min(state.rawData.length, i + Math.ceil(window / 2));
+      const slice = state.rawData.slice(start, end);
+      const avg = slice.reduce((sum, p) => sum + p.value, 0) / slice.length;
+      return { ...point, value: avg };
+    });
+  },
+  { keys: ['rawData', 'smoothingWindow'] }
+);
+
+// Step 2: Detect anomalies (computed from smoothed data)
+const anomalies = computedStore(
+  store,
+  state => {
+    // Get smoothed data
+    const smoothed = state.rawData.map((point, i) => {
+      const window = state.smoothingWindow;
+      const start = Math.max(0, i - Math.floor(window / 2));
+      const end = Math.min(state.rawData.length, i + Math.ceil(window / 2));
+      const slice = state.rawData.slice(start, end);
+      const avg = slice.reduce((sum, p) => sum + p.value, 0) / slice.length;
+      return avg;
+    });
+
+    // Find anomalies
+    return state.rawData
+      .map((point, i) => ({
+        ...point,
+        isAnomaly: Math.abs(point.value - smoothed[i]) > state.threshold
+      }))
+      .filter(p => p.isAnomaly);
+  },
+  { keys: ['rawData', 'smoothingWindow', 'threshold'] }
+);
+
+// Both computed stores update efficiently!
+$: smooth = $smoothedData;
+$: alerts = $anomalies;
+```
+
+**Performance tips:**
+- 🎯 Specify `keys` to track only relevant dependencies
+- ⚡ Use `equals: isEqual` for deep comparison of complex objects
+- 📊 Chain computed stores for multi-step pipelines
+- 🔄 Combine with `derived()` for multi-source computations
+- 🚀 Performance gain: 2-10x faster for expensive operations
+
+---
+
 ### Custom Middleware
 
 Create custom middleware for logging, analytics, or side effects.

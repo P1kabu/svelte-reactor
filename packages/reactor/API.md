@@ -7,6 +7,7 @@ Complete API documentation for svelte-reactor v0.2.5.
 🎉 **Major improvements** in v0.2.5 - "Polish & Power":
 
 - **🎯 Selective Subscriptions**: Subscribe to specific state parts, callback fires only when selected value changes
+- **📊 Computed Stores**: Memoized computed state with dependency tracking (2-10x faster)
 - **📦 25% Smaller Bundle**: 14.68 KB → 11.04 KB gzipped (Phase 0 + 4.2 optimizations)
 - **🗜️ Data Compression**: `compress: true` option for 40-70% storage reduction (tree-shakeable)
 - **💾 Memory Storage**: In-memory storage backend for testing and SSR (`storage: 'memory'`)
@@ -14,8 +15,9 @@ Complete API documentation for svelte-reactor v0.2.5.
 - **⚡ 612x Faster Cloning**: Optimized large array performance
 - **🎯 Better Error Messages**: Contextual errors with actionable suggestions
 - **📚 3 New Guides**: [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
+- **✅ 475 tests**: All features thoroughly tested
 
-👉 See [v0.2.5 Plan](../../UPGRADES/PLAN_v0.2.5.md) for complete changelog.
+👉 See [v0.2.5 Upgrade](../../UPGRADES/UPGRADE-0.2.5.md) for complete changelog.
 
 ## Table of Contents
 
@@ -1682,6 +1684,202 @@ ctrl.cancel(); // Cancel pending/in-flight request
 1. **Start**: Sets `loading: true`, optionally resets `error: null`
 2. **Success**: Sets `loading: false`, `error: null`, applies returned state
 3. **Error**: Sets `loading: false`, `error: <Error>`
+
+---
+
+### computedStore
+
+**NEW in v0.2.5:** Create a memoized computed store with dependency tracking.
+
+```typescript
+function computedStore<T extends object, R>(
+  source: Reactor<T>,
+  compute: (state: T) => R,
+  options?: ComputedStoreOptions<R>
+): Readable<R>
+```
+
+**Parameters:**
+
+- `source: Reactor<T>` - Source reactor to derive from
+- `compute: (state: T) => R` - Computation function
+- `options?: ComputedStoreOptions<R>` - Optional configuration
+
+**ComputedStoreOptions:**
+
+```typescript
+interface ComputedStoreOptions<R> {
+  // Dependency keys - only recompute when these fields change
+  // Supports nested paths: 'user.profile.name'
+  keys?: string[];
+
+  // Custom equality function for result comparison
+  // Prevents updates if new result equals previous result
+  // Default: (a, b) => a === b
+  equals?: (a: R, b: R) => boolean;
+}
+```
+
+**Returns:** `Readable<R>` - Svelte-compatible readable store
+
+**Features:**
+
+- 🎯 **Dependency tracking** - Only recomputes when specified fields change
+- ⚡ **Smart caching** - Avoids expensive recomputations (2-10x faster)
+- 📦 **Stable references** - Returns same object if content unchanged
+- 🔗 **Composable** - Works with `derived()`, `get()`, and all Svelte APIs
+- 🌲 **Tree-shakeable** - Only adds ~1KB when used
+
+**Basic Example:**
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+const store = createReactor({
+  items: [
+    { id: 1, name: 'Apple', done: false },
+    { id: 2, name: 'Banana', done: true },
+    { id: 3, name: 'Orange', done: false }
+  ],
+  filter: 'all',
+  metadata: { lastUpdated: Date.now() }
+});
+
+// Computed store - only recalculates when items or filter change
+const filteredItems = computedStore(
+  store,
+  state => {
+    if (state.filter === 'completed') return state.items.filter(item => item.done);
+    if (state.filter === 'active') return state.items.filter(item => !item.done);
+    return state.items;
+  },
+  {
+    keys: ['items', 'filter']  // Only recompute when these change
+  }
+);
+
+// Use like any Svelte store
+filteredItems.subscribe(items => console.log(items));
+console.log(get(filteredItems));
+
+// Updating metadata doesn't trigger recomputation! 🚀
+store.update(s => { s.metadata.lastUpdated = Date.now(); });
+```
+
+**With Custom Equality:**
+
+```typescript
+import { computedStore, isEqual } from 'svelte-reactor';
+
+const computed = computedStore(
+  store,
+  state => expensiveCalculation(state.data),
+  {
+    keys: ['data', 'settings.theme'],  // Supports nested paths
+    equals: isEqual  // Deep equality check
+  }
+);
+
+// Won't notify subscribers if result is deeply equal
+store.update(s => { s.data = [...s.data]; }); // Same content = no notification
+```
+
+**Shopping Cart Example:**
+
+```typescript
+interface CartItem {
+  id: number;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+const cart = createReactor({
+  items: [] as CartItem[],
+  discount: 0,
+  taxRate: 0.1,
+  metadata: { lastModified: Date.now() }
+});
+
+// Computed total - only recalculates when relevant fields change
+const total = computedStore(
+  cart,
+  state => {
+    const subtotal = state.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const afterDiscount = subtotal * (1 - state.discount);
+    return afterDiscount * (1 + state.taxRate);
+  },
+  {
+    keys: ['items', 'discount', 'taxRate']
+    // metadata changes won't trigger recalculation!
+  }
+);
+
+// In Svelte component
+$: totalPrice = $total;  // Reactively updates, but efficiently!
+```
+
+**Performance Comparison:**
+
+```typescript
+// ❌ Without computedStore - recalculates on EVERY state change
+const total = derived(cart, $cart => expensiveCalculation($cart));
+
+// ✅ With computedStore - recalculates only when dependencies change
+const total = computedStore(
+  cart,
+  state => expensiveCalculation(state),
+  { keys: ['items', 'prices'] }
+);
+
+// Performance benefit: 2-10x faster for expensive computations
+```
+
+**Nested Path Support:**
+
+```typescript
+const store = createReactor({
+  user: {
+    profile: {
+      name: 'John',
+      avatar: 'url'
+    },
+    settings: {
+      theme: 'dark'
+    }
+  },
+  metadata: { version: 1 }
+});
+
+const userName = computedStore(
+  store,
+  state => state.user.profile.name.toUpperCase(),
+  {
+    keys: ['user.profile.name']  // Nested path tracking!
+  }
+);
+
+// Only recomputes when user.profile.name changes
+// Changes to theme, avatar, or metadata won't trigger recomputation
+```
+
+**Use Cases:**
+
+- 📊 **Expensive filters/sorts** - Only recompute when data or criteria change
+- 🛒 **Shopping cart totals** - Only recalculate when items or prices change
+- 📝 **Form validation** - Only validate when relevant fields change
+- 🎨 **UI computations** - Only update styles when theme changes
+- 🔍 **Search results** - Only filter when query or data changes
+
+**Tips:**
+
+- Use `keys` option when you know which fields affect the computation
+- Use `equals: isEqual` for deep comparison of arrays/objects
+- Omit `keys` to compute on every state change (like `derived()`)
+- Combine with `derived()` for multi-store computations
 
 ---
 

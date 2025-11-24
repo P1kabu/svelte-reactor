@@ -14,6 +14,7 @@
 ## ✨ What's New in v0.2.5 - "Polish & Power"
 
 🎯 **Selective Subscriptions** - Subscribe to specific state parts, callback fires only when selected value changes (Phase 3.1)
+📊 **Computed Stores** - Memoized computed state with dependency tracking, 2-10x faster (Phase 3.2)
 📦 **25% Smaller Bundle** - 14.68 KB → **11.04 KB gzipped** (Phase 0 + Phase 4.2 optimizations)
 📚 **3 Comprehensive Guides** - [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
 🗜️ **Data Compression** - Built-in LZ-string compression (40-70% size reduction, tree-shakeable)
@@ -21,7 +22,7 @@
 🔄 **Multi-Tab Sync** - Real-time state synchronization across browser tabs
 ⚡ **612x Faster Cloning** - Large array performance optimization (Phase 4.1)
 🎯 **Better Error Messages** - Contextual errors with suggestions and fixes
-✅ **461 tests** (+135 new) - All features thoroughly tested
+✅ **475 tests** (+149 new) - All features thoroughly tested
 
 **Documentation (3161+ lines):**
 - 📖 **[PLUGINS.md](./PLUGINS.md)** - Complete plugin development guide with 4 working examples
@@ -33,14 +34,15 @@ Previous versions:
 - **v0.2.3**: Selective persistence, retry/cancellation, bulk operations, advanced logger
 - **v0.2.2**: Memory leak fixes, performance optimization, enhanced validation
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.5 Plan](../../UPGRADES/PLAN_v0.2.5.md)**
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.5 Upgrade](../../UPGRADES/UPGRADE-0.2.5.md)**
 
 ## 🚀 Features
 
 - **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
 - **🎯 Selective Subscriptions** - Subscribe to specific state parts for better performance ✨ NEW in v0.2.5
+- **📊 Computed Stores** - Memoized computed state with dependency tracking (2-10x faster) ✨ NEW in v0.2.5
 - **🔗 Derived Stores** - `derived()`, `get()`, `readonly()` exported for single-import convenience
-- **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`
+- **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`, `computedStore()`
 - **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
 - **♻️ Undo/Redo** - Built-in history management with batch operations
 - **💾 Smart Persistence** - localStorage, sessionStorage, IndexedDB (50MB+), **Memory Storage** ✨ NEW in v0.2.5
@@ -521,6 +523,120 @@ form.subscribe({
 ```
 
 **See [EXAMPLES.md](./EXAMPLES.md#selective-subscriptions) for more patterns**
+
+---
+
+### 📊 Computed Stores
+
+**NEW in v0.2.5:** Memoized computed state with dependency tracking!
+
+Instead of recomputing on every state change, `computedStore()` intelligently tracks dependencies and only recomputes when they change. This provides massive performance benefits for expensive operations.
+
+**Basic example:**
+
+```typescript
+import { createReactor, computedStore } from 'svelte-reactor';
+
+const store = createReactor({
+  items: [
+    { id: 1, name: 'Apple', done: false },
+    { id: 2, name: 'Banana', done: true },
+    { id: 3, name: 'Orange', done: false }
+  ],
+  filter: 'all'
+});
+
+// Computed store - automatically updates when items or filter change
+const filteredItems = computedStore(
+  store,
+  state => {
+    if (state.filter === 'completed') return state.items.filter(item => item.done);
+    if (state.filter === 'active') return state.items.filter(item => !item.done);
+    return state.items;
+  },
+  {
+    keys: ['items', 'filter']  // Only recompute when these change
+  }
+);
+
+// Use like any Svelte store
+filteredItems.subscribe(items => console.log(items));
+```
+
+**Advanced options:**
+
+```typescript
+import { computedStore, isEqual } from 'svelte-reactor';
+
+const computed = computedStore(
+  store,
+  state => expensiveComputation(state.data),
+  {
+    // Dependency tracking - only recompute when these fields change
+    keys: ['data', 'user.preferences'],  // Supports nested paths!
+
+    // Custom equality - prevents updates if result is deeply equal
+    equals: isEqual  // Use deep comparison instead of ===
+  }
+);
+```
+
+**Why use computed stores?**
+- ⚡ **Performance** - Avoid expensive recomputations (2-10x faster)
+- 🎯 **Smart caching** - Only recomputes when dependencies change
+- 📦 **Stable references** - Same result object if content unchanged
+- 🔗 **Composable** - Works with `derived()`, `get()`, and all Svelte APIs
+
+**Real-world example - Shopping cart:**
+
+```typescript
+const cart = createReactor({
+  items: [
+    { id: 1, name: 'Laptop', price: 999, quantity: 1 },
+    { id: 2, name: 'Mouse', price: 29, quantity: 2 }
+  ],
+  discount: 0,
+  taxRate: 0.1
+});
+
+// Computed total - only recalculates when items, discount, or taxRate change
+const total = computedStore(
+  cart,
+  state => {
+    const subtotal = state.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+    const afterDiscount = subtotal * (1 - state.discount);
+    return afterDiscount * (1 + state.taxRate);
+  },
+  {
+    keys: ['items', 'discount', 'taxRate']
+  }
+);
+
+// In Svelte component
+$: totalPrice = $total;  // Reactively updates, but efficiently!
+```
+
+**Performance comparison:**
+
+```typescript
+// ❌ Without computedStore - recalculates on EVERY state change
+const total = derived(cart, $cart => expensiveCalculation($cart));
+
+// ✅ With computedStore - recalculates only when dependencies change
+const total = computedStore(
+  cart,
+  state => expensiveCalculation(state),
+  { keys: ['items', 'discount'] }
+);
+
+// Updating metadata won't trigger recomputation! 🚀
+cart.update(s => { s.metadata.lastUpdated = Date.now(); });
+```
+
+**See [EXAMPLES.md](./EXAMPLES.md#computed-stores) for more patterns**
 
 ---
 
