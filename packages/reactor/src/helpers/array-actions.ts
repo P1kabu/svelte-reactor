@@ -334,8 +334,13 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
     bulkUpdate(ids: any[], updates: Partial<T>): void {
       reactor.update((state) => {
         const arr = state[field] as T[];
+
+        // Performance optimization: Create Map for O(1) lookups instead of O(n) arr.find()
+        // This changes complexity from O(ids.length * arr.length) to O(arr.length + ids.length)
+        const itemsById = new Map(arr.map((item: any) => [item[idKey], item]));
+
         for (const id of ids) {
-          const item = arr.find((item: any) => item[idKey] === id);
+          const item = itemsById.get(id);
           if (item) {
             Object.assign(item as any, updates);
           }

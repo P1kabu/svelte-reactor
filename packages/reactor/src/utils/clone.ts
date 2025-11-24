@@ -135,8 +135,11 @@ export function isEqual<T>(a: T, b: T): boolean {
 
   if (keysA.length !== keysB.length) return false;
 
+  // Use Set for O(1) lookup instead of O(n) Array.includes()
+  const keysBSet = new Set(keysB);
+
   for (const key of keysA) {
-    if (!keysB.includes(key)) return false;
+    if (!keysBSet.has(key)) return false;
     if (!isEqual((a as any)[key], (b as any)[key])) return false;
   }
 

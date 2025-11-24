@@ -13,6 +13,9 @@ export function createMiddlewareChain<T extends object>(middlewares: Middleware<
      * Run before update hooks
      */
     runBefore(prevState: T, nextState: T, action?: string): void {
+      // Fast path: skip if no middlewares
+      if (middlewares.length === 0) return;
+
       for (const middleware of middlewares) {
         try {
           middleware.onBeforeUpdate?.(prevState, nextState, action);
@@ -26,6 +29,9 @@ export function createMiddlewareChain<T extends object>(middlewares: Middleware<
      * Run after update hooks
      */
     runAfter(prevState: T, nextState: T, action?: string): void {
+      // Fast path: skip if no middlewares
+      if (middlewares.length === 0) return;
+
       for (const middleware of middlewares) {
         try {
           middleware.onAfterUpdate?.(prevState, nextState, action);
@@ -39,6 +45,9 @@ export function createMiddlewareChain<T extends object>(middlewares: Middleware<
      * Handle error
      */
     handleError(error: Error): void {
+      // Fast path: skip if no middlewares
+      if (middlewares.length === 0) return;
+
       for (const middleware of middlewares) {
         middleware.onError?.(error);
       }
