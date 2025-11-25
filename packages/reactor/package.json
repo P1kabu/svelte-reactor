@@ -1,6 +1,6 @@
 {
   "name": "svelte-reactor",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Powerful reactive state management for Svelte 5 with full Svelte stores API compatibility, undo/redo, middleware, persistence, and DevTools. Production-ready with SSR support.",
   "type": "module",
   "main": "./dist/index.js",

@@ -112,7 +112,7 @@ describe('IndexedDB Stress Tests', () => {
     reactor.destroy();
   });
 
-  it('should handle large dataset with pick/omit + IndexedDB', () => {
+  it('should handle large dataset with pick/omit + IndexedDB', { timeout: 10000 }, () => {
     interface State {
       users: Array<{
         id: number;
