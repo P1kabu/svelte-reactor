@@ -70,6 +70,40 @@ export interface Reactor<T extends object> {
   subscribe(subscriber: Subscriber<T>, invalidate?: () => void): Unsubscriber;
   subscribe<R>(options: SelectiveSubscribeOptions<T, R>): Unsubscriber;
 
+  /**
+   * Selective subscribe with a simpler API
+   * Only fires callback when selected value changes
+   *
+   * @param selector Function that extracts the value to observe
+   * @param onChanged Callback when selected value changes
+   * @param options Optional configuration
+   * @returns Unsubscribe function
+   *
+   * @example
+   * ```ts
+   * // Watch user name changes
+   * store.select(
+   *   state => state.user.name,
+   *   (name, prevName) => console.log(`Name changed: ${prevName} → ${name}`)
+   * );
+   *
+   * // With options
+   * store.select(
+   *   state => state.items,
+   *   items => console.log('Items updated'),
+   *   { fireImmediately: false, equalityFn: (a, b) => a.length === b.length }
+   * );
+   * ```
+   */
+  select<R>(
+    selector: (state: T) => R,
+    onChanged: (value: R, prevValue?: R) => void,
+    options?: {
+      fireImmediately?: boolean;
+      equalityFn?: (a: R, b: R) => boolean;
+    }
+  ): Unsubscriber;
+
   /** Update state using an updater function */
   update(updater: (state: T) => void, action?: string): void;
 

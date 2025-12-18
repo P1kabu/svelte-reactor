@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.7] - 2025-12-18
+
+### Added
+
+- **`reactor.select()` Method** - Simpler API for selective subscriptions
+  - Cleaner syntax: `store.select(selector, callback, options)`
+  - Same functionality as `subscribe({ selector, onChanged })`
+  - Recommended for new code
+
+- **`ReactorError` Class** - Custom error class with rich debugging context
+  - Context includes: reactor name, action, plugin, state, cause, tip
+  - Formatted output: `[Reactor:name] message`
+  - Static factory methods: `destroyed()`, `invalidState()`, `pluginError()`, `withTip()`
+
+- **`asyncActions` Concurrency Control** - Handle race conditions
+  - `concurrency: 'replace'` - Cancel previous request, only latest completes (default)
+  - `concurrency: 'queue'` - Queue requests, execute sequentially
+  - `concurrency: 'parallel'` - All requests run in parallel
+  - Request ID tracking to ignore stale responses
+
+- **11 new tests** for v0.2.7 features (486 total)
+
+### Changed
+
+- **DevTools subscription** - Changed from polling (setInterval 100ms) to real subscription
+  - Major CPU usage reduction
+  - Eliminates memory leak from continuous cloning
+  - Only fires when state actually changes
+
+- **Optimized cloning in notifySubscribers** - Clone states once and reuse
+  - ~50% reduction in cloning operations
+  - Better performance for stores with many subscribers
+
+- **`diff.ts` moved to optional import** - Reduces main bundle size
+  - Before: `import { diff } from 'svelte-reactor/utils'`
+  - After: `import { diff } from 'svelte-reactor/utils/diff'`
+  - ~500 bytes savings in main bundle
+
+- **AI instruction templates optimized** - 79% smaller (2430 → 498 lines)
+  - `claude.md`: 212 lines (XML tags for structure)
+  - `cursor.md`: 192 lines (IDE context focus)
+  - `copilot.md`: 94 lines (inline completions)
+  - Each tailored to AI's specific capabilities
+
+- **Value store factory** - Internal refactoring
+  - Eliminated ~50 lines of duplication between `simpleStore` and `persistedStore`
+
+### Fixed
+
+- DevTools polling causing high CPU usage and memory leaks
+- Race conditions in async actions with rapid sequential calls
+
 ## [0.2.5] - 2025-01-24
 
 ### Added

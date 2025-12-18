@@ -4,8 +4,9 @@
 
 import { createReactor } from '../core/reactor.svelte.js';
 import { persist } from '../plugins/persist-plugin.js';
-import type { PersistOptions, ReactorOptions, Subscriber, Unsubscriber } from '../types/index.js';
+import type { PersistOptions, ReactorOptions } from '../types/index.js';
 import type { WritableStore } from './simple-store.js';
+import { createValueStoreFromReactor } from './value-store-factory.js';
 
 /**
  * Options for persisted store
@@ -62,27 +63,7 @@ export function persistedStore<T>(
     }
   );
 
-  return {
-    subscribe: (subscriber: Subscriber<T>) => {
-      // Transform the subscriber to work with the wrapped value
-      return reactor.subscribe((state) => {
-        subscriber(state.value);
-      });
-    },
-
-    set: (value: T) => {
-      reactor.set({ value });
-    },
-
-    update: (updater: (value: T) => T) => {
-      const newValue = updater(reactor.state.value);
-      reactor.set({ value: newValue });
-    },
-
-    get: () => {
-      return reactor.state.value;
-    },
-  };
+  return createValueStoreFromReactor(reactor);
 }
 
 /**

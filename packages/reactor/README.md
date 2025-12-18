@@ -11,35 +11,32 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.5 - "Polish & Power"
+## ✨ What's New in v0.2.7 - "Performance & Polish"
 
-🎯 **Selective Subscriptions** - Subscribe to specific state parts, callback fires only when selected value changes (Phase 3.1)
-📊 **Computed Stores** - Memoized computed state with dependency tracking, 2-10x faster (Phase 3.2)
-📦 **25% Smaller Bundle** - 14.68 KB → **11.04 KB gzipped** (Phase 0 + Phase 4.2 optimizations)
-📚 **3 Comprehensive Guides** - [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
-🗜️ **Data Compression** - Built-in LZ-string compression (40-70% size reduction, tree-shakeable)
-💾 **Memory Storage** - In-memory storage backend for testing and SSR
-🔄 **Multi-Tab Sync** - Real-time state synchronization across browser tabs
-⚡ **612x Faster Cloning** - Large array performance optimization (Phase 4.1)
-🎯 **Better Error Messages** - Contextual errors with suggestions and fixes
-✅ **475 tests** (+149 new) - All features thoroughly tested
+🎯 **`reactor.select()` Method** - Simpler API for selective subscriptions
+🛡️ **`ReactorError` Class** - Rich error context with reactor name, action, plugin, tips
+⚡ **Async Concurrency Control** - `concurrency: 'replace' | 'queue' | 'parallel'` for race conditions
+🔧 **DevTools Fix** - Real subscription instead of polling (major CPU/memory improvement)
+📦 **Optimized Cloning** - Clone states once and reuse in notifySubscribers
+🤖 **AI Instructions Optimized** - 79% smaller (2430 → 498 lines), tailored for each AI
+✅ **486 tests** - All features thoroughly tested
 
-**Documentation (3161+ lines):**
+**Documentation:**
 - 📖 **[PLUGINS.md](./PLUGINS.md)** - Complete plugin development guide with 4 working examples
 - 🚀 **[PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md)** - Optimization strategies with 5 runnable demos
-- 🛡️ **[ERROR_HANDLING.md](./ERROR_HANDLING.md)** - Error handling patterns with 20 examples across 4 categories
+- 🛡️ **[ERROR_HANDLING.md](./ERROR_HANDLING.md)** - Error handling patterns with 20 examples
 
 Previous versions:
-- **v0.2.4**: IndexedDB storage, TTL, pagination, derived stores export, 326 tests
-- **v0.2.3**: Selective persistence, retry/cancellation, bulk operations, advanced logger
-- **v0.2.2**: Memory leak fixes, performance optimization, enhanced validation
+- **v0.2.5**: Selective subscriptions, computed stores, 25% smaller bundle
+- **v0.2.4**: IndexedDB storage, TTL, pagination, derived stores export
+- **v0.2.3**: Selective persistence, retry/cancellation, bulk operations
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.5 Upgrade](../../UPGRADES/UPGRADE-0.2.5.md)**
+👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.7 Upgrade](../../UPGRADES/UPGRADE-0.2.7.md)**
 
 ## 🚀 Features
 
 - **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
-- **🎯 Selective Subscriptions** - Subscribe to specific state parts for better performance ✨ NEW in v0.2.5
+- **🎯 Selective Subscriptions** - `reactor.select()` for subscribing to specific state parts ✨ Improved in v0.2.7
 - **📊 Computed Stores** - Memoized computed state with dependency tracking (2-10x faster) ✨ NEW in v0.2.5
 - **🔗 Derived Stores** - `derived()`, `get()`, `readonly()` exported for single-import convenience
 - **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`, `computedStore()`

@@ -29,12 +29,26 @@ export function createDevTools<T extends object>(
 ): ReactorDevTools<T> {
   const name = options?.name || 'Reactor';
 
+  // Memoization for getHistory() - cache invalidates on state change
+  let cachedHistory: HistoryEntry<T>[] | null = null;
+  let cacheVersion = 0;
+
+  // Subscribe to state changes to invalidate cache
+  reactor.subscribe(() => {
+    cachedHistory = null;
+    cacheVersion++;
+  });
+
   /**
-   * Get current history entries
+   * Get current history entries (memoized)
    */
   function getHistory(): HistoryEntry<T>[] {
+    if (cachedHistory !== null) {
+      return cachedHistory;
+    }
     const inspection = reactor.inspect();
-    return inspection.history.past;
+    cachedHistory = inspection.history.past;
+    return cachedHistory;
   }
 
   /**
@@ -145,20 +159,14 @@ export function createDevTools<T extends object>(
 
   /**
    * Subscribe to state changes (for external devtools)
+   * Uses reactor's native subscription - only fires on actual changes
    */
   function subscribe(callback: (inspection: ReactorInspection<T>) => void): () => void {
-    // Create an effect to watch for changes
-    let unsubscribe: (() => void) | undefined;
-
-    // Simple polling approach (in real implementation, use $effect.root)
-    const interval = setInterval(() => {
+    // Use reactor's native subscription instead of polling
+    // This is much more efficient - only fires when state actually changes
+    return reactor.subscribe(() => {
       callback(reactor.inspect());
-    }, 100);
-
-    return () => {
-      clearInterval(interval);
-      unsubscribe?.();
-    };
+    });
   }
 
   return {

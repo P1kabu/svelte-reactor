@@ -1,809 +1,222 @@
-# Svelte Reactor - AI Assistant Rules
+# Svelte Reactor - Claude AI Rules
 
-## Core API
+<library>
+name: svelte-reactor
+version: 0.2.7
+description: Reactive state management for Svelte 5 with plugins
+</library>
 
-### createReactor()
+<documentation>
+Full documentation available at:
+- [README.md](./README.md) - Overview and quick start
+- [API.md](./API.md) - Complete API reference
+- [PLUGINS.md](./PLUGINS.md) - Plugin development guide
+- [EXAMPLES.md](./EXAMPLES.md) - Code examples
+- [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md) - Optimization strategies
+- [ERROR_HANDLING.md](./ERROR_HANDLING.md) - Error handling patterns
+- [CHANGELOG.md](./CHANGELOG.md) - Version history
+</documentation>
+
+<core-api>
+## createReactor(initialState, options)
 ```typescript
 import { createReactor } from 'svelte-reactor';
-
-const store = createReactor(initialState, options);
-```
-
-**Key points:**
-- Returns a reactive store compatible with Svelte stores API
-- State updates trigger reactive UI changes
-- Supports plugins, middleware, and DevTools
-
-### State Updates
-```typescript
-// Use .update() for state changes
-store.update(state => ({ ...state, count: state.count + 1 }));
-
-// Use .set() to replace entire state
-store.set({ count: 0 });
-
-// Subscribe to changes
-const unsubscribe = store.subscribe(state => console.log(state));
-```
-
-## Plugin System
-
-### undoRedo Plugin
-```typescript
-import { createReactor } from 'svelte-reactor';
-import { undoRedo } from 'svelte-reactor/plugins';
 
 const store = createReactor({ count: 0 }, {
-  plugins: [undoRedo({ maxHistory: 50 })]
+  name: 'counter',        // For debugging
+  plugins: [],            // undoRedo, persist, logger
+  devtools: false         // Enable Redux DevTools
 });
-
-store.undo(); // Undo last change
-store.redo(); // Redo undone change
 ```
 
-### persist Plugin
+### Methods
+- `store.state` - Current state (reactive)
+- `store.update(fn, action?)` - Update state with function
+- `store.set(partial)` - Merge partial state
+- `store.subscribe(fn)` - Subscribe to changes
+- `store.select(selector, callback, options?)` - Selective subscription
+- `store.undo()` / `store.redo()` - History navigation
+- `store.canUndo()` / `store.canRedo()` - Check availability
+- `store.batch(fn)` - Batch multiple updates
+- `store.destroy()` - Cleanup (prevents memory leaks)
+</core-api>
+
+<plugins>
+## Plugins
+
+### undoRedo
 ```typescript
-import { createReactor } from 'svelte-reactor';
+import { undoRedo } from 'svelte-reactor/plugins';
+const store = createReactor(state, { plugins: [undoRedo({ maxHistory: 50 })] });
+```
+
+### persist
+```typescript
 import { persist } from 'svelte-reactor/plugins';
 
-const store = createReactor({ theme: 'dark' }, {
-  plugins: [persist({ key: 'app-settings' })]
-});
-// State automatically saved to localStorage
-
-// NEW in v0.2.3: Selective persistence with pick/omit
-const store2 = createReactor({
-  user: { name: 'John', token: 'secret123' },
-  settings: { theme: 'dark' }
-}, {
-  plugins: [
-    persist({
-      key: 'app',
-      omit: ['user.token'] // Don't persist sensitive data
-    })
-  ]
-});
-
-// NEW in v0.2.4: IndexedDB for large datasets (50MB+)
-const photos = createReactor({ items: [] }, {
-  plugins: [
-    persist({
-      key: 'photos',
-      storage: 'indexedDB',  // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
-      indexedDB: {
-        database: 'my-app',
-        storeName: 'photos',
-        version: 1
-      }
-    })
-  ]
-});
-
-// NEW in v0.2.4: TTL (Time-To-Live) - Auto-expire cached data
-const apiCache = createReactor({ data: null }, {
-  plugins: [
-    persist({
-      key: 'api-cache',
-      ttl: 5 * 60 * 1000,  // Expire after 5 minutes
-      onExpire: (key) => {
-        console.log(`Cache ${key} expired, refreshing...`);
-        // Auto-refetch data when cache expires
-      }
-    })
-  ]
-});
-
-// Session with auto-logout
-const session = createReactor({ userId: null, token: null }, {
-  plugins: [
-    persist({
-      key: 'user-session',
-      storage: 'sessionStorage',
-      ttl: 30 * 60 * 1000,  // 30 minutes
-      omit: ['token'],       // Don't persist sensitive data
-      onExpire: () => {
-        window.location.href = '/login';  // Redirect on expiration
-      }
-    })
-  ]
-});
+persist({
+  key: 'app-state',
+  storage: 'localStorage',    // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
+  omit: ['user.token'],       // Exclude sensitive fields
+  pick: ['settings'],         // Include only these fields
+  debounce: 300,              // Save delay in ms
+  ttl: 5 * 60 * 1000,         // Auto-expire after 5 minutes
+  onExpire: (key) => {}       // Callback on expiration
+})
 ```
 
-### persistedStore / persistedReactor (Convenience Helpers)
-
-**NEW:** Simplified wrappers for creating persisted stores without manual plugin setup.
-
+### logger
 ```typescript
-import { persistedStore, persistedReactor } from 'svelte-reactor';
-
-// ✅ GOOD: Simple persisted store (Svelte stores API compatible)
-const counter = persistedStore('counter', 0);
-
-// ✅ GOOD: Persisted store with options
-const settings = persistedStore('app-settings', { theme: 'dark' }, {
-  storage: 'localStorage',
-  debounce: 300,
-  omit: ['user.token']  // Security: exclude sensitive data
-});
-
-// Usage - just like regular Svelte stores
-counter.update(n => n + 1);
-console.log($counter); // Use in Svelte components
-
-// ✅ GOOD: Full reactor API with persistence
-const app = persistedReactor(
-  'app-state',
-  { count: 0, user: { name: 'John' } },
-  {
-    storage: 'localStorage',
-    ttl: 60 * 60 * 1000,  // 1 hour cache
-    omit: ['user.token'],
-    additionalPlugins: [undoRedo()]  // Add undo/redo
-  }
-);
-
-// Full reactor methods available
-app.undo();
-app.redo();
-app.update(state => { state.count++; });
-
-// ❌ BAD: Manual persist plugin setup for simple cases
-const counter = createReactor({ value: 0 }, {
-  plugins: [persist({ key: 'counter' })]
-}); // Too verbose!
-```
-
-**When to use:**
-- **persistedStore** - Simple values, Svelte stores API, no undo/redo needed
-- **persistedReactor** - Complex state, need undo/redo, need full reactor API
-- **createReactor + persist plugin** - Maximum control, custom configuration
-
-### logger Plugin
-```typescript
-import { createReactor } from 'svelte-reactor';
 import { logger } from 'svelte-reactor/plugins';
-
-const store = createReactor({ user: null }, {
-  plugins: [logger()]
-});
-// All state changes logged to console
-
-// NEW in v0.2.3: Advanced filtering and performance tracking
-const store2 = createReactor({ count: 0 }, {
-  plugins: [
-    logger({
-      filter: (action) => action?.startsWith('user:'), // Only log user actions
-      trackPerformance: true,  // Track execution time
-      slowThreshold: 16,       // Warn if >16ms
-    })
-  ]
-});
+logger({ filter: (action) => action?.startsWith('user:'), trackPerformance: true })
 ```
+</plugins>
 
-## Selective Subscriptions (v0.2.5)
+<helpers>
+## Helper Functions
 
-**NEW in v0.2.5:** Subscribe to specific parts of state for performance optimization!
-
+### simpleStore(initialValue)
 ```typescript
-import { createReactor } from 'svelte-reactor';
-import { isEqual } from 'svelte-reactor';
-
-const store = createReactor({
-  user: { name: 'John', age: 30 },
-  settings: { theme: 'dark' },
-  count: 0
-});
-
-// ✅ GOOD: Subscribe to specific field - callback only fires when that field changes
-store.subscribe({
-  selector: state => state.user.name,
-  onChanged: (name, prevName) => {
-    console.log(`Name changed: ${prevName} → ${name}`);
-  }
-});
-
-store.update(s => { s.count++; });        // ❌ Callback NOT called
-store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
-store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
-
-// ❌ BAD: Standard subscription - fires on ANY change
-store.subscribe(state => {
-  console.log(state.user.name); // Fires even when count or age changes!
-});
-```
-
-**Options:**
-- `selector` - Function to select specific part of state
-- `onChanged` - Callback with (newValue, prevValue) when selected value changes
-- `fireImmediately` - Call callback immediately with initial value (default: true)
-- `equalityFn` - Custom equality comparison (default: `===`)
-
-**Use deep equality for arrays/objects:**
-```typescript
-// Deep equality check for array changes
-store.subscribe({
-  selector: state => state.items,
-  onChanged: (items, prevItems) => {
-    console.log('Items actually changed!');
-  },
-  equalityFn: isEqual  // Deep comparison - won't fire if content is same
-});
-
-store.update(s => { s.items = [1, 2, 3]; }); // ✅ Fires
-store.update(s => { s.items = [1, 2, 3]; }); // ❌ Doesn't fire (deep equal)
-store.update(s => { s.items = [1, 2, 3, 4]; }); // ✅ Fires (different)
-```
-
-**Real-world example - Form validation:**
-```typescript
-const form = createReactor({
-  name: '',
-  email: '',
-  age: 0,
-  metadata: { lastSaved: Date.now() }
-});
-
-// Only validate email when email field changes
-store.subscribe({
-  selector: state => state.email,
-  onChanged: (email) => {
-    if (!email.includes('@')) {
-      console.error('Invalid email');
-    }
-  },
-  fireImmediately: false  // Don't validate on mount
-});
-
-// Won't trigger email validation
-form.update(s => { s.metadata.lastSaved = Date.now(); });
-```
-
-**When to use:**
-- 🎯 **Form fields** - Validate only the field that changed
-- 🎯 **Component optimization** - Component only needs specific state slice
-- 🎯 **Expensive computations** - Only recompute when dependencies change
-- 🎯 **Multiple subscriptions** - Different components watch different fields
-
-## Computed Stores (v0.2.5)
-
-**NEW in v0.2.5:** Memoized computed state with dependency tracking for maximum performance!
-
-```typescript
-import { createReactor, computedStore, isEqual } from 'svelte-reactor';
-
-const store = createReactor({
-  items: [
-    { id: 1, name: 'Apple', done: false },
-    { id: 2, name: 'Banana', done: true }
-  ],
-  filter: 'all',
-  metadata: { lastUpdated: Date.now() }
-});
-
-// ✅ GOOD: Computed store - only recalculates when items or filter change
-const filteredItems = computedStore(
-  store,
-  state => {
-    if (state.filter === 'completed') return state.items.filter(item => item.done);
-    if (state.filter === 'active') return state.items.filter(item => !item.done);
-    return state.items;
-  },
-  {
-    keys: ['items', 'filter']  // Only recompute when these change
-  }
-);
-
-// Use like any Svelte store
-filteredItems.subscribe(items => console.log(items));
-$: items = $filteredItems;  // Works in Svelte components
-
-// Updating metadata doesn't trigger recomputation! 🚀
-store.update(s => { s.metadata.lastUpdated = Date.now(); });
-
-// ❌ BAD: Using derived() - recalculates on EVERY state change
-const badFiltered = derived(store, $store => {
-  // This runs even when metadata changes!
-  if ($store.filter === 'completed') return $store.items.filter(item => item.done);
-  return $store.items;
-});
-```
-
-**Advanced options:**
-```typescript
-// With custom equality for stable references
-const computed = computedStore(
-  store,
-  state => expensiveCalculation(state.data),
-  {
-    keys: ['data', 'settings.theme'],  // Supports nested paths!
-    equals: isEqual  // Deep equality - prevents updates if result is same
-  }
-);
-
-// Shopping cart example
-const total = computedStore(
-  cart,
-  state => {
-    const subtotal = state.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    return subtotal * (1 - state.discount) * (1 + state.taxRate);
-  },
-  {
-    keys: ['items', 'discount', 'taxRate']
-    // metadata changes won't trigger recalculation!
-  }
-);
-```
-
-**When to use computedStore() vs derived():**
-
-| Feature | `computedStore()` | `derived()` |
-|---------|-------------------|-------------|
-| **Recomputes when** | Only specified keys change | Any dependency change |
-| **Performance** | 2-10x faster (dependency tracking) | Baseline |
-| **Stable references** | Yes (with `equals` option) | No |
-| **Multi-store** | No (single reactor) | Yes |
-| **Best for** | Expensive computations, single store | Simple derivations, multi-store |
-
-**Use computedStore() when:**
-- ⚡ You have expensive computations (filtering, sorting, calculations)
-- 🎯 You know exactly which fields affect the computation
-- 📦 You need stable object references (prevent re-renders)
-- 🔥 Performance is critical (large lists, real-time updates)
-
-**Use derived() when:**
-- 🔗 You need to combine multiple stores
-- ✅ Computation is cheap/fast
-- 🎨 You don't know dependencies in advance
-
-**Real-world examples:**
-```typescript
-// 1. Todo list with filters (performance-critical)
-const filteredTodos = computedStore(
-  todos,
-  state => {
-    let result = state.items;
-    if (state.filter === 'active') result = result.filter(t => !t.done);
-    if (state.search) result = result.filter(t => t.text.includes(state.search));
-    return result.sort((a, b) => a.priority - b.priority);
-  },
-  { keys: ['items', 'filter', 'search'], equals: isEqual }
-);
-
-// 2. Dashboard metrics (expensive aggregations)
-const metrics = computedStore(
-  dashboard,
-  state => {
-    const filtered = state.data.filter(d =>
-      d.date >= state.dateRange.start && d.date <= state.dateRange.end
-    );
-    return {
-      revenue: filtered.reduce((sum, d) => sum + d.revenue, 0),
-      orders: filtered.length,
-      avgOrderValue: filtered.reduce((sum, d) => sum + d.revenue, 0) / filtered.length
-    };
-  },
-  { keys: ['data', 'dateRange'] }
-);
-
-// 3. Search with debounced results
-const searchResults = computedStore(
-  search,
-  state => state.products
-    .filter(p => p.name.toLowerCase().includes(state.query.toLowerCase()))
-    .filter(p => !state.category || p.category === state.category)
-    .filter(p => p.price >= state.priceRange[0] && p.price <= state.priceRange[1]),
-  { keys: ['products', 'query', 'category', 'priceRange'], equals: isEqual }
-);
-```
-
-**Performance tips:**
-- 🎯 Always specify `keys` option for best performance
-- ⚡ Use `equals: isEqual` for arrays/objects to prevent unnecessary updates
-- 📊 Chain computed stores for complex pipelines
-- 🚀 Performance gain: 2-10x faster for expensive operations
-
-## Derived Stores (v0.2.4)
-
-**NEW in v0.2.4:** `derived`, `get`, and `readonly` are now exported from `svelte-reactor` for single-import convenience!
-
-```typescript
-import { simpleStore, derived, get, readonly } from 'svelte-reactor';
-
-const count = simpleStore(0);
-const doubled = derived(count, $count => $count * 2);
-
-console.log(get(doubled)); // 0
+import { simpleStore } from 'svelte-reactor';
+const count = simpleStore(0);  // Svelte-compatible writable
 count.set(5);
-console.log(get(doubled)); // 10
-
-// Create readonly version
-const readonlyCount = readonly(count);
+count.update(n => n + 1);
 ```
 
-**Real-world example - Shopping Cart:**
+### persistedStore(key, initialValue, options?)
 ```typescript
-import { createReactor, derived, get } from 'svelte-reactor';
+import { persistedStore } from 'svelte-reactor';
+const settings = persistedStore('settings', { theme: 'dark' });
+```
 
-const cart = createReactor<{ items: CartItem[] }>({ items: [] });
+### computedStore(reactor, selector, options?)
+```typescript
+import { computedStore, isEqual } from 'svelte-reactor';
 
-// Derive total price
-const totalPrice = derived(
-  cart,
-  $cart => $cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+const filtered = computedStore(store, state =>
+  state.items.filter(i => !i.done),
+  { keys: ['items', 'filter'], equals: isEqual }
 );
-
-console.log(get(totalPrice)); // Auto-updates when cart changes
 ```
 
-## Best Practices (v0.2.5)
-
-1. **Always use createReactor** for state management in Svelte 5 projects
-2. **Use .update()** for state changes, never mutate directly
-3. **Combine plugins** for powerful features (undo + persist + logger)
-4. **Use middleware** for custom logic before/after state changes
-5. **Enable DevTools** in development for time-travel debugging
-6. **Always call destroy()** when component unmounts to prevent memory leaks
-7. **Use arrayActions() and asyncActions()** helpers to reduce boilerplate
-8. **Add action names** to update() calls for better debugging
-9. **Use computedStore()** for expensive computations with dependency tracking (2-10x faster)
-10. **Use derived stores** for simple computed values or multi-store computations
-11. **Use IndexedDB** for large datasets (>5MB) instead of localStorage
-12. **NEW: Use selective subscriptions** when you only need specific fields - massive performance boost!
-13. **NEW: Use computedStore()** instead of derived() for performance-critical operations
-
-## Anti-patterns
-
-- ❌ Don't mutate state directly: `store.count++`
-- ❌ Don't mix with writable() stores - choose one approach
-- ❌ Don't forget to destroy() reactor when component unmounts (memory leak!)
-- ❌ Don't use persist plugin for sensitive data without encryption
-- ❌ Don't skip validation - reactor validates inputs and provides helpful errors
-- ❌ Don't ignore error handling - persist plugin detects quota issues automatically
-
-## Common Examples
-
-### Counter with Undo/Redo
+### arrayActions(reactor, key, options?)
 ```typescript
-import { createReactor } from 'svelte-reactor';
-import { undoRedo } from 'svelte-reactor/plugins';
+import { arrayActions } from 'svelte-reactor';
+const actions = arrayActions(store, 'items', { idKey: 'id' });
 
-const counter = createReactor({ value: 0 }, {
-  plugins: [undoRedo()]
-});
-
-function increment() {
-  counter.update(s => ({ value: s.value + 1 }));
-}
-
-function decrement() {
-  counter.update(s => ({ value: s.value - 1 }));
-}
+actions.add(item);
+actions.update(id, updates);
+actions.remove(id);
+actions.toggle(id, 'done');
+actions.bulkUpdate(ids, updates);
+actions.sort((a, b) => a.priority - b.priority);
 ```
 
-### Todo List with Persistence
+### asyncActions(reactor, actions, options?)
 ```typescript
-import { createReactor, arrayActions } from 'svelte-reactor';
-import { persist, undoRedo } from 'svelte-reactor/plugins';
-
-const todos = createReactor({ items: [] }, {
-  plugins: [
-    persist({ key: 'todos' }),
-    undoRedo()
-  ]
-});
-
-// Use arrayActions helper to reduce boilerplate
-const actions = arrayActions(todos, 'items', { idKey: 'id' });
-
-function addTodo(text) {
-  actions.add({ id: Date.now(), text, done: false });
-}
-
-function toggleTodo(id) {
-  actions.toggle(id, 'done');
-}
-
-function removeTodo(id) {
-  actions.remove(id);
-}
-```
-
-### Form State with Middleware
-```typescript
-import { createReactor } from 'svelte-reactor';
-
-const form = createReactor({
-  name: '',
-  email: ''
-}, {
-  middleware: [
-    (next) => (state) => {
-      console.log('Before update:', state);
-      const result = next(state);
-      console.log('After update:', result);
-      return result;
-    }
-  ]
-});
-```
-
-## Async Actions Helper
-
-For async operations, use `asyncActions()` for automatic loading/error handling:
-
-```typescript
-import { createReactor, asyncActions } from 'svelte-reactor';
-
-const store = createReactor({
-  users: [],
-  loading: false,
-  error: null
-});
+import { asyncActions } from 'svelte-reactor';
 
 const api = asyncActions(store, {
   fetchUsers: async () => {
-    const response = await fetch('/api/users');
-    return { users: await response.json() };
-  },
-  createUser: async (name: string) => {
-    await fetch('/api/users', {
-      method: 'POST',
-      body: JSON.stringify({ name })
-    });
-    // Refetch users
-    const response = await fetch('/api/users');
-    return { users: await response.json() };
+    const res = await fetch('/api/users');
+    return { users: await res.json() };
   }
 }, {
-  // NEW in v0.2.3: Retry with exponential backoff
-  retry: {
-    attempts: 3,
-    delay: 1000,
-    backoff: 'exponential'
-  }
+  retry: { attempts: 3, delay: 1000, backoff: 'exponential' },
+  debounce: 300,
+  concurrency: 'replace'  // 'replace' | 'queue' | 'parallel'
 });
 
-// Usage - automatic loading & error management!
 await api.fetchUsers();
-// store.state.loading was true during fetch
-// store.state.users now has data
-// store.state.error is null
-
-try {
-  await api.createUser('John');
-} catch (error) {
-  // store.state.error contains the error
-}
-
-// NEW in v0.2.3: Cancellation support
-const request = api.fetchUsers();
-request.cancel(); // Cancel in-flight request
-
-// NEW in v0.2.3: Debouncing for search
-const searchApi = asyncActions(store, {
-  search: async (query: string) => {
-    const res = await fetch(`/api/search?q=${query}`);
-    return { results: await res.json() };
-  }
-}, {
-  debounce: 300 // Wait 300ms before executing
-});
-
-searchApi.search('hello'); // Only last call executes after 300ms
+api.fetchUsers.cancel();  // Cancel request
 ```
+</helpers>
 
-**Available options:**
-- `loadingKey` - Custom loading field name (default: 'loading')
-- `errorKey` - Custom error field name (default: 'error')
-- `actionPrefix` - Action prefix for debugging (default: 'async')
-- `resetErrorOnStart` - Reset error on new request (default: true)
-- **NEW in v0.2.3:**
-  - `retry` - Retry configuration with attempts, delay, backoff
-  - `debounce` - Debounce delay in milliseconds
-
-## Array Actions Helper
-
-For array-heavy stores, use `arrayActions()` to eliminate CRUD boilerplate:
+<selective-subscriptions>
+## Selective Subscriptions
+Subscribe only to specific state changes:
 
 ```typescript
-import { createReactor, arrayActions } from 'svelte-reactor';
+// Method 1: select()
+store.select(
+  state => state.user.name,
+  (name, prevName) => console.log(`Changed: ${prevName} -> ${name}`),
+  { fireImmediately: false, equalityFn: isEqual }
+);
 
-interface Todo {
-  id: string;
-  text: string;
-  done: boolean;
-}
-
-const todos = createReactor({ items: [] as Todo[] });
-const actions = arrayActions(todos, 'items', { idKey: 'id' });
-
-// CRUD operations - no more manual update() calls!
-actions.add({ id: '1', text: 'Buy milk', done: false });
-actions.update('1', { done: true });
-actions.toggle('1', 'done');
-actions.remove('1');
-
-// Query operations
-const item = actions.find('1');
-const exists = actions.has('1');
-const count = actions.count();
-```
-
-**Available methods:**
-- `add(item)` - Add item to array
-- `update(id, updates)` - Update item by id
-- `updateBy(id, updater)` - Update using function
-- `remove(id)` - Remove item by id
-- `removeWhere(predicate)` - Remove items matching predicate
-- `clear()` - Clear all items
-- `toggle(id, field)` - Toggle boolean field
-- `set(items)` - Replace entire array
-- `filter(predicate)` - Filter items
-- `find(id)` - Find item by id
-- `has(id)` - Check if item exists
-- `count()` - Get array length
-- **NEW in v0.2.3:**
-  - `sort(compareFn)` - Sort array in-place with comparator
-  - `bulkUpdate(ids, updates)` - Update multiple items at once
-  - `bulkRemove(idsOrPredicate)` - Remove multiple items by ids or predicate
-
-**Example - Bulk operations and sorting:**
-```typescript
-// Sort by priority
-actions.sort((a, b) => a.priority - b.priority);
-
-// Update multiple todos at once
-actions.bulkUpdate(['1', '2', '3'], { done: true });
-
-// Remove multiple by ids or predicate
-actions.bulkRemove(['1', '2']);
-actions.bulkRemove(item => item.done);
-```
-
-**NEW in v0.2.4 - Pagination for large datasets:**
-```typescript
-// Enable pagination
-const actions = arrayActions(todos, 'items', {
-  idKey: 'id',
-  pagination: {
-    pageSize: 20,      // Items per page
-    initialPage: 1     // Starting page
-  }
-});
-
-// Get paginated data
-const { items, page, totalPages, totalItems, hasNext, hasPrev } = actions.getPaginated();
-
-// Navigation
-actions.nextPage();     // Go to next page (returns false if on last page)
-actions.prevPage();     // Go to previous page (returns false if on first page)
-actions.setPage(5);     // Jump to specific page
-actions.firstPage();    // Jump to first page
-actions.lastPage();     // Jump to last page
-
-// Example UI implementation
-function PaginatedList() {
-  const { items, page, totalPages, hasNext, hasPrev } = actions.getPaginated();
-
-  return (
-    <div>
-      <ul>
-        {items.map(item => <li key={item.id}>{item.text}</li>)}
-      </ul>
-
-      <div class="pagination">
-        <button disabled={!hasPrev} onclick={() => actions.prevPage()}>Previous</button>
-        <span>Page {page} of {totalPages}</span>
-        <button disabled={!hasNext} onclick={() => actions.nextPage()}>Next</button>
-      </div>
-    </div>
-  );
-}
-```
-
-**Pagination features:**
-- ✅ Opt-in (no overhead when not used)
-- ✅ Auto-clamps to valid page range
-- ✅ Works with all arrayActions methods (sort, filter, etc.)
-- ✅ 1-indexed pages (user-friendly)
-- ✅ Complete metadata (totalPages, hasNext, hasPrev, etc.)
-
-## Advanced Features
-
-### Custom Plugins
-```typescript
-function customPlugin() {
-  return {
-    name: 'custom',
-    beforeUpdate: (state, newState) => {
-      // Logic before update
-      return newState;
-    },
-    afterUpdate: (state) => {
-      // Logic after update
-    }
-  };
-}
-```
-
-### DevTools Integration
-```typescript
-import { createReactor } from 'svelte-reactor';
-
-const store = createReactor({ count: 0 }, {
-  devtools: true, // Enable Redux DevTools
-  name: 'Counter Store'
+// Method 2: subscribe with selector
+store.subscribe({
+  selector: state => state.items,
+  onChanged: (items, prev) => {},
+  equalityFn: isEqual
 });
 ```
+</selective-subscriptions>
 
-## Performance & Stability (v0.2.2)
-
-### Memory Management
-Always destroy reactors when components unmount:
+<patterns>
+## Correct Patterns
 
 ```typescript
+// State updates
+store.update(s => { s.count++; }, 'increment');
+
+// Cleanup in components
 import { onDestroy } from 'svelte';
+onDestroy(() => store.destroy());
 
-const store = createReactor({ value: 0 });
-
-onDestroy(() => {
-  store.destroy(); // Clears subscribers and middlewares
+// Batch updates (single notification)
+store.batch(() => {
+  store.update(s => { s.count++; });
+  store.update(s => { s.name = 'John'; });
 });
 ```
+</patterns>
 
-### Automatic Optimizations
-- **Skip unnecessary updates** - Reactor automatically skips updates when state hasn't changed
-- **Deep equality check** - Uses efficient deep comparison to prevent re-renders
-- **Quota handling** - Persist plugin automatically handles localStorage quota errors
-
-### Error Handling
-Reactor provides helpful validation and error messages:
+<anti-patterns>
+## Anti-patterns (AVOID)
 
 ```typescript
-// ✅ Good - Valid usage
-createReactor({ count: 0 }, { name: 'counter' });
+// Direct mutation
+store.state.count++;  // WRONG
 
-// ❌ Bad - Will throw helpful error
-createReactor(null); // TypeError: initialState must be a non-null object
+// Missing cleanup
+const store = createReactor({});  // Memory leak without destroy()
 
-// ❌ Bad - Will throw helpful error
-reactor.update('not a function'); // TypeError: update() requires a function
+// Storing sensitive data
+persist({ key: 'auth', pick: ['token'] });  // WRONG - use omit
+
+// Unnecessary subscriptions
+store.subscribe(state => {}); // Use select() for specific fields
 ```
+</anti-patterns>
 
-All errors include reactor name for easy debugging:
+<exports>
+## Package Exports
+```typescript
+// Main
+import { createReactor, simpleStore, persistedStore, computedStore } from 'svelte-reactor';
+import { arrayActions, asyncActions } from 'svelte-reactor';
+import { derived, get, readonly, isEqual } from 'svelte-reactor';
+
+// Plugins
+import { undoRedo, persist, logger } from 'svelte-reactor/plugins';
+
+// Optional
+import { diff, applyPatch } from 'svelte-reactor/utils/diff';
 ```
-[Reactor:counter] Cannot update destroyed reactor
-[persist:todos] Storage quota exceeded in localStorage
-```
+</exports>
 
-## SSR Support
-
-Svelte Reactor works seamlessly with SvelteKit:
+<errors>
+## Error Handling
+Errors include context: `[Reactor:name] message`
 
 ```typescript
-// Works in +page.svelte, +page.server.ts, etc.
-const store = createReactor({ data: null });
+// ReactorError has rich context
+import { ReactorError } from 'svelte-reactor';
 
-// No special SSR handling needed
+// Common errors:
+// - "Cannot operate on destroyed reactor"
+// - "Storage quota exceeded"
+// - "initialState must be a non-null object"
 ```
-
----
-
-**Version:** v0.2.5 (475 tests, all features stable)
-
-**NEW in v0.2.5:**
-- 🎯 **Selective Subscriptions** - Subscribe to specific state fields for performance
-- 📊 **Computed Stores** - Memoized computed state with dependency tracking (2-10x faster)
-- ⚡ **Critical Path Optimizations** - 2-10x faster state updates
-- 📦 **Batch Utilities** - Optimized batch state operations
-
-**Also in v0.2.4:**
-- ✅ `derived`, `get`, `readonly` exported from svelte-reactor (single import!)
-- ✅ IndexedDB storage support (50MB+ capacity)
-- ✅ TTL (Time-To-Live) support for persist plugin - auto-expire cached data
-- ✅ Storage type safety with TypeScript union types
-
-**Remember:** Svelte Reactor is fully compatible with Svelte stores API but provides enhanced features like undo/redo, persistence, DevTools integration, and automatic memory management.
+</errors>

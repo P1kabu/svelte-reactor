@@ -3,12 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  deepClone,
-  isEqual,
-  diff,
-  type DiffEntry,
-} from '../src/utils/index.js';
+import { deepClone, isEqual } from '../src/utils/index.js';
+import { diff, type DiffEntry } from '../src/utils/diff.js';
 
 describe('deepClone', () => {
   it('should clone primitive values', () => {

@@ -1,23 +1,20 @@
 # API Reference
 
-Complete API documentation for svelte-reactor v0.2.5.
+Complete API documentation for svelte-reactor v0.2.7.
 
-## What's New in v0.2.5
+## What's New in v0.2.7
 
-🎉 **Major improvements** in v0.2.5 - "Polish & Power":
+🎉 **Major improvements** in v0.2.7 - "Performance & Polish":
 
-- **🎯 Selective Subscriptions**: Subscribe to specific state parts, callback fires only when selected value changes
-- **📊 Computed Stores**: Memoized computed state with dependency tracking (2-10x faster)
-- **📦 25% Smaller Bundle**: 14.68 KB → 11.04 KB gzipped (Phase 0 + 4.2 optimizations)
-- **🗜️ Data Compression**: `compress: true` option for 40-70% storage reduction (tree-shakeable)
-- **💾 Memory Storage**: In-memory storage backend for testing and SSR (`storage: 'memory'`)
-- **🔄 Multi-Tab Sync**: Real-time state sync across tabs (`multiTabSync` plugin)
-- **⚡ 612x Faster Cloning**: Optimized large array performance
-- **🎯 Better Error Messages**: Contextual errors with actionable suggestions
-- **📚 3 New Guides**: [PLUGINS.md](./PLUGINS.md), [PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md), [ERROR_HANDLING.md](./ERROR_HANDLING.md)
-- **✅ 475 tests**: All features thoroughly tested
+- **🎯 `reactor.select()` Method**: Simpler API for selective subscriptions ✨ NEW
+- **🛡️ `ReactorError` Class**: Rich error context (reactor name, action, plugin, tips) ✨ NEW
+- **⚡ Async Concurrency Control**: `concurrency: 'replace' | 'queue' | 'parallel'` for race conditions ✨ NEW
+- **🔧 DevTools Fix**: Real subscription instead of polling (major CPU/memory improvement)
+- **📦 Optimized Cloning**: Clone states once and reuse in notifySubscribers
+- **🤖 AI Instructions Optimized**: 79% smaller, tailored for each AI
+- **✅ 486 tests**: All features thoroughly tested
 
-👉 See [v0.2.5 Upgrade](../../UPGRADES/UPGRADE-0.2.5.md) for complete changelog.
+👉 See [v0.2.7 Upgrade](../../UPGRADES/UPGRADE-0.2.7.md) for complete changelog.
 
 ## Table of Contents
 
@@ -40,6 +37,7 @@ Complete API documentation for svelte-reactor v0.2.5.
   - [createDevTools](#createdevtools)
   - [ReactorDevTools Interface](#reactordevtools-interface)
 - [Types](#types)
+  - [ReactorError](#reactorerror) ✨ NEW in v0.2.7
 
 ---
 
@@ -112,6 +110,17 @@ interface Reactor<T extends object> {
 
   // Replace entire state
   set(newState: T): void;
+
+  // Subscribe to state changes
+  subscribe(callback: (state: T) => void): () => void;
+  subscribe<R>(options: SelectiveSubscribeOptions<T, R>): () => void;
+
+  // Selective subscribe (simpler API) ✨ NEW in v0.2.7
+  select<R>(
+    selector: (state: T) => R,
+    onChanged: (value: R, prevValue?: R) => void,
+    options?: { fireImmediately?: boolean; equalityFn?: (a: R, b: R) => boolean }
+  ): () => void;
 
   // Batch multiple updates into one history entry
   batch(fn: () => void): void;
@@ -323,6 +332,63 @@ store.update(s => { s.items = [1, 2, 3, 4]; }); // ✅ Called (content changed)
 - 🔌 **Compatible** - Works with `derived()`, `get()`, etc.
 
 **See [EXAMPLES.md](./EXAMPLES.md#selective-subscriptions) for more patterns**
+
+---
+
+#### select(selector, onChanged, options?) ✨ NEW in v0.2.7
+
+Simpler API for selective subscriptions. This is the recommended way to subscribe to specific parts of state.
+
+```typescript
+function select<R>(
+  selector: (state: T) => R,
+  onChanged: (value: R, prevValue?: R) => void,
+  options?: {
+    fireImmediately?: boolean;  // default: true
+    equalityFn?: (a: R, b: R) => boolean;  // default: ===
+  }
+): () => void
+```
+
+**Parameters:**
+- `selector` - Function that extracts the value to observe
+- `onChanged` - Callback that receives (newValue, prevValue)
+- `options.fireImmediately` - Call callback immediately (default: `true`)
+- `options.equalityFn` - Custom equality function (default: `===`)
+
+**Returns:** Unsubscribe function
+
+**Example:**
+
+```typescript
+const store = createReactor({
+  user: { name: 'John', age: 30 },
+  count: 0
+});
+
+// Subscribe only to user.name - simpler than subscribe({ selector, onChanged })
+const unsubscribe = store.select(
+  state => state.user.name,
+  (name, prevName) => console.log(`Changed: ${prevName} → ${name}`)
+);
+
+store.update(s => { s.count++; });           // ❌ Callback NOT called
+store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
+
+unsubscribe();
+```
+
+**With options:**
+
+```typescript
+import { isEqual } from 'svelte-reactor';
+
+store.select(
+  state => state.items,
+  (items, prevItems) => console.log('Items changed:', items),
+  { fireImmediately: false, equalityFn: isEqual }
+);
+```
 
 ---
 
@@ -1477,6 +1543,12 @@ interface AsyncActionOptions {
   // NEW in v0.2.3: Debounce delay in milliseconds
   // Waits for this duration of inactivity before executing
   debounce?: number;
+
+  // NEW in v0.2.7: Concurrency control for race conditions
+  // 'replace' - Cancel previous request, only latest completes (default)
+  // 'queue' - Queue requests, execute sequentially
+  // 'parallel' - All requests run in parallel
+  concurrency?: 'replace' | 'queue' | 'parallel';
 }
 
 // NEW in v0.2.3: Async controller for cancellation
@@ -1669,6 +1741,35 @@ const searchApi = asyncActions(
 
 const ctrl = searchApi.search('query');
 ctrl.cancel(); // Cancel pending/in-flight request
+```
+
+**Concurrency control (v0.2.7):**
+
+```typescript
+// 'replace' mode - only latest request completes (default)
+const api = asyncActions(store, {
+  search: async (query: string) => {
+    const res = await fetch(`/api/search?q=${query}`);
+    return { results: await res.json() };
+  }
+}, { concurrency: 'replace' });
+
+// Rapid calls - only the last one updates state
+api.search('a');   // Canceled (stale)
+api.search('ab');  // Canceled (stale)
+api.search('abc'); // ✅ Only this updates state
+
+// 'parallel' mode - all requests run simultaneously
+const parallelApi = asyncActions(store, {
+  fetchItem: async (id: number) => { /* ... */ }
+}, { concurrency: 'parallel' });
+
+// All three requests run in parallel
+await Promise.all([
+  parallelApi.fetchItem(1),
+  parallelApi.fetchItem(2),
+  parallelApi.fetchItem(3)
+]);
 ```
 
 **Features:**
@@ -2272,6 +2373,64 @@ interface ReactorInspection {
     future: number;
   };
 }
+```
+
+### ReactorError ✨ NEW in v0.2.7
+
+Custom error class with rich context for debugging.
+
+```typescript
+import { ReactorError } from 'svelte-reactor';
+
+interface ReactorErrorContext {
+  reactor?: string;   // Reactor name
+  action?: string;    // Action being performed
+  plugin?: string;    // Plugin that caused error
+  state?: unknown;    // State at time of error
+  cause?: Error;      // Original error
+  tip?: string;       // Helpful suggestion
+}
+
+class ReactorError extends Error {
+  readonly context: ReactorErrorContext;
+
+  constructor(message: string, context?: ReactorErrorContext);
+
+  // Format error with full context
+  toString(): string;
+
+  // Static factory methods
+  static withTip(message: string, tip: string, context?: Omit<ReactorErrorContext, 'tip'>): ReactorError;
+  static destroyed(reactorName?: string): ReactorError;
+  static invalidState(message: string, reactorName?: string, state?: unknown): ReactorError;
+  static pluginError(pluginName: string, message: string, cause?: Error): ReactorError;
+}
+```
+
+**Example:**
+
+```typescript
+// Throwing with context
+throw new ReactorError('Update failed', {
+  reactor: 'counter',
+  action: 'increment',
+  tip: 'Check if state is initialized correctly.'
+});
+
+// Output:
+// [Reactor:counter] Update failed
+//   Action: increment
+//   Tip: Check if state is initialized correctly.
+
+// Using static methods
+throw ReactorError.destroyed('myStore');
+// [Reactor:myStore] Cannot operate on destroyed reactor
+//   Tip: Create a new reactor instance or check your cleanup logic.
+
+throw ReactorError.pluginError('persist', 'Storage quota exceeded');
+// [Reactor] Plugin "persist" failed: Storage quota exceeded
+//   Plugin: persist
+//   Tip: Check the "persist" plugin configuration and state compatibility.
 ```
 
 ---

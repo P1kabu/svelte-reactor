@@ -5,6 +5,7 @@
 
 // Core
 export { createReactor } from './core/reactor.svelte.js';
+export { ReactorError, type ReactorErrorContext } from './core/reactor-error.js';
 
 // Helpers (convenient wrappers)
 export { simpleStore, persistedStore, persistedReactor, arrayActions, asyncActions, computedStore } from './helpers/index.js';

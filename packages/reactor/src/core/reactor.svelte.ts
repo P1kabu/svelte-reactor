@@ -95,22 +95,23 @@ export function createReactor<T extends object>(
    * Notify all subscribers about state change
    */
   function notifySubscribers(nextState: T, prevState: T, action?: string): void {
-    // Use smartClone for performance (733x faster for large arrays!)
-    const stateClone = smartClone(nextState);
+    // Clone states once and reuse (performance optimization)
+    const nextClone = smartClone(nextState);
+    const prevClone = onChange ? smartClone(prevState) : undefined;
 
     // Call subscribers
     subscribers.forEach((subscriber) => {
       try {
-        subscriber(stateClone);
+        subscriber(nextClone);
       } catch (error) {
         console.error('[Reactor] Subscriber error:', error);
       }
     });
 
     // Call onChange callback if provided
-    if (onChange) {
+    if (onChange && prevClone !== undefined) {
       try {
-        onChange(stateClone, smartClone(prevState), action);
+        onChange(nextClone, prevClone, action);
       } catch (error) {
         console.error('[Reactor] onChange callback error:', error);
       }
@@ -466,12 +467,33 @@ export function createReactor<T extends object>(
     history?.clear();
   }
 
+  /**
+   * Selective subscribe with a simpler API
+   */
+  function select<R>(
+    selector: (state: T) => R,
+    onChanged: (value: R, prevValue?: R) => void,
+    options?: {
+      fireImmediately?: boolean;
+      equalityFn?: (a: R, b: R) => boolean;
+    }
+  ): () => void {
+    // Delegate to subscribe with SelectiveSubscribeOptions format
+    return subscribe({
+      selector,
+      onChanged,
+      fireImmediately: options?.fireImmediately ?? true,
+      equalityFn: options?.equalityFn,
+    });
+  }
+
   // Return reactor instance
   return {
     get state() {
       return state;
     },
     subscribe,
+    select,
     update,
     set,
     undo,

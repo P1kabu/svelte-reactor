@@ -72,6 +72,15 @@ export interface AsyncActionOptions {
    * Delays execution and cancels previous pending calls
    */
   debounce?: number;
+
+  /**
+   * How to handle concurrent requests for the same action
+   * - 'replace': Cancel previous request, run new one (default for debounced)
+   * - 'queue': Wait for previous to finish before starting new one
+   * - 'parallel': Allow all to run concurrently (default)
+   * @default 'parallel'
+   */
+  concurrency?: 'replace' | 'queue' | 'parallel';
 }
 
 export type AsyncAction<T, Args extends any[]> = (...args: Args) => Promise<T>;
@@ -139,6 +148,7 @@ export function asyncActions<
     resetErrorOnStart = true,
     retry: retryOptions,
     debounce: debounceDelay,
+    concurrency = 'parallel',
   } = options;
 
   // Retry defaults
@@ -150,6 +160,13 @@ export function asyncActions<
   // Store debounce timers and abort controllers per action
   const debounceTimers = new Map<string, any>();
   const abortControllers = new Map<string, AbortController>();
+
+  // Track active requests per action for concurrency control
+  const activeRequests = new Map<string, { id: number; promise: Promise<any> }>();
+  const requestCounters = new Map<string, number>();
+
+  // Track pending operations count for accurate loading state
+  const pendingCounts = new Map<string, number>();
 
   // Helper: sleep function
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -199,13 +216,54 @@ export function asyncActions<
       let cancelled = false;
       let abortController: AbortController | undefined;
 
+      // Generate unique request ID for this invocation
+      const currentCounter = (requestCounters.get(name) ?? 0) + 1;
+      requestCounters.set(name, currentCounter);
+      const requestId = currentCounter;
+
       // Create abort controller if available
       if (typeof AbortController !== 'undefined') {
         abortController = new AbortController();
         abortControllers.set(name, abortController);
       }
 
+      // Handle concurrency modes
+      const effectiveConcurrency = debounceDelay ? 'replace' : concurrency;
+
+      // For 'replace' mode, cancel previous request
+      if (effectiveConcurrency === 'replace') {
+        const existing = activeRequests.get(name);
+        if (existing) {
+          const existingAbort = abortControllers.get(name);
+          if (existingAbort) {
+            existingAbort.abort();
+          }
+        }
+      }
+
+      // Helper to increment/decrement pending count
+      const incrementPending = () => {
+        pendingCounts.set(name, (pendingCounts.get(name) ?? 0) + 1);
+      };
+      const decrementPending = () => {
+        const current = pendingCounts.get(name) ?? 1;
+        pendingCounts.set(name, Math.max(0, current - 1));
+      };
+      const hasPendingRequests = () => (pendingCounts.get(name) ?? 0) > 0;
+
       const executeAction = async (): Promise<any> => {
+        // For 'queue' mode, wait for previous request to complete
+        if (effectiveConcurrency === 'queue') {
+          const existing = activeRequests.get(name);
+          if (existing) {
+            try {
+              await existing.promise;
+            } catch {
+              // Ignore errors from previous request
+            }
+          }
+        }
+
         if (cancelled) {
           throw new Error(
             `[asyncActions:${name}] Action cancelled.\n` +
@@ -216,6 +274,8 @@ export function asyncActions<
             `  catch (error) { /* Handle cancellation */ }`
           );
         }
+
+        incrementPending();
 
         // Set loading state and optionally reset error
         reactor.update((state) => {
@@ -231,7 +291,16 @@ export function asyncActions<
             ? await executeWithRetry(() => action(...args), name)
             : await action(...args);
 
-          if (cancelled) {
+          // Check if this request is still the latest (race condition prevention)
+          const latestRequestId = requestCounters.get(name) ?? 0;
+          const isStale = effectiveConcurrency === 'replace' && requestId !== latestRequestId;
+
+          if (cancelled || isStale) {
+            decrementPending();
+            if (isStale) {
+              // Silently ignore stale responses - don't update state
+              return result;
+            }
             throw new Error(
               `[asyncActions:${name}] Action cancelled.\n` +
               `  Action: ${name}\n` +
@@ -241,25 +310,38 @@ export function asyncActions<
             );
           }
 
-          // Apply result to state and clear loading
+          decrementPending();
+
+          // Apply result to state and clear loading (only if no other pending requests)
           reactor.update((state) => {
             if (result && typeof result === 'object') {
               Object.assign(state, result);
             }
-            (state as any)[loadingKey] = false;
+            // Only clear loading if no other pending requests for this action
+            if (!hasPendingRequests()) {
+              (state as any)[loadingKey] = false;
+            }
             (state as any)[errorKey] = null;
           }, `${actionPrefix}:${name}:success`);
 
           return result;
         } catch (error) {
-          if (cancelled) {
-            // Don't update state if cancelled
+          decrementPending();
+
+          // Check if this is a stale request
+          const latestRequestId = requestCounters.get(name) ?? 0;
+          const isStale = effectiveConcurrency === 'replace' && requestId !== latestRequestId;
+
+          if (cancelled || isStale) {
+            // Don't update state if cancelled or stale
             throw error;
           }
 
-          // Set error state and clear loading
+          // Set error state and clear loading (only if no other pending requests)
           reactor.update((state) => {
-            (state as any)[loadingKey] = false;
+            if (!hasPendingRequests()) {
+              (state as any)[loadingKey] = false;
+            }
             (state as any)[errorKey] = error instanceof Error ? error : new Error(String(error));
           }, `${actionPrefix}:${name}:error`);
 
@@ -297,6 +379,9 @@ export function asyncActions<
               resolve(result);
             } catch (error) {
               reject(error);
+            } finally {
+              // Clean up active request tracking
+              activeRequests.delete(name);
             }
           }, debounceDelay);
 
@@ -311,9 +396,15 @@ export function asyncActions<
             resolve(result);
           } catch (error) {
             reject(error);
+          } finally {
+            // Clean up active request tracking
+            activeRequests.delete(name);
           }
         });
       }
+
+      // Track this request for queue mode
+      activeRequests.set(name, { id: requestId, promise });
 
       // Create controller with cancel method
       const controller: any = promise;
