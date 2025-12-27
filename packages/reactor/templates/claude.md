@@ -2,7 +2,7 @@
 
 <library>
 name: svelte-reactor
-version: 0.2.7
+version: 0.2.8
 description: Reactive state management for Svelte 5 with plugins
 </library>
 
@@ -81,13 +81,25 @@ import { simpleStore } from 'svelte-reactor';
 const count = simpleStore(0);  // Svelte-compatible writable
 count.set(5);
 count.update(n => n + 1);
+console.log(count.get());  // ✅ Use .get() to read value
+// count.value is DEPRECATED - shows warning
 ```
 
 ### persistedStore(key, initialValue, options?)
 ```typescript
 import { persistedStore } from 'svelte-reactor';
 const settings = persistedStore('settings', { theme: 'dark' });
+console.log(settings.get().theme);  // ✅ Use .get() to read value
 ```
+
+### Reading Values (IMPORTANT)
+| Store type | Read (non-reactive) | Read (reactive) |
+|------------|---------------------|-----------------|
+| `simpleStore` | `.get()` | `$store` |
+| `persistedStore` | `.get()` | `$store` |
+| `createReactor` | `.state` | `.state` |
+
+⚠️ `.value` is DEPRECATED - use `.get()` instead
 
 ### computedStore(reactor, selector, options?)
 ```typescript

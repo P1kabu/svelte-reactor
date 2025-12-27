@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.8] - 2025-12-27
+
+### Added
+
+- **`.value` deprecation warning** - Helps users migrating from other libraries
+  - `.value` now returns correct value with deprecation warning in console
+  - Use `.get()` instead (no warning, recommended)
+  - Hidden from `Object.keys()` and TypeScript autocomplete (`enumerable: false`)
+  - Backward compatible - `.value` still works but shows warning
+
+- **`simpleStore` and `persistedStore` API documentation** - Complete API reference
+  - Full documentation with `.get()` examples
+  - Store methods comparison table added to README and QUICK_START
+  - AI templates updated with `.get()` usage
+
+- **15 new tests** for `.value` deprecation (501 total)
+
+### Changed
+
+- **Lazy lz-string loading** - Bundle size optimization
+  - lz-string is now loaded dynamically only when `compress: true` is used
+  - Separate chunk for lz-string (2.16 KB gzipped)
+  - Reduces main persist-plugin size when compression not used
+  - Transparent to users - no API changes needed
+
+- **Updated AI templates** - Added `.get()` examples and `.value` deprecation warning
+  - `claude.md`, `cursor.md`, `copilot.md` updated
+  - Store methods comparison table added
+
+### Fixed
+
+- **`.value` returning undefined** - Real user issue where `.value` returned undefined instead of expected data
+  - Now returns correct value via `.get()` internally
+  - Deprecation warning guides users to correct API
+
 ## [0.2.7] - 2025-12-18
 
 ### Added

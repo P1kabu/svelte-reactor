@@ -1,6 +1,17 @@
 # API Reference
 
-Complete API documentation for svelte-reactor v0.2.7.
+Complete API documentation for svelte-reactor v0.2.8.
+
+## What's New in v0.2.8
+
+🎉 **Developer Experience improvements** in v0.2.8:
+
+- **⚠️ `.value` deprecation warning** - Helps users migrating from other libraries
+- **📚 Complete simpleStore/persistedStore API docs** - Full `.get()` examples
+- **📦 Lazy lz-string loading** - Better tree-shaking when compression not used
+- **✅ 501 tests** - All features thoroughly tested
+
+👉 See [v0.2.8 Upgrade](../../UPGRADES/UPGRADE-0.2.8.md) for complete changelog.
 
 ## What's New in v0.2.7
 
@@ -27,6 +38,8 @@ Complete API documentation for svelte-reactor v0.2.7.
   - [multiTabSync](#multitabsync) ✨ NEW in v0.2.5
   - [logger](#logger)
 - [Helpers](#helpers)
+  - [simpleStore](#simplestore)
+  - [persistedStore](#persistedstore)
   - [arrayActions](#arrayactions)
   - [asyncActions](#asyncactions)
 - [Svelte Store Utilities](#svelte-store-utilities)
@@ -1225,6 +1238,180 @@ const store = createReactor(state, {
 ---
 
 ## Helpers
+
+### simpleStore
+
+Create a simple writable store compatible with Svelte's `$store` syntax.
+
+```typescript
+function simpleStore<T>(
+  initialValue: T,
+  options?: SimpleStoreOptions
+): SimpleStore<T>
+```
+
+**Parameters:**
+
+- `initialValue: T` - The initial value for the store
+- `options?: SimpleStoreOptions` - Optional configuration
+
+**SimpleStoreOptions:**
+
+```typescript
+interface SimpleStoreOptions {
+  // Name for debugging
+  name?: string;
+}
+```
+
+**Returns:** `SimpleStore<T>`
+
+**SimpleStore Interface:**
+
+```typescript
+interface SimpleStore<T> {
+  // Read current value (non-reactive context)
+  get(): T;
+
+  // Set new value
+  set(value: T): void;
+
+  // Update value with function
+  update(updater: (value: T) => T): void;
+
+  // Subscribe to changes (Svelte stores compatible)
+  subscribe(callback: (value: T) => void): () => void;
+}
+```
+
+**Example:**
+
+```typescript
+import { simpleStore } from 'svelte-reactor';
+
+const counter = simpleStore(0);
+
+// Subscribe to changes
+counter.subscribe(value => console.log('Count:', value));
+
+// Update value
+counter.set(5);
+counter.update(n => n + 1);
+
+// Read current value (non-reactive context)
+console.log(counter.get()); // 6
+
+// In Svelte component with $ syntax
+// $: count = $counter;
+```
+
+**Reading Values:**
+
+```typescript
+const counter = simpleStore(0);
+
+// ✅ CORRECT: Use .get() to read value in non-reactive context
+console.log(counter.get()); // 0
+
+// ❌ DEPRECATED: Don't use .value (shows deprecation warning)
+// console.log(counter.value); // Works but deprecated
+
+// ✅ In Svelte components, use $ syntax for reactive access
+// {$counter}
+```
+
+---
+
+### persistedStore
+
+Create a store that automatically persists to localStorage, sessionStorage, IndexedDB, or memory.
+
+```typescript
+function persistedStore<T>(
+  key: string,
+  initialValue: T,
+  options?: PersistedStoreOptions
+): PersistedStore<T>
+```
+
+**Parameters:**
+
+- `key: string` - Storage key for persistence
+- `initialValue: T` - Initial value if no stored data exists
+- `options?: PersistedStoreOptions` - Optional configuration
+
+**PersistedStoreOptions:**
+
+```typescript
+interface PersistedStoreOptions {
+  // Storage type (default: 'localStorage')
+  storage?: 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory';
+
+  // Debounce save in milliseconds (default: 0)
+  debounce?: number;
+
+  // Fields to exclude from persistence (dot notation supported)
+  omit?: string[];
+
+  // Fields to include in persistence (dot notation supported)
+  // Cannot use both pick and omit
+  pick?: string[];
+
+  // Enable LZ compression (default: false)
+  compress?: boolean;
+
+  // Time-to-live in milliseconds
+  ttl?: number;
+
+  // Callback when stored data expires
+  onExpire?: (key: string) => void;
+}
+```
+
+**Returns:** `PersistedStore<T>` (same interface as SimpleStore)
+
+**Example:**
+
+```typescript
+import { persistedStore } from 'svelte-reactor';
+
+// Simple persisted counter
+const counter = persistedStore('counter', 0);
+
+// With options
+const settings = persistedStore('app-settings', {
+  theme: 'dark',
+  language: 'en',
+  user: { name: 'John', token: 'secret123' }
+}, {
+  storage: 'localStorage',
+  debounce: 300,
+  omit: ['user.token']  // Don't persist sensitive data
+});
+
+// Read current value
+console.log(settings.get()); // { theme: 'dark', language: 'en', user: { name: 'John', token: 'secret123' } }
+
+// Update value - automatically persisted
+settings.update(s => ({ ...s, theme: 'light' }));
+```
+
+**Reading Values:**
+
+```typescript
+const settings = persistedStore('settings', { theme: 'dark' });
+
+// ✅ CORRECT: Use .get() to read value in non-reactive context
+const currentTheme = settings.get().theme;
+
+// ❌ DEPRECATED: Don't use .value (shows deprecation warning)
+// const theme = settings.value.theme; // Works but deprecated
+
+// ✅ In Svelte components, use $ syntax for reactive access
+// {$settings.theme}
+```
+
+---
 
 ### arrayActions
 

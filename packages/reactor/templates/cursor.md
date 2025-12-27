@@ -2,7 +2,7 @@
 
 ## Quick Reference
 
-**Package:** `svelte-reactor` v0.2.7
+**Package:** `svelte-reactor` v0.2.8
 **Purpose:** Reactive state management for Svelte 5 with undo/redo, persistence, plugins
 
 ## Documentation Links
@@ -52,6 +52,8 @@ store.destroy()          // IMPORTANT: cleanup
 const count = simpleStore(0);
 count.set(5);
 count.update(n => n + 1);
+console.log(count.get());  // ✅ Use .get() to read value
+// count.value is DEPRECATED - shows warning
 const unsubscribe = count.subscribe(value => {});
 ```
 
@@ -62,7 +64,17 @@ const settings = persistedStore('key', { theme: 'dark' }, {
   debounce: 300,
   omit: ['sensitiveField']
 });
+console.log(settings.get().theme);  // ✅ Use .get() to read value
 ```
+
+### Reading Values (IMPORTANT)
+| Store type | Read (non-reactive) | Read (reactive) |
+|------------|---------------------|-----------------|
+| `simpleStore` | `.get()` | `$store` |
+| `persistedStore` | `.get()` | `$store` |
+| `createReactor` | `.state` | `.state` |
+
+⚠️ `.value` is DEPRECATED - use `.get()` instead
 
 ### computedStore
 ```typescript

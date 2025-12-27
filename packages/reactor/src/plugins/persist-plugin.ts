@@ -7,7 +7,23 @@ import { deepClone } from '../utils/index.js';
 import { pick, omit } from '../utils/path.js';
 import { IndexedDBStorageSync } from '../storage/indexeddb.js';
 import { memoryStorage } from '../storage/memory-storage.js';
-import { compressToUTF16, decompressFromUTF16 } from 'lz-string';
+
+// Lazy-loaded lz-string module (only loaded when compress: true)
+// This allows tree-shaking when compression is not used
+let lzStringModule: typeof import('lz-string') | null = null;
+let lzStringLoadPromise: Promise<typeof import('lz-string')> | null = null;
+
+/**
+ * Ensure lz-string is loaded (async load, cached)
+ * Called when persist plugin is created with compress: true
+ */
+async function ensureLzStringLoaded(): Promise<void> {
+  if (lzStringModule) return;
+  if (!lzStringLoadPromise) {
+    lzStringLoadPromise = import('lz-string');
+  }
+  lzStringModule = await lzStringLoadPromise;
+}
 
 /**
  * Enable state persistence using direct storage access
@@ -70,6 +86,14 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
   let storageListener: ((e: StorageEvent) => void) | null = null;
   let indexedDBInstance: IndexedDBStorageSync | null = null;
 
+  // Pre-load lz-string if compression is enabled (non-blocking)
+  // This starts loading immediately when persist() is called
+  if (compress) {
+    ensureLzStringLoaded().catch((error) => {
+      console.error(`[persist:${key}] Failed to load lz-string:`, error);
+    });
+  }
+
   // Get storage backend
   function getStorage(): Storage | IndexedDBStorageSync | null {
     // Memory storage works in any environment (SSR-safe)
@@ -110,27 +134,33 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       // Handle decompression
       let jsonString: string;
       if (compress) {
-        // Decompress from UTF16
-        try {
-          const decompressed = decompressFromUTF16(item);
-          if (decompressed) {
-            // Validate decompressed data is valid JSON
-            try {
-              JSON.parse(decompressed);
-              jsonString = decompressed;
-            } catch {
-              // Decompression returned garbage - use original (backward compatibility)
-              console.warn(`[persist:${key}] Decompressed data is invalid, using uncompressed fallback`);
+        if (!lzStringModule) {
+          // lz-string not loaded yet, try to parse as uncompressed (backward compatibility)
+          console.warn(`[persist:${key}] lz-string not loaded, trying uncompressed data`);
+          jsonString = item;
+        } else {
+          // Decompress from UTF16
+          try {
+            const decompressed = lzStringModule.decompressFromUTF16(item);
+            if (decompressed) {
+              // Validate decompressed data is valid JSON
+              try {
+                JSON.parse(decompressed);
+                jsonString = decompressed;
+              } catch {
+                // Decompression returned garbage - use original (backward compatibility)
+                console.warn(`[persist:${key}] Decompressed data is invalid, using uncompressed fallback`);
+                jsonString = item;
+              }
+            } else {
+              // Decompression returned null - try direct parse (backward compatibility)
+              console.warn(`[persist:${key}] Failed to decompress, trying uncompressed fallback`);
               jsonString = item;
             }
-          } else {
-            // Decompression returned null - try direct parse (backward compatibility)
-            console.warn(`[persist:${key}] Failed to decompress, trying uncompressed fallback`);
+          } catch (error) {
+            console.warn(`[persist:${key}] Decompression error, using uncompressed fallback:`, error);
             jsonString = item;
           }
-        } catch (error) {
-          console.warn(`[persist:${key}] Decompression error, using uncompressed fallback:`, error);
-          jsonString = item;
         }
       } else {
         jsonString = item;
@@ -239,9 +269,9 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
 
       // Handle compression
       let finalString: string;
-      if (compress) {
+      if (compress && lzStringModule) {
         // Compress to UTF16 (safe for all storage types)
-        finalString = compressToUTF16(jsonString);
+        finalString = lzStringModule.compressToUTF16(jsonString);
       } else {
         finalString = jsonString;
       }

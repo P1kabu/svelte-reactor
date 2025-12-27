@@ -13,7 +13,7 @@ describe('Compression (lz-string)', () => {
   });
 
   describe('Basic Compression', () => {
-    it('should compress data when compress: true', () => {
+    it('should compress data when compress: true', async () => {
       const reactor = createReactor(
         { message: 'Hello World!', count: 42 },
         {
@@ -25,6 +25,9 @@ describe('Compression (lz-string)', () => {
           ]
         }
       );
+
+      // Wait for lz-string to be loaded (lazy import)
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // Trigger persist
       reactor.update((state) => {

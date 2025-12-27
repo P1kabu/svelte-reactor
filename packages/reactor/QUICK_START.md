@@ -19,8 +19,21 @@ export const counter = simpleStore(0);
 // Use in component
 counter.subscribe(value => console.log(value)); // 0
 counter.update(n => n + 1);
+
+// ✅ CORRECT: Use .get() to read current value (non-reactive context)
 console.log(counter.get()); // 1
+
+// ❌ DEPRECATED: Don't use .value (shows deprecation warning)
+// console.log(counter.value); // Works but deprecated
 ```
+
+**Reading Values - Quick Reference:**
+
+| Store type | Read (non-reactive) | Read (reactive) |
+|------------|---------------------|-----------------|
+| `simpleStore` | `.get()` | `$store` |
+| `persistedStore` | `.get()` | `$store` |
+| `createReactor` | `.state` | `.state` |
 
 ### Persisted Store (Auto-save to localStorage)
 

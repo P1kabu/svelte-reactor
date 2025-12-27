@@ -1,4 +1,4 @@
-# Svelte Reactor v0.2.7 - Copilot Reference
+# Svelte Reactor v0.2.8 - Copilot Reference
 
 Docs: [README](./README.md) | [API](./API.md) | [EXAMPLES](./EXAMPLES.md)
 
@@ -26,13 +26,24 @@ store.destroy();
 const count = simpleStore(0);
 count.set(5);
 count.update(n => n + 1);
+console.log(count.get());  // ✅ Use .get() to read value
+// count.value is DEPRECATED - shows warning
 count.subscribe(val => {});
 ```
 
 ## persistedStore
 ```typescript
 const settings = persistedStore('key', { theme: 'dark' }, { storage: 'localStorage', debounce: 300, omit: ['secret'] });
+console.log(settings.get().theme);  // ✅ Use .get() to read value
 ```
+
+## Reading Values
+| Store | Read (non-reactive) | Read (reactive) |
+|-------|---------------------|-----------------|
+| `simpleStore/persistedStore` | `.get()` | `$store` |
+| `createReactor` | `.state` | `.state` |
+
+⚠️ `.value` is DEPRECATED - use `.get()` instead
 
 ## computedStore
 ```typescript

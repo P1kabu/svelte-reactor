@@ -11,27 +11,26 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.7 - "Performance & Polish"
+## ✨ What's New in v0.2.8
 
-🎯 **`reactor.select()` Method** - Simpler API for selective subscriptions
-🛡️ **`ReactorError` Class** - Rich error context with reactor name, action, plugin, tips
-⚡ **Async Concurrency Control** - `concurrency: 'replace' | 'queue' | 'parallel'` for race conditions
-🔧 **DevTools Fix** - Real subscription instead of polling (major CPU/memory improvement)
-📦 **Optimized Cloning** - Clone states once and reuse in notifySubscribers
-🤖 **AI Instructions Optimized** - 79% smaller (2430 → 498 lines), tailored for each AI
-✅ **486 tests** - All features thoroughly tested
+| Feature | Description |
+|---------|-------------|
+| ⚠️ **`.value` Deprecation** | Migrating from other libraries? `.value` now works with deprecation warning. Use `.get()` instead |
+| 📚 **Complete Docs** | Full `simpleStore`/`persistedStore` API docs with `.get()` examples |
+| 📦 **Smaller Bundle** | Lazy lz-string loading - only loads when `compress: true` |
+| ✅ **501 Tests** | Comprehensive test coverage |
 
-**Documentation:**
-- 📖 **[PLUGINS.md](./PLUGINS.md)** - Complete plugin development guide with 4 working examples
-- 🚀 **[PERFORMANCE_GUIDE.md](./PERFORMANCE_GUIDE.md)** - Optimization strategies with 5 runnable demos
-- 🛡️ **[ERROR_HANDLING.md](./ERROR_HANDLING.md)** - Error handling patterns with 20 examples
+<details>
+<summary>📜 Previous Versions</summary>
 
-Previous versions:
+- **v0.2.7**: `select()` method, `ReactorError` class, async concurrency control
 - **v0.2.5**: Selective subscriptions, computed stores, 25% smaller bundle
 - **v0.2.4**: IndexedDB storage, TTL, pagination, derived stores export
 - **v0.2.3**: Selective persistence, retry/cancellation, bulk operations
 
-👉 **[Quick Start Guide](./QUICK_START.md)** | **[Migration Guide](./MIGRATION.md)** | **[v0.2.7 Upgrade](../../UPGRADES/UPGRADE-0.2.7.md)**
+</details>
+
+📖 **Docs:** [Quick Start](./QUICK_START.md) | [API Reference](./API.md) | [Plugins](./PLUGINS.md) | [Performance](./PERFORMANCE_GUIDE.md) | [Error Handling](./ERROR_HANDLING.md)
 
 ## 🚀 Features
 
@@ -215,8 +214,21 @@ const counter = simpleStore(0);
 counter.subscribe(value => console.log(value));
 counter.update(n => n + 1);
 counter.set(5);
+
+// Read current value (non-reactive context)
 console.log(counter.get()); // 5
+
+// DON'T use .value (deprecated, shows warning)
+// console.log(counter.value); // Works but deprecated
 ```
+
+**Store Methods Quick Reference:**
+
+| Store type | Write | Update | Read (non-reactive) | Read (reactive) |
+|------------|-------|--------|---------------------|-----------------|
+| `simpleStore` | `.set(val)` | `.update(fn)` | `.get()` | `$store` |
+| `persistedStore` | `.set(val)` | `.update(fn)` | `.get()` | `$store` |
+| `createReactor` | `.set(obj)` | `.update(fn)` | `.state` | `.state` |
 
 #### `persistedStore(key, initialValue, options?)`
 
@@ -1239,14 +1251,30 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 - ✅ **Advanced testing** - 3 complexity tests for concurrent operations
 - ✅ 172 tests (+23)
 
-### ✅ v0.2.4 - DX Improvements & Advanced Features (Current)
-- ✅ **Derived Stores Export** - `derived()`, `get()`, `readonly()` from single import
+### ✅ v0.2.8 - Developer Experience (Current)
+- ✅ **`.value` Deprecation Warning** - Helps users migrating from other libraries
+- ✅ **Complete API Documentation** - Full `simpleStore`/`persistedStore` docs
+- ✅ **Lazy lz-string Loading** - Better tree-shaking for bundle size
+- ✅ 501 tests (+15)
+
+### ✅ v0.2.7 - Performance & Polish (Released)
+- ✅ **`reactor.select()` Method** - Simpler API for selective subscriptions
+- ✅ **`ReactorError` Class** - Rich error context with debugging info
+- ✅ **Async Concurrency Control** - `'replace' | 'queue' | 'parallel'`
+- ✅ **DevTools Optimization** - Real subscription instead of polling
+- ✅ 486 tests
+
+### ✅ v0.2.5 - Selective & Computed (Released)
+- ✅ **Selective Subscriptions** - Subscribe to specific state parts
+- ✅ **Computed Stores** - Memoized computed state with dependency tracking
+- ✅ **Performance Optimizations** - 2-10x faster for critical operations
+- ✅ 370 tests
+
+### ✅ v0.2.4 - Storage & TTL (Released)
 - ✅ **IndexedDB Storage** - 50MB+ capacity for large datasets
-- ✅ **TTL (Time-To-Live)** - Auto-expire cached data with `ttl` and `onExpire`
+- ✅ **TTL (Time-To-Live)** - Auto-expire cached data
 - ✅ **Pagination Helper** - Built-in pagination for `arrayActions()`
-- ✅ **Storage Type Safety** - TypeScript union types + runtime validation
-- ✅ **AI Setup Fix** - `init-ai` creates files AI assistants actually read
-- ✅ 326 tests (+94)
+- ✅ 326 tests
 
 ### ✅ v0.2.3 - Feature Enhancements (Released)
 - ✅ **Selective Persistence** - `pick`/`omit` options for security
@@ -1300,10 +1328,10 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **326 tests** covering all features (+94 new in v0.2.4)
+- **501 tests** covering all features
 - Unit tests for core reactor, plugins, helpers, utilities, and DevTools
 - Advanced complexity tests for edge cases and concurrent operations
-- Integration tests for v0.2.4 features (TTL, pagination, IndexedDB)
+- Integration tests for IndexedDB, TTL, pagination, compression
 - Performance benchmarks for all operations
 - TypeScript type checking
 

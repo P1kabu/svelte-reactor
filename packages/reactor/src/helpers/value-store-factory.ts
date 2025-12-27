@@ -13,7 +13,7 @@ import type { WritableStore } from './simple-store.js';
 export function createValueStoreFromReactor<T>(
   reactor: Reactor<{ value: T }>
 ): WritableStore<T> {
-  return {
+  const store: WritableStore<T> = {
     subscribe: (subscriber: Subscriber<T>): Unsubscriber => {
       return reactor.subscribe((state) => {
         subscriber(state.value);
@@ -33,4 +33,21 @@ export function createValueStoreFromReactor<T>(
       return reactor.state.value;
     },
   };
+
+  // Add deprecated .value as alias for .get()
+  // This helps users migrating from other libraries that use .value
+  Object.defineProperty(store, 'value', {
+    get() {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn(
+          '[svelte-reactor] .value is deprecated. Use .get() instead.\n' +
+            'Example: store.get() instead of store.value'
+        );
+      }
+      return store.get();
+    },
+    enumerable: false, // Hide from Object.keys() and autocomplete
+  });
+
+  return store;
 }
