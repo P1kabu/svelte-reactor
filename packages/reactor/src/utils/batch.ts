@@ -3,70 +3,12 @@
  *
  * Provides convenient ways to batch multiple state updates into a single
  * notification/history entry.
+ *
+ * NOTE: Use `reactor.batch()` directly for single-reactor batching.
+ * These utilities provide higher-order function patterns for batching.
  */
 
 import type { Reactor } from '../types/index.js';
-
-/**
- * Batch multiple updates to a reactor into a single notification/history entry
- *
- * This is a convenience wrapper around reactor.batch() that allows for
- * more functional usage patterns.
- *
- * @param reactor - The reactor instance to batch updates on
- * @param fn - Function containing the updates to batch
- *
- * @example
- * ```ts
- * import { createReactor } from 'svelte-reactor';
- * import { batch } from 'svelte-reactor/utils';
- *
- * const store = createReactor({ count: 0, name: 'John' });
- *
- * // Multiple updates, single notification
- * batch(store, () => {
- *   store.update(s => { s.count++ });
- *   store.update(s => { s.name = 'Jane' });
- * });
- * // Subscribers notified only once
- * ```
- */
-export function batch<T extends object>(
-  reactor: Reactor<T>,
-  fn: () => void
-): void {
-  reactor.batch(fn);
-}
-
-/**
- * Batch multiple updates across different reactors
- *
- * This allows batching updates to multiple independent stores, though note
- * that history entries are still per-reactor (batch only affects undo/redo
- * for each reactor independently).
- *
- * @param fn - Function containing the updates to batch
- *
- * @example
- * ```ts
- * import { createReactor } from 'svelte-reactor';
- * import { batchAll } from 'svelte-reactor/utils';
- *
- * const store1 = createReactor({ count: 0 });
- * const store2 = createReactor({ name: 'John' });
- *
- * // Update multiple stores efficiently
- * batchAll(() => {
- *   store1.update(s => { s.count++ });
- *   store2.update(s => { s.name = 'Jane' });
- * });
- * ```
- */
-export function batchAll(fn: () => void): void {
-  // For cross-store batching, we just execute the function
-  // Each reactor will handle its own batching internally
-  fn();
-}
 
 /**
  * Create a batched version of a function

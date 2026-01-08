@@ -373,8 +373,13 @@ export class IndexedDBStorage {
 export class IndexedDBStorageSync {
   private storage: IndexedDBStorage;
   private cache: Map<string, string> = new Map();
-  private ready: Promise<void>;
   private pendingOperations: Set<Promise<void>> = new Set();
+
+  /**
+   * Promise that resolves when the cache is loaded from IndexedDB.
+   * Wait for this before reading data to ensure persistence works correctly.
+   */
+  readonly ready: Promise<void>;
 
   constructor(config: IndexedDBConfig = {}) {
     this.storage = new IndexedDBStorage(config);

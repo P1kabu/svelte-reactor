@@ -66,7 +66,7 @@ describe('IndexedDB Stress Tests', () => {
     reactor.destroy();
   });
 
-  it('should handle IndexedDB + async actions with retries', async () => {
+  it('should handle IndexedDB + async actions with manual retries (v0.2.9)', async () => {
     interface State {
       data: string[];
       loading: boolean;
@@ -89,16 +89,25 @@ describe('IndexedDB Stress Tests', () => {
     let attemptCount = 0;
     const maxAttempts = 3;
 
-    const api = asyncActions(reactor, {
-      fetchData: async (id: number) => {
-        attemptCount++;
-        if (attemptCount < maxAttempts) {
-          throw new Error(`Attempt ${attemptCount} failed`);
+    // v0.2.9: Manual retry at API layer
+    const fetchDataWithRetry = async (id: number) => {
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          attemptCount++;
+          if (attemptCount < maxAttempts) {
+            throw new Error(`Attempt ${attemptCount} failed`);
+          }
+          return { data: [...reactor.state.data, `data-${id}`] };
+        } catch (e) {
+          if (i === maxAttempts - 1) throw e;
+          await new Promise(r => setTimeout(r, 10));
         }
-        return { data: [...reactor.state.data, `data-${id}`] };
       }
-    }, {
-      retry: { attempts: 3, delay: 10 }
+      throw new Error('Max retries exceeded');
+    };
+
+    const api = asyncActions(reactor, {
+      fetchData: fetchDataWithRetry,
     });
 
     await api.fetchData(1);
@@ -318,12 +327,13 @@ describe('IndexedDB Stress Tests', () => {
       }
     );
 
+    // v0.2.9: Use queue mode to ensure all async operations complete in order
     const api = asyncActions(reactor, {
       asyncOp: async (value: string) => {
         await new Promise(resolve => setTimeout(resolve, 5));
         return { asyncData: [...reactor.state.asyncData, value] };
       }
-    });
+    }, { concurrency: 'queue' });
 
     // Mix sync and async operations
     const operations: Promise<any>[] = [];

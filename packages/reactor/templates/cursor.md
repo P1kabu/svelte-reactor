@@ -2,7 +2,7 @@
 
 ## Quick Reference
 
-**Package:** `svelte-reactor` v0.2.8
+**Package:** `svelte-reactor` v0.2.9
 **Purpose:** Reactive state management for Svelte 5 with undo/redo, persistence, plugins
 
 ## Documentation Links
@@ -18,11 +18,11 @@
 ```typescript
 // Core
 import { createReactor, simpleStore, persistedStore, computedStore } from 'svelte-reactor';
-import { arrayActions, asyncActions } from 'svelte-reactor';
+import { arrayActions, arrayPagination, asyncActions } from 'svelte-reactor';
 import { derived, get, readonly, isEqual } from 'svelte-reactor';
 
 // Plugins
-import { undoRedo, persist, logger } from 'svelte-reactor/plugins';
+import { undoRedo, persist, logger, sync } from 'svelte-reactor/plugins';
 ```
 
 ## Core API
@@ -52,8 +52,7 @@ store.destroy()          // IMPORTANT: cleanup
 const count = simpleStore(0);
 count.set(5);
 count.update(n => n + 1);
-console.log(count.get());  // ✅ Use .get() to read value
-// count.value is DEPRECATED - shows warning
+console.log(count.get());  // Read value with .get()
 const unsubscribe = count.subscribe(value => {});
 ```
 
@@ -67,14 +66,12 @@ const settings = persistedStore('key', { theme: 'dark' }, {
 console.log(settings.get().theme);  // ✅ Use .get() to read value
 ```
 
-### Reading Values (IMPORTANT)
+### Reading Values
 | Store type | Read (non-reactive) | Read (reactive) |
 |------------|---------------------|-----------------|
 | `simpleStore` | `.get()` | `$store` |
 | `persistedStore` | `.get()` | `$store` |
 | `createReactor` | `.state` | `.state` |
-
-⚠️ `.value` is DEPRECATED - use `.get()` instead
 
 ### computedStore
 ```typescript
@@ -103,6 +100,16 @@ actions.count();
 actions.clear();
 ```
 
+### arrayPagination
+```typescript
+const pagination = arrayPagination(store, 'items', { pageSize: 20 });
+
+const { items, page, totalPages, hasNext, hasPrev } = pagination.getPage();
+pagination.nextPage();
+pagination.prevPage();
+pagination.setPage(3);
+```
+
 ### asyncActions
 ```typescript
 const api = asyncActions(store, {
@@ -113,9 +120,7 @@ const api = asyncActions(store, {
 }, {
   loadingKey: 'loading',
   errorKey: 'error',
-  retry: { attempts: 3, delay: 1000, backoff: 'exponential' },
-  debounce: 300,
-  concurrency: 'replace'  // 'replace' | 'queue' | 'parallel'
+  concurrency: 'replace'  // 'replace' | 'queue'
 });
 
 await api.fetchData('123');
@@ -126,20 +131,26 @@ api.fetchData.cancel();
 
 ### undoRedo
 ```typescript
-undoRedo({ maxHistory: 50 })
+undoRedo({ limit: 50 })
 ```
 
 ### persist
 ```typescript
 persist({
   key: 'app-state',
-  storage: 'localStorage',
+  storage: 'localStorage',   // 'localStorage' | 'sessionStorage' | 'indexedDB' | 'memory'
   pick: ['settings'],        // OR
   omit: ['user.token'],      // Exclude sensitive
   debounce: 300,
   ttl: 5 * 60 * 1000,        // Auto-expire
-  onExpire: (key) => {}
+  onExpire: (key) => {},
+  onReady: (state) => {}     // Callback when IndexedDB data loaded (v0.2.9)
 })
+```
+
+### sync (multiTabSync)
+```typescript
+sync({ key: 'app-state', debounce: 100 })  // Sync state across browser tabs
 ```
 
 ### logger

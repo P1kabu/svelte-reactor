@@ -33,6 +33,7 @@ coverage
 .turbo
 .claude
 test-ai-cli
+CLAUDE.md
 
 # Temporary files
 Text Document.txt

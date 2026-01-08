@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.9] - 2025-01-04
+
+### Breaking Changes
+
+This is a **cleanup release** that removes unnecessary code and simplifies APIs.
+
+- **Removed `batch()` and `batchAll()`** - Use `reactor.batch()` directly
+  ```typescript
+  // Before: batch(store, () => {...})
+  // After:  store.batch(() => {...})
+  ```
+
+- **Removed `.value` getter** - Use `.get()` instead
+  ```typescript
+  // Before: store.value (with deprecation warning)
+  // After:  store.get()
+  ```
+
+- **Removed `diff()` utility** - Use external libraries like `microdiff` or `deep-diff`
+  ```typescript
+  // Before: import { diff } from 'svelte-reactor/utils/diff'
+  // After:  import diff from 'microdiff'
+  ```
+
+- **Extracted `arrayPagination()` from `arrayActions`** - Separate helper for pagination
+  ```typescript
+  // Before: arrayActions(store, 'items', { pagination: { pageSize: 20 } })
+  // After:  const pagination = arrayPagination(store, 'items', { pageSize: 20 })
+  ```
+
+- **Removed `subscribe(options)` overload** - Use `select()` instead
+  ```typescript
+  // Before: store.subscribe({ selector: s => s.name, onChanged: fn })
+  // After:  store.select(s => s.name, fn)
+  ```
+
+- **Simplified `asyncActions`** - Removed retry, debounce, and parallel mode
+  ```typescript
+  // Before: asyncActions(store, actions, { retry: {...}, debounce: 300, concurrency: 'parallel' })
+  // After:  asyncActions(store, actions, { concurrency: 'replace' | 'queue' })
+  // Use lodash-es/debounce or implement retry at API layer
+  ```
+
+- **Removed localStorage fallback in sync plugin** - Requires BroadcastChannel (95%+ browser support)
+
+### Added
+
+- **`arrayPagination()` helper** - Standalone pagination for array fields
+  - `getPage()`, `setPage()`, `nextPage()`, `prevPage()`, `firstPage()`, `lastPage()`
+  - `getCurrentPage()`, `getTotalPages()`
+  - Works independently of `arrayActions`
+
+- **`onReady` callback for IndexedDB persistence** - Notifies when async data is loaded
+  ```typescript
+  persist({
+    key: 'data',
+    storage: 'indexedDB',
+    onReady: (loadedState) => console.log('Ready:', loadedState)
+  })
+  ```
+
+- **`onError` callback for asyncActions** - Centralized error handling
+  ```typescript
+  asyncActions(store, actions, {
+    onError: (error, actionName) => console.error(`${actionName} failed:`, error)
+  })
+  ```
+
+- **4 new tests** (505 total)
+
+### Fixed
+
+- **IndexedDB persistence not loading on page reload** - Data now loads correctly via `onReady` callback
+
+### Changed
+
+- **Bundle size reduced** - 11.52 KB gzipped (was 11.67 KB)
+- **Simpler API surface** - Fewer ways to do the same thing
+- **`select()` is now the primary API for selective subscriptions**
+
 ## [0.2.8] - 2025-12-27
 
 ### Added
@@ -530,16 +610,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Roadmap
 
 ### v0.3.0 (Planned)
-- Selectors API for computed state
-- Shallow comparison optimization
-- Additional storage adapters (IndexedDB, custom backends)
-- Performance optimizations for large states
+- State Snapshots API
+- Performance Monitoring Plugin
+- Validation Plugin
+- Form Helpers
+- SSR Improvements
 
 ### v1.0.0 (Future)
-- Multi-tab sync plugin with BroadcastChannel
 - Redux DevTools extension support
 - Advanced state diffing algorithms
 - React/Vue adapters for cross-framework usage
+- Plugin marketplace
 
 ---
 

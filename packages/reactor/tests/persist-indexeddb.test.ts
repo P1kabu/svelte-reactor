@@ -3,9 +3,10 @@
  * Tests focus on reactor state behavior, not IndexedDB persistence details
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createReactor } from '../src/index';
 import { persist } from '../src/plugins/persist-plugin';
+import { IndexedDBStorage } from '../src/storage/indexeddb';
 import 'fake-indexeddb/auto';
 
 describe('Persist Plugin with IndexedDB', () => {
@@ -225,5 +226,144 @@ describe('Persist Plugin with IndexedDB', () => {
     // Should destroy without errors
     reactor.destroy();
     expect(true).toBe(true);
+  });
+});
+
+describe('Persist Plugin with IndexedDB - Data Persistence', () => {
+  const TEST_DB = 'persistence-test-db';
+  const TEST_KEY = 'persistence-test-key';
+
+  beforeEach(async () => {
+    // Clean up database before each test
+    try {
+      await IndexedDBStorage.deleteDatabase(TEST_DB);
+    } catch {
+      // Ignore errors
+    }
+  });
+
+  it('should persist data across "page reloads" (new reactor instances)', async () => {
+    interface State {
+      documents: { id: number; name: string }[];
+      totalSize: number;
+    }
+
+    // Step 1: Create first reactor and add some data
+    const reactor1 = createReactor<State>(
+      { documents: [], totalSize: 0 },
+      {
+        plugins: [
+          persist({
+            key: TEST_KEY,
+            storage: 'indexedDB',
+            indexedDB: { database: TEST_DB }
+          })
+        ]
+      }
+    );
+
+    // Add documents
+    reactor1.update(s => {
+      s.documents.push({ id: 1, name: 'Document 1' });
+      s.documents.push({ id: 2, name: 'Document 2' });
+      s.totalSize = 2;
+    });
+
+    expect(reactor1.state.documents.length).toBe(2);
+    expect(reactor1.state.totalSize).toBe(2);
+
+    // Wait for async IndexedDB write to complete
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // Destroy first reactor (simulates closing the page)
+    reactor1.destroy();
+
+    // Step 2: Create a NEW reactor (simulates page reload)
+    // This should load the persisted data
+    const reactor2 = createReactor<State>(
+      { documents: [], totalSize: 0 },  // Same initial state
+      {
+        plugins: [
+          persist({
+            key: TEST_KEY,
+            storage: 'indexedDB',
+            indexedDB: { database: TEST_DB }
+          })
+        ]
+      }
+    );
+
+    // Wait for IndexedDB cache to load
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // BUG: This currently FAILS because IndexedDB cache loads asynchronously
+    // but persist plugin reads immediately before cache is populated
+    expect(reactor2.state.documents.length).toBe(2);
+    expect(reactor2.state.documents[0].name).toBe('Document 1');
+    expect(reactor2.state.documents[1].name).toBe('Document 2');
+    expect(reactor2.state.totalSize).toBe(2);
+
+    reactor2.destroy();
+  });
+
+  it('should load persisted state on init with onReady callback', async () => {
+    interface State {
+      count: number;
+      items: string[];
+    }
+
+    // Step 1: Save data
+    const reactor1 = createReactor<State>(
+      { count: 0, items: [] },
+      {
+        plugins: [
+          persist({
+            key: 'onready-test',
+            storage: 'indexedDB',
+            indexedDB: { database: 'onready-test-db' }
+          })
+        ]
+      }
+    );
+
+    reactor1.update(s => {
+      s.count = 42;
+      s.items = ['a', 'b', 'c'];
+    });
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+    reactor1.destroy();
+
+    // Step 2: Create new reactor with onReady
+    let readyFired = false;
+    let loadedState: State | null = null;
+
+    const reactor2 = createReactor<State>(
+      { count: 0, items: [] },
+      {
+        plugins: [
+          persist({
+            key: 'onready-test',
+            storage: 'indexedDB',
+            indexedDB: { database: 'onready-test-db' },
+            onReady: (state) => {
+              readyFired = true;
+              loadedState = state as State;
+            }
+          })
+        ]
+      }
+    );
+
+    // Wait for async loading
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    // onReady should have been called with loaded state
+    expect(readyFired).toBe(true);
+    expect(loadedState?.count).toBe(42);
+    expect(loadedState?.items).toEqual(['a', 'b', 'c']);
+
+    reactor2.destroy();
+    await IndexedDBStorage.deleteDatabase('onready-test-db');
   });
 });

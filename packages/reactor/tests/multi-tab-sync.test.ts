@@ -519,12 +519,14 @@ describe('multiTabSync Plugin', () => {
     });
   });
 
-  describe('localStorage Fallback', () => {
-    it('should use localStorage when BroadcastChannel is not available', async () => {
+  describe('BroadcastChannel Requirement', () => {
+    it('should warn when BroadcastChannel is not available', () => {
       // Remove BroadcastChannel
       delete (global as any).BroadcastChannel;
 
-      const tab1 = createReactor(
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const reactor = createReactor(
         { count: 0 },
         {
           name: 'fallback',
@@ -532,27 +534,14 @@ describe('multiTabSync Plugin', () => {
         }
       );
 
-      const tab2 = createReactor(
-        { count: 0 },
-        {
-          name: 'fallback',
-          plugins: [multiTabSync({ key: 'fallback', debounce: 0 })],
-        }
+      // Should have warned about missing BroadcastChannel
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('BroadcastChannel API is not available')
       );
-
-      // Update in tab1
-      tab1.update((s) => {
-        s.count = 55;
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Should have written to localStorage
-      expect(global.localStorage.setItem).toHaveBeenCalled();
 
       // Cleanup
-      tab1.destroy();
-      tab2.destroy();
+      reactor.destroy();
+      warnSpy.mockRestore();
     });
 
     it('should gracefully handle when broadcast is disabled', () => {

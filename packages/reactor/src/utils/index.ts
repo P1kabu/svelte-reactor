@@ -3,8 +3,7 @@
  * These utilities are used by the library internally but are not exposed to users.
  * Users should not import from 'svelte-reactor/utils' - all necessary APIs are in main exports.
  *
- * Note: Diff utilities have been moved to a separate optional import:
- * import { diff, applyPatch } from 'svelte-reactor/utils/diff';
+ * Note: Diff utilities were removed in v0.2.9. Use external libraries like 'microdiff' or 'deep-diff'.
  */
 
 // Core utilities (used by reactor, history, plugins)

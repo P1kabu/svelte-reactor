@@ -121,121 +121,38 @@ export function createReactor<T extends object>(
   /**
    * Subscribe to state changes (Svelte stores API compatible)
    *
-   * @overload Subscribe to entire state
+   * NOTE: For selective subscriptions, use select() instead.
+   *
    * @param subscriber Callback that receives the entire state
    * @param invalidate Optional invalidate function (Svelte stores compatibility)
-   *
-   * @overload Selective subscribe to specific part of state
-   * @param options Selective subscription options with selector and callback
    */
-  function subscribe<R = T>(
-    subscriberOrOptions: ((value: T) => void) | {
-      selector: (state: T) => R;
-      onChanged: (value: R, prevValue?: R) => void;
-      fireImmediately?: boolean;
-      equalityFn?: (a: R, b: R) => boolean;
-    },
+  function subscribe(
+    subscriber: (value: T) => void,
     invalidate?: () => void
   ): () => void {
-    // Detect overload: if first param is object with 'selector' key, it's selective subscribe
-    const isSelective = typeof subscriberOrOptions === 'object' && subscriberOrOptions !== null && 'selector' in subscriberOrOptions;
-
-    if (!isSelective) {
-      // Standard subscribe (no selector)
-      const subscriber = subscriberOrOptions as (value: T) => void;
-
-      if (typeof subscriber !== 'function') {
-        throw new TypeError(`[Reactor:${name}] subscribe() requires a function, got ${typeof subscriber}`);
-      }
-
-      if (destroyed) {
-        console.warn(`[Reactor:${name}] Cannot subscribe to destroyed reactor. Call destroy() cleanup.`);
-        return () => {};
-      }
-
-      // Add subscriber
-      subscribers.add(subscriber);
-
-      // Immediately call with current state (Svelte stores behavior)
-      try {
-        subscriber(smartClone(state));
-      } catch (error) {
-        console.error(`[Reactor:${name}] Subscriber error on initial call:`, error);
-      }
-
-      // Return unsubscribe function
-      return () => {
-        subscribers.delete(subscriber);
-      };
-    } else {
-      // Selective subscribe (with selector)
-      const options = subscriberOrOptions as {
-        selector: (state: T) => R;
-        onChanged: (value: R, prevValue?: R) => void;
-        fireImmediately?: boolean;
-        equalityFn?: (a: R, b: R) => boolean;
-      };
-
-      const { selector, onChanged, fireImmediately = true, equalityFn = (a, b) => a === b } = options;
-
-      if (typeof selector !== 'function') {
-        throw new TypeError(`[Reactor:${name}] subscribe() selector must be a function, got ${typeof selector}`);
-      }
-
-      if (typeof onChanged !== 'function') {
-        throw new TypeError(`[Reactor:${name}] subscribe() onChanged must be a function, got ${typeof onChanged}`);
-      }
-
-      if (destroyed) {
-        console.warn(`[Reactor:${name}] Cannot subscribe to destroyed reactor. Call destroy() cleanup.`);
-        return () => {};
-      }
-
-      let prevValue: R | undefined;
-      let initialized = false;
-
-      // Create wrapper subscriber that handles selective logic
-      const selectiveSubscriber = (fullState: T) => {
-        const nextValue = selector(fullState);
-
-        // Initialize on first call
-        if (!initialized) {
-          prevValue = nextValue;
-          initialized = true;
-
-          // Fire immediately if requested
-          if (fireImmediately) {
-            onChanged(nextValue, undefined);
-          }
-          return;
-        }
-
-        // Skip if value hasn't changed
-        if (prevValue !== undefined && equalityFn(prevValue, nextValue)) {
-          return;
-        }
-
-        // Call callback with new value and previous value
-        const oldValue = prevValue;
-        prevValue = nextValue;
-        onChanged(nextValue, oldValue);
-      };
-
-      // Add subscriber
-      subscribers.add(selectiveSubscriber);
-
-      // Immediately call with current state to initialize
-      try {
-        selectiveSubscriber(smartClone(state));
-      } catch (error) {
-        console.error(`[Reactor:${name}] Selective subscriber error on initial call:`, error);
-      }
-
-      // Return unsubscribe function
-      return () => {
-        subscribers.delete(selectiveSubscriber);
-      };
+    if (typeof subscriber !== 'function') {
+      throw new TypeError(`[Reactor:${name}] subscribe() requires a function, got ${typeof subscriber}`);
     }
+
+    if (destroyed) {
+      console.warn(`[Reactor:${name}] Cannot subscribe to destroyed reactor. Call destroy() cleanup.`);
+      return () => {};
+    }
+
+    // Add subscriber
+    subscribers.add(subscriber);
+
+    // Immediately call with current state (Svelte stores behavior)
+    try {
+      subscriber(smartClone(state));
+    } catch (error) {
+      console.error(`[Reactor:${name}] Subscriber error on initial call:`, error);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      subscribers.delete(subscriber);
+    };
   }
 
   /**
@@ -468,7 +385,18 @@ export function createReactor<T extends object>(
   }
 
   /**
-   * Selective subscribe with a simpler API
+   * Selective subscribe to specific part of state
+   *
+   * Use this instead of subscribe() when you only need to react to changes
+   * in a specific field or derived value.
+   *
+   * @example
+   * ```ts
+   * store.select(
+   *   state => state.user.name,
+   *   (name, prevName) => console.log(`Name changed: ${prevName} -> ${name}`)
+   * );
+   * ```
    */
   function select<R>(
     selector: (state: T) => R,
@@ -478,13 +406,65 @@ export function createReactor<T extends object>(
       equalityFn?: (a: R, b: R) => boolean;
     }
   ): () => void {
-    // Delegate to subscribe with SelectiveSubscribeOptions format
-    return subscribe({
-      selector,
-      onChanged,
-      fireImmediately: options?.fireImmediately ?? true,
-      equalityFn: options?.equalityFn,
-    });
+    const { fireImmediately = true, equalityFn = (a: R, b: R) => a === b } = options ?? {};
+
+    if (typeof selector !== 'function') {
+      throw new TypeError(`[Reactor:${name}] select() selector must be a function, got ${typeof selector}`);
+    }
+
+    if (typeof onChanged !== 'function') {
+      throw new TypeError(`[Reactor:${name}] select() onChanged must be a function, got ${typeof onChanged}`);
+    }
+
+    if (destroyed) {
+      console.warn(`[Reactor:${name}] Cannot subscribe to destroyed reactor. Call destroy() cleanup.`);
+      return () => {};
+    }
+
+    let prevValue: R | undefined;
+    let initialized = false;
+
+    // Create wrapper subscriber that handles selective logic
+    const selectiveSubscriber = (fullState: T) => {
+      const nextValue = selector(fullState);
+
+      // Initialize on first call
+      if (!initialized) {
+        prevValue = nextValue;
+        initialized = true;
+
+        // Fire immediately if requested
+        if (fireImmediately) {
+          onChanged(nextValue, undefined);
+        }
+        return;
+      }
+
+      // Skip if value hasn't changed
+      if (prevValue !== undefined && equalityFn(prevValue, nextValue)) {
+        return;
+      }
+
+      // Call callback with new value and previous value
+      const oldValue = prevValue;
+      prevValue = nextValue;
+      onChanged(nextValue, oldValue);
+    };
+
+    // Add subscriber
+    subscribers.add(selectiveSubscriber);
+
+    // Immediately call with current state to initialize
+    try {
+      selectiveSubscriber(smartClone(state));
+    } catch (error) {
+      console.error(`[Reactor:${name}] Selective subscriber error on initial call:`, error);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      subscribers.delete(selectiveSubscriber);
+    };
   }
 
   // Return reactor instance

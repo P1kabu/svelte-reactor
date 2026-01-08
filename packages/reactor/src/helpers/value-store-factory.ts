@@ -34,20 +34,5 @@ export function createValueStoreFromReactor<T>(
     },
   };
 
-  // Add deprecated .value as alias for .get()
-  // This helps users migrating from other libraries that use .value
-  Object.defineProperty(store, 'value', {
-    get() {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn(
-          '[svelte-reactor] .value is deprecated. Use .get() instead.\n' +
-            'Example: store.get() instead of store.value'
-        );
-      }
-      return store.get();
-    },
-    enumerable: false, // Hide from Object.keys() and autocomplete
-  });
-
   return store;
 }

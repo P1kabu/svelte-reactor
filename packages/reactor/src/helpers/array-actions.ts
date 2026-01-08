@@ -1,51 +1,11 @@
 /**
  * Array Actions Helper - CRUD operations for arrays
+ *
+ * NOTE: Pagination was extracted to arrayPagination() in v0.2.9.
+ * Use: import { arrayPagination } from 'svelte-reactor/helpers';
  */
 
 import type { Reactor } from '../types/index.js';
-
-/**
- * Pagination configuration options
- */
-export interface PaginationOptions {
-  /**
-   * Number of items per page
-   * @default 20
-   */
-  pageSize?: number;
-
-  /**
-   * Initial page number (1-indexed)
-   * @default 1
-   */
-  initialPage?: number;
-}
-
-/**
- * Paginated data result
- */
-export interface PaginatedResult<T> {
-  /** Current page items */
-  items: T[];
-
-  /** Current page number (1-indexed) */
-  page: number;
-
-  /** Total number of pages */
-  totalPages: number;
-
-  /** Total number of items */
-  totalItems: number;
-
-  /** Whether there is a next page */
-  hasNext: boolean;
-
-  /** Whether there is a previous page */
-  hasPrev: boolean;
-
-  /** Number of items per page */
-  pageSize: number;
-}
 
 export interface ArrayActionsOptions {
   /**
@@ -59,12 +19,6 @@ export interface ArrayActionsOptions {
    * @default field name
    */
   actionPrefix?: string;
-
-  /**
-   * Pagination configuration (NEW in v0.2.4)
-   * Enables pagination methods when provided
-   */
-  pagination?: PaginationOptions;
 }
 
 export interface ArrayActions<T> {
@@ -142,40 +96,6 @@ export interface ArrayActions<T> {
    * Remove multiple items by their ids or by predicate
    */
   bulkRemove(idsOrPredicate: any[] | ((item: T) => boolean)): void;
-
-  /**
-   * Get paginated data (only available when pagination is enabled)
-   * @returns Paginated result with current page items and metadata
-   */
-  getPaginated?(): PaginatedResult<T>;
-
-  /**
-   * Set current page (only available when pagination is enabled)
-   * @param page Page number (1-indexed)
-   */
-  setPage?(page: number): void;
-
-  /**
-   * Go to next page (only available when pagination is enabled)
-   * @returns true if successful, false if already on last page
-   */
-  nextPage?(): boolean;
-
-  /**
-   * Go to previous page (only available when pagination is enabled)
-   * @returns true if successful, false if already on first page
-   */
-  prevPage?(): boolean;
-
-  /**
-   * Go to first page (only available when pagination is enabled)
-   */
-  firstPage?(): void;
-
-  /**
-   * Go to last page (only available when pagination is enabled)
-   */
-  lastPage?(): void;
 }
 
 /**
@@ -202,11 +122,7 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
   field: K,
   options: ArrayActionsOptions = {}
 ): ArrayActions<T> {
-  const { idKey = 'id', actionPrefix = String(field), pagination } = options;
-
-  // Pagination state (if enabled)
-  let currentPage = pagination?.initialPage ?? 1;
-  const pageSize = pagination?.pageSize ?? 20;
+  const { idKey = 'id', actionPrefix = String(field) } = options;
 
   // Helper to get array from state
   const getArray = (): T[] => {
@@ -362,72 +278,5 @@ export function arrayActions<S extends object, K extends keyof S, T = S[K] exten
         }
       }, `${actionPrefix}:bulkRemove`);
     },
-
-    // Pagination methods (conditional based on options)
-    ...(pagination ? {
-      getPaginated(): PaginatedResult<T> {
-        const arr = getArray();
-        const totalItems = arr.length;
-        const totalPages = Math.ceil(totalItems / pageSize) || 1;
-
-        // Clamp current page to valid range
-        currentPage = Math.max(1, Math.min(currentPage, totalPages));
-
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = Math.min(startIndex + pageSize, totalItems);
-        const items = arr.slice(startIndex, endIndex);
-
-        return {
-          items,
-          page: currentPage,
-          totalPages,
-          totalItems,
-          hasNext: currentPage < totalPages,
-          hasPrev: currentPage > 1,
-          pageSize,
-        };
-      },
-
-      setPage(page: number): void {
-        const arr = getArray();
-        const totalPages = Math.ceil(arr.length / pageSize) || 1;
-
-        if (page < 1 || page > totalPages) {
-          console.warn(`[arrayActions] Invalid page ${page}. Valid range: 1-${totalPages}`);
-          return;
-        }
-
-        currentPage = page;
-      },
-
-      nextPage(): boolean {
-        const arr = getArray();
-        const totalPages = Math.ceil(arr.length / pageSize) || 1;
-
-        if (currentPage < totalPages) {
-          currentPage++;
-          return true;
-        }
-        return false;
-      },
-
-      prevPage(): boolean {
-        if (currentPage > 1) {
-          currentPage--;
-          return true;
-        }
-        return false;
-      },
-
-      firstPage(): void {
-        currentPage = 1;
-      },
-
-      lastPage(): void {
-        const arr = getArray();
-        const totalPages = Math.ceil(arr.length / pageSize) || 1;
-        currentPage = totalPages;
-      },
-    } : {}),
   };
 }

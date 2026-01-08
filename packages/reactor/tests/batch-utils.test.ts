@@ -1,14 +1,17 @@
 /**
  * Tests for batch utilities
+ *
+ * NOTE: batch() and batchAll() were removed in v0.2.9.
+ * Use reactor.batch() directly instead.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createReactor } from '../src/core/reactor.svelte.js';
 import { undoRedo } from '../src/plugins/undo-plugin.js';
-import { batch, batchAll, batched, debouncedBatch } from '../src/utils/batch.js';
+import { batched, debouncedBatch } from '../src/utils/batch.js';
 
 describe('Batch Utilities', () => {
-  describe('batch()', () => {
+  describe('reactor.batch() (direct usage)', () => {
     it('should batch multiple updates into single notification', () => {
       const store = createReactor({ count: 0, name: 'John' });
       const subscriber = vi.fn();
@@ -16,7 +19,7 @@ describe('Batch Utilities', () => {
       store.subscribe(subscriber);
       subscriber.mockClear(); // Clear initial call
 
-      batch(store, () => {
+      store.batch(() => {
         store.update(s => { s.count++; });
         store.update(s => { s.name = 'Jane'; });
         store.update(s => { s.count++; });
@@ -33,7 +36,7 @@ describe('Batch Utilities', () => {
         { plugins: [undoRedo({ limit: 10 })] }
       );
 
-      batch(store, () => {
+      store.batch(() => {
         store.update(s => { s.count++; });
         store.update(s => { s.name = 'Jane'; });
         store.update(s => { s.count++; });
@@ -53,7 +56,7 @@ describe('Batch Utilities', () => {
       const store = createReactor({ count: 0 });
 
       expect(() => {
-        batch(store, () => {
+        store.batch(() => {
           store.update(s => { s.count++; });
           throw new Error('Test error');
         });
@@ -61,34 +64,6 @@ describe('Batch Utilities', () => {
 
       // State should be updated up to the error
       expect(store.state.count).toBe(1);
-    });
-  });
-
-  describe('batchAll()', () => {
-    it('should execute updates to multiple stores', () => {
-      const store1 = createReactor({ count: 0 });
-      const store2 = createReactor({ name: 'John' });
-
-      const sub1 = vi.fn();
-      const sub2 = vi.fn();
-
-      store1.subscribe(sub1);
-      store2.subscribe(sub2);
-      sub1.mockClear();
-      sub2.mockClear();
-
-      batchAll(() => {
-        store1.update(s => { s.count++; });
-        store2.update(s => { s.name = 'Jane'; });
-        store1.update(s => { s.count++; });
-      });
-
-      expect(store1.state.count).toBe(2);
-      expect(store2.state.name).toBe('Jane');
-
-      // Each store notifies its own subscribers
-      expect(sub1).toHaveBeenCalled();
-      expect(sub2).toHaveBeenCalled();
     });
   });
 

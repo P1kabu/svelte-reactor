@@ -1,10 +1,11 @@
 /**
  * @vitest-environment jsdom
+ *
+ * NOTE: diff() utility was removed in v0.2.9. Use external libraries like 'microdiff' or 'deep-diff'.
  */
 
 import { describe, it, expect } from 'vitest';
 import { deepClone, isEqual } from '../src/utils/index.js';
-import { diff, type DiffEntry } from '../src/utils/diff.js';
 
 describe('deepClone', () => {
   it('should clone primitive values', () => {
@@ -121,140 +122,5 @@ describe('isEqual', () => {
   it('should handle different key counts', () => {
     expect(isEqual({ a: 1 }, { a: 1, b: 2 })).toBe(false);
     expect(isEqual({ a: 1, b: 2 }, { a: 1 })).toBe(false);
-  });
-});
-
-describe('diff', () => {
-  it('should detect no changes', () => {
-    const state = { a: 1, b: 2 };
-    const result = diff(state, state);
-
-    expect(result.hasChanges).toBe(false);
-    expect(result.changes).toHaveLength(0);
-  });
-
-  it('should detect updated values', () => {
-    const oldState = { a: 1, b: 2 };
-    const newState = { a: 1, b: 3 };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['b'],
-      operation: 'update',
-      oldValue: 2,
-      newValue: 3,
-    });
-  });
-
-  it('should detect added properties', () => {
-    const oldState = { a: 1 };
-    const newState = { a: 1, b: 2 };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['b'],
-      operation: 'add',
-      newValue: 2,
-    });
-  });
-
-  it('should detect removed properties', () => {
-    const oldState = { a: 1, b: 2 };
-    const newState = { a: 1 };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['b'],
-      operation: 'remove',
-      oldValue: 2,
-    });
-  });
-
-  it('should detect nested changes', () => {
-    const oldState = { a: { b: { c: 1 } } };
-    const newState = { a: { b: { c: 2 } } };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['a', 'b', 'c'],
-      operation: 'update',
-      oldValue: 1,
-      newValue: 2,
-    });
-  });
-
-  it('should detect array changes', () => {
-    const oldState = { items: [1, 2, 3] };
-    const newState = { items: [1, 2, 4] };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['items', '2'],
-      operation: 'update',
-      oldValue: 3,
-      newValue: 4,
-    });
-  });
-
-  it('should detect array additions', () => {
-    const oldState = { items: [1, 2] };
-    const newState = { items: [1, 2, 3] };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['items', '2'],
-      operation: 'add',
-      newValue: 3,
-    });
-  });
-
-  it('should detect array removals', () => {
-    const oldState = { items: [1, 2, 3] };
-    const newState = { items: [1, 2] };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0]).toEqual({
-      path: ['items', '2'],
-      operation: 'remove',
-      oldValue: 3,
-    });
-  });
-
-  it('should handle null/undefined transitions', () => {
-    const oldState = { a: null };
-    const newState = { a: 1 };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes).toHaveLength(1);
-    expect(result.changes[0].operation).toBe('add');
-  });
-
-  it('should detect multiple changes', () => {
-    const oldState = { a: 1, b: 2, c: 3 };
-    const newState = { a: 1, b: 4, d: 5 };
-    const result = diff(oldState, newState);
-
-    expect(result.hasChanges).toBe(true);
-    expect(result.changes.length).toBeGreaterThan(1);
-
-    const operations = result.changes.map(c => c.operation).sort();
-    expect(operations).toContain('update');
-    expect(operations).toContain('add');
-    expect(operations).toContain('remove');
   });
 });

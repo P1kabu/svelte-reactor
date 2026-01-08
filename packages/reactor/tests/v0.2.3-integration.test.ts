@@ -1,5 +1,9 @@
 /**
  * v0.2.3 Integration Tests - Complex scenarios combining new features
+ *
+ * v0.2.9 Update: Removed retry/debounce from asyncActions
+ * - Retry logic is now handled at API layer
+ * - Debounce should use external utilities
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -100,14 +104,6 @@ describe('v0.2.3 Complex Integration Tests', () => {
             }
             return { todos: [...store.state.todos, todo] };
           },
-        },
-        {
-          retry: {
-            attempts: 3,
-            delay: 10,
-            backoff: 'linear',
-          },
-          debounce: 50,
         }
       );
 
@@ -165,26 +161,29 @@ describe('v0.2.3 Complex Integration Tests', () => {
       store.undo();
       expect(store.state.todos).toHaveLength(4);
 
-      // 8. Test async with retry
+      // 8. Test async with manual retry (v0.2.9 pattern)
       let attemptCount = 0;
-      const apiWithRetry = asyncActions(
-        store,
-        {
-          unstableSave: async () => {
+
+      // Retry wrapper at API layer
+      const unstableSaveWithRetry = async () => {
+        for (let i = 0; i < 3; i++) {
+          try {
             attemptCount++;
             if (attemptCount < 2) {
               throw new Error('Network error');
             }
             return { syncToken: 'sync-updated' };
-          },
-        },
-        {
-          retry: {
-            attempts: 3,
-            delay: 5,
-          },
+          } catch (e) {
+            if (i === 2) throw e;
+            await new Promise(r => setTimeout(r, 5));
+          }
         }
-      );
+        throw new Error('Max retries exceeded');
+      };
+
+      const apiWithRetry = asyncActions(store, {
+        unstableSave: unstableSaveWithRetry,
+      });
 
       await apiWithRetry.unstableSave();
       expect(attemptCount).toBe(2);
@@ -367,7 +366,7 @@ describe('v0.2.3 Complex Integration Tests', () => {
       lastSync: number;
     }
 
-    it('should handle e-commerce operations with retry and performance tracking', async () => {
+    it('should handle e-commerce operations with manual retry and performance tracking', async () => {
       const consoleSpy = {
         group: vi.spyOn(console, 'group').mockImplementation(() => {}),
         warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
@@ -406,41 +405,30 @@ describe('v0.2.3 Complex Integration Tests', () => {
       const productActions = arrayActions(store, 'products', { idKey: 'id' });
 
       // 1. Simulate slow API call (will trigger performance warning)
-      const api = asyncActions(
-        store,
-        {
-          fetchProducts: async () => {
-            await new Promise(resolve => setTimeout(resolve, 50)); // Intentionally slow
-            return {
-              products: Array.from({ length: 20 }, (_, i) => ({
-                id: `prod-${i}`,
-                name: `Product ${i}`,
-                price: Math.random() * 100,
-                stock: Math.floor(Math.random() * 50),
-                category: i % 3 === 0 ? 'electronics' : 'clothing',
-                tags: [`tag${i % 5}`],
-              })),
-              lastSync: Date.now(),
-            };
-          },
-          syncCart: async () => {
-            await new Promise(resolve => setTimeout(resolve, 10));
-            // Simulate random failures
-            if (Math.random() < 0.3) {
-              throw new Error('Network timeout');
-            }
-            return { lastSync: Date.now() };
-          },
+      const api = asyncActions(store, {
+        fetchProducts: async () => {
+          await new Promise(resolve => setTimeout(resolve, 50)); // Intentionally slow
+          return {
+            products: Array.from({ length: 20 }, (_, i) => ({
+              id: `prod-${i}`,
+              name: `Product ${i}`,
+              price: Math.random() * 100,
+              stock: Math.floor(Math.random() * 50),
+              category: i % 3 === 0 ? 'electronics' : 'clothing',
+              tags: [`tag${i % 5}`],
+            })),
+            lastSync: Date.now(),
+          };
         },
-        {
-          retry: {
-            attempts: 5,
-            delay: 10,
-            backoff: 'exponential',
-            retryOn: (error) => error.message.includes('Network'),
-          },
-        }
-      );
+        syncCart: async () => {
+          await new Promise(resolve => setTimeout(resolve, 10));
+          // Simulate random failures
+          if (Math.random() < 0.3) {
+            throw new Error('Network timeout');
+          }
+          return { lastSync: Date.now() };
+        },
+      });
 
       // 2. Fetch products (slow - may warn if exceeds threshold)
       await api.fetchProducts();
@@ -476,27 +464,28 @@ describe('v0.2.3 Complex Integration Tests', () => {
       // 5. Bulk remove out of stock items
       productActions.bulkRemove(p => p.stock === 0);
 
-      // 6. Test retry mechanism with cart sync
+      // 6. Test retry mechanism with cart sync (v0.2.9 pattern: manual retry)
       let syncAttempts = 0;
-      const unreliableApi = asyncActions(
-        store,
-        {
-          unreliableSync: async () => {
+
+      const unreliableSyncWithRetry = async () => {
+        for (let i = 0; i < 5; i++) {
+          try {
             syncAttempts++;
             if (syncAttempts < 3) {
               throw new Error('Network timeout');
             }
             return { lastSync: Date.now() };
-          },
-        },
-        {
-          retry: {
-            attempts: 5,
-            delay: 5,
-            backoff: 'linear',
-          },
+          } catch (e) {
+            if (i === 4) throw e;
+            await new Promise(r => setTimeout(r, 5));
+          }
         }
-      );
+        throw new Error('Max retries exceeded');
+      };
+
+      const unreliableApi = asyncActions(store, {
+        unreliableSync: unreliableSyncWithRetry,
+      });
 
       await unreliableApi.unreliableSync();
       expect(syncAttempts).toBe(3);
@@ -517,7 +506,7 @@ describe('v0.2.3 Complex Integration Tests', () => {
     });
   });
 
-  describe('Scenario 4: Dashboard with debounce and cancellation', () => {
+  describe('Scenario 4: Dashboard with cancellation (v0.2.9: no built-in debounce)', () => {
     interface DashboardState {
       searchQuery: string;
       results: Array<{ id: string; title: string; score: number }>;
@@ -529,7 +518,7 @@ describe('v0.2.3 Complex Integration Tests', () => {
       error: Error | null;
     }
 
-    it('should handle debounced search with cancellation', async () => {
+    it('should handle search with replace mode cancellation', async () => {
       const store = createReactor<DashboardState>(
         {
           searchQuery: '',
@@ -554,12 +543,13 @@ describe('v0.2.3 Complex Integration Tests', () => {
 
       let searchCallCount = 0;
 
+      // v0.2.9: use replace mode (default) instead of debounce
       const api = asyncActions(
         store,
         {
           search: async (query: string) => {
             searchCallCount++;
-            await new Promise(resolve => setTimeout(resolve, 20)); // Reduced from 50ms
+            await new Promise(resolve => setTimeout(resolve, 30));
             return {
               searchQuery: query,
               results: [
@@ -569,43 +559,40 @@ describe('v0.2.3 Complex Integration Tests', () => {
             };
           },
         },
-        {
-          debounce: 50, // Reduced debounce from 100ms
-        }
+        { concurrency: 'replace' }
       );
 
-      // 1. Rapid typing - only last search should execute
-      // Catch rejections from cancelled debounced calls to avoid unhandled rejection warnings
-      api.search('h').catch(() => {});
-      api.search('he').catch(() => {});
-      api.search('hel').catch(() => {});
-      api.search('hell').catch(() => {});
-      const finalSearch = api.search('hello');
+      // 1. Start a search
+      const search1 = api.search('hello').catch(() => {});
 
-      await finalSearch;
+      // 2. Wait a bit then start another (replaces first)
+      await new Promise(r => setTimeout(r, 10));
+      const search2 = api.search('world');
 
-      // Only 1 search should have executed (last one)
-      expect(searchCallCount).toBe(1);
-      expect(store.state.searchQuery).toBe('hello');
+      await search2;
+
+      // Both started but only second's result matters
+      expect(store.state.searchQuery).toBe('world');
       expect(store.state.results).toHaveLength(2);
+      expect(store.state.results[0].title).toContain('world');
 
-      // 2. Test cancellation
+      // 3. Test manual cancellation
       searchCallCount = 0;
 
       const slowSearch = api.search('slow query');
-      setTimeout(() => slowSearch.cancel(), 5); // Reduced from 10ms
+      setTimeout(() => slowSearch.cancel(), 5);
 
       try {
         await slowSearch;
       } catch (error) {
-        // Expected to be cancelled - suppress unhandled rejection
+        // Expected to be cancelled
       }
 
-      // Should not have updated state
-      expect(store.state.searchQuery).toBe('hello'); // Still old value
+      // Should not have updated state (cancelled before completion)
+      expect(store.state.searchQuery).toBe('world'); // Still old value
 
       store.destroy();
-    }, 10000); // Added 10 second timeout
+    }, 10000);
   });
 
   describe('Scenario 5: Stress test - handling large datasets', () => {

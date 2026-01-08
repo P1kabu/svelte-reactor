@@ -1,5 +1,10 @@
 /**
  * Async Actions Helper - Handle async operations with automatic loading/error states
+ *
+ * v0.2.9: Simplified API
+ * - Removed retry logic (use at API layer with withRetry wrapper)
+ * - Removed debounce (use external debounce like lodash/debounce)
+ * - Simplified concurrency to 'queue' | 'replace' only
  */
 
 import type { Reactor } from '../types/index.js';
@@ -7,34 +12,6 @@ import type { Reactor } from '../types/index.js';
 export interface AsyncState {
   loading: boolean;
   error: Error | null;
-}
-
-export interface RetryOptions {
-  /**
-   * Number of retry attempts
-   * @default 3
-   */
-  attempts?: number;
-
-  /**
-   * Delay between retries in milliseconds
-   * @default 1000
-   */
-  delay?: number;
-
-  /**
-   * Backoff strategy
-   * - 'linear': delay, delay, delay...
-   * - 'exponential': delay, delay*2, delay*4...
-   * @default 'exponential'
-   */
-  backoff?: 'linear' | 'exponential';
-
-  /**
-   * Custom function to determine if should retry
-   * @default retry on all errors
-   */
-  retryOn?: (error: Error) => boolean;
 }
 
 export interface AsyncActionOptions {
@@ -63,24 +40,17 @@ export interface AsyncActionOptions {
   resetErrorOnStart?: boolean;
 
   /**
-   * Retry configuration
-   */
-  retry?: RetryOptions;
-
-  /**
-   * Debounce delay in milliseconds
-   * Delays execution and cancels previous pending calls
-   */
-  debounce?: number;
-
-  /**
    * How to handle concurrent requests for the same action
-   * - 'replace': Cancel previous request, run new one (default for debounced)
+   * - 'replace': Cancel previous request, run new one (default)
    * - 'queue': Wait for previous to finish before starting new one
-   * - 'parallel': Allow all to run concurrently (default)
-   * @default 'parallel'
+   * @default 'replace'
    */
-  concurrency?: 'replace' | 'queue' | 'parallel';
+  concurrency?: 'replace' | 'queue';
+
+  /**
+   * Callback when an error occurs
+   */
+  onError?: (error: Error, actionName: string) => void;
 }
 
 export type AsyncAction<T, Args extends any[]> = (...args: Args) => Promise<T>;
@@ -132,6 +102,23 @@ export type AsyncActions<T extends Record<string, AsyncAction<any, any>>> = {
  * await api.fetchUsers();
  * await api.createUser('John');
  * ```
+ *
+ * @example
+ * ```typescript
+ * // For retry logic, wrap at the API layer:
+ * const fetchWithRetry = async () => {
+ *   for (let i = 0; i < 3; i++) {
+ *     try {
+ *       return await fetch('/api/users').then(r => r.json());
+ *     } catch (e) {
+ *       if (i === 2) throw e;
+ *       await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+ *     }
+ *   }
+ * };
+ *
+ * const api = asyncActions(store, { fetchUsers: fetchWithRetry });
+ * ```
  */
 export function asyncActions<
   S extends object,
@@ -146,19 +133,11 @@ export function asyncActions<
     errorKey = 'error',
     actionPrefix = 'async',
     resetErrorOnStart = true,
-    retry: retryOptions,
-    debounce: debounceDelay,
-    concurrency = 'parallel',
+    concurrency = 'replace',
+    onError,
   } = options;
 
-  // Retry defaults
-  const retryAttempts = retryOptions?.attempts ?? 3;
-  const retryDelay = retryOptions?.delay ?? 1000;
-  const retryBackoff = retryOptions?.backoff ?? 'exponential';
-  const retryOn = retryOptions?.retryOn ?? (() => true);
-
-  // Store debounce timers and abort controllers per action
-  const debounceTimers = new Map<string, any>();
+  // Store abort controllers per action
   const abortControllers = new Map<string, AbortController>();
 
   // Track active requests per action for concurrency control
@@ -167,47 +146,6 @@ export function asyncActions<
 
   // Track pending operations count for accurate loading state
   const pendingCounts = new Map<string, number>();
-
-  // Helper: sleep function
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  // Helper: calculate retry delay with backoff
-  const getRetryDelay = (attempt: number): number => {
-    if (retryBackoff === 'exponential') {
-      return retryDelay * Math.pow(2, attempt);
-    }
-    return retryDelay;
-  };
-
-  // Helper: execute with retry
-  const executeWithRetry = async <R>(
-    fn: () => Promise<R>,
-    actionName: string
-  ): Promise<R> => {
-    let lastError: Error | null = null;
-
-    for (let attempt = 0; attempt <= retryAttempts; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error));
-        lastError = err;
-
-        // Check if should retry
-        const shouldRetry = attempt < retryAttempts && (!retryOptions || retryOn(err));
-
-        if (!shouldRetry) {
-          throw err;
-        }
-
-        // Wait before retry with backoff
-        const delay = getRetryDelay(attempt);
-        await sleep(delay);
-      }
-    }
-
-    throw lastError;
-  };
 
   const wrappedActions: any = {};
 
@@ -227,11 +165,8 @@ export function asyncActions<
         abortControllers.set(name, abortController);
       }
 
-      // Handle concurrency modes
-      const effectiveConcurrency = debounceDelay ? 'replace' : concurrency;
-
       // For 'replace' mode, cancel previous request
-      if (effectiveConcurrency === 'replace') {
+      if (concurrency === 'replace') {
         const existing = activeRequests.get(name);
         if (existing) {
           const existingAbort = abortControllers.get(name);
@@ -253,7 +188,7 @@ export function asyncActions<
 
       const executeAction = async (): Promise<any> => {
         // For 'queue' mode, wait for previous request to complete
-        if (effectiveConcurrency === 'queue') {
+        if (concurrency === 'queue') {
           const existing = activeRequests.get(name);
           if (existing) {
             try {
@@ -286,14 +221,11 @@ export function asyncActions<
         }, `${actionPrefix}:${name}:start`);
 
         try {
-          // Execute with retry if configured
-          const result = retryOptions
-            ? await executeWithRetry(() => action(...args), name)
-            : await action(...args);
+          const result = await action(...args);
 
           // Check if this request is still the latest (race condition prevention)
           const latestRequestId = requestCounters.get(name) ?? 0;
-          const isStale = effectiveConcurrency === 'replace' && requestId !== latestRequestId;
+          const isStale = concurrency === 'replace' && requestId !== latestRequestId;
 
           if (cancelled || isStale) {
             decrementPending();
@@ -330,11 +262,18 @@ export function asyncActions<
 
           // Check if this is a stale request
           const latestRequestId = requestCounters.get(name) ?? 0;
-          const isStale = effectiveConcurrency === 'replace' && requestId !== latestRequestId;
+          const isStale = concurrency === 'replace' && requestId !== latestRequestId;
 
           if (cancelled || isStale) {
             // Don't update state if cancelled or stale
             throw error;
+          }
+
+          const err = error instanceof Error ? error : new Error(String(error));
+
+          // Call onError callback if provided
+          if (onError) {
+            onError(err, name);
           }
 
           // Set error state and clear loading (only if no other pending requests)
@@ -342,66 +281,27 @@ export function asyncActions<
             if (!hasPendingRequests()) {
               (state as any)[loadingKey] = false;
             }
-            (state as any)[errorKey] = error instanceof Error ? error : new Error(String(error));
+            (state as any)[errorKey] = err;
           }, `${actionPrefix}:${name}:error`);
 
           throw error;
         }
       };
 
-      // Handle debounce
-      let promise: Promise<any>;
+      // Execute action
       let promiseReject: ((reason?: any) => void) | null = null;
-
-      if (debounceDelay && debounceDelay > 0) {
-        // Cancel previous debounced call
-        const existingTimer = debounceTimers.get(name);
-        if (existingTimer) {
-          clearTimeout(existingTimer.timer);
-          if (existingTimer.reject) {
-            existingTimer.reject(new Error('Action cancelled by new call'));
-          }
+      const promise = new Promise<any>(async (resolve, reject) => {
+        promiseReject = reject;
+        try {
+          const result = await executeAction();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          // Clean up active request tracking
+          activeRequests.delete(name);
         }
-
-        // Cancel previous action
-        const existingAbort = abortControllers.get(name);
-        if (existingAbort) {
-          existingAbort.abort();
-        }
-
-        // Create debounced promise
-        promise = new Promise((resolve, reject) => {
-          promiseReject = reject;
-          const timer = setTimeout(async () => {
-            debounceTimers.delete(name);
-            try {
-              const result = await executeAction();
-              resolve(result);
-            } catch (error) {
-              reject(error);
-            } finally {
-              // Clean up active request tracking
-              activeRequests.delete(name);
-            }
-          }, debounceDelay);
-
-          debounceTimers.set(name, { timer, reject });
-        });
-      } else {
-        // Wrap executeAction in a promise to capture reject function
-        promise = new Promise(async (resolve, reject) => {
-          promiseReject = reject;
-          try {
-            const result = await executeAction();
-            resolve(result);
-          } catch (error) {
-            reject(error);
-          } finally {
-            // Clean up active request tracking
-            activeRequests.delete(name);
-          }
-        });
-      }
+      });
 
       // Track this request for queue mode
       activeRequests.set(name, { id: requestId, promise });
@@ -410,16 +310,6 @@ export function asyncActions<
       const controller: any = promise;
       controller.cancel = () => {
         cancelled = true;
-
-        // Cancel debounce timer and reject promise
-        const timerData = debounceTimers.get(name);
-        if (timerData) {
-          clearTimeout(timerData.timer);
-          debounceTimers.delete(name);
-          if (timerData.reject) {
-            timerData.reject(new Error('Action cancelled'));
-          }
-        }
 
         // Reject the main promise if available
         if (promiseReject) {

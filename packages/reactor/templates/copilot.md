@@ -1,11 +1,11 @@
-# Svelte Reactor v0.2.8 - Copilot Reference
+# Svelte Reactor v0.2.9 - Copilot Reference
 
 Docs: [README](./README.md) | [API](./API.md) | [EXAMPLES](./EXAMPLES.md)
 
 ## Imports
 ```typescript
-import { createReactor, simpleStore, persistedStore, computedStore, arrayActions, asyncActions, derived, get, readonly, isEqual } from 'svelte-reactor';
-import { undoRedo, persist, logger } from 'svelte-reactor/plugins';
+import { createReactor, simpleStore, persistedStore, computedStore, arrayActions, arrayPagination, asyncActions, derived, get, readonly, isEqual } from 'svelte-reactor';
+import { undoRedo, persist, logger, sync } from 'svelte-reactor/plugins';
 ```
 
 ## createReactor
@@ -26,8 +26,7 @@ store.destroy();
 const count = simpleStore(0);
 count.set(5);
 count.update(n => n + 1);
-console.log(count.get());  // ✅ Use .get() to read value
-// count.value is DEPRECATED - shows warning
+console.log(count.get());  // Use .get() to read value
 count.subscribe(val => {});
 ```
 
@@ -43,8 +42,6 @@ console.log(settings.get().theme);  // ✅ Use .get() to read value
 | `simpleStore/persistedStore` | `.get()` | `$store` |
 | `createReactor` | `.state` | `.state` |
 
-⚠️ `.value` is DEPRECATED - use `.get()` instead
-
 ## computedStore
 ```typescript
 const filtered = computedStore(store, s => s.items.filter(i => !i.done), { keys: ['items'], equals: isEqual });
@@ -59,25 +56,29 @@ actions.remove('1');
 actions.toggle('1', 'done');
 actions.bulkUpdate(['1', '2'], { done: true });
 actions.sort((a, b) => a.order - b.order);
-actions.find('1');
-actions.has('1');
-actions.count();
-actions.clear();
+```
+
+## arrayPagination
+```typescript
+const pagination = arrayPagination(store, 'items', { pageSize: 20 });
+const { items, page, totalPages, hasNext } = pagination.getPage();
+pagination.nextPage(); pagination.prevPage(); pagination.setPage(3);
 ```
 
 ## asyncActions
 ```typescript
 const api = asyncActions(store, {
   fetch: async (id: string) => { const r = await fetch(`/api/${id}`); return { data: await r.json() }; }
-}, { retry: { attempts: 3 }, debounce: 300, concurrency: 'replace' });
+}, { concurrency: 'replace' });
 await api.fetch('1');
 api.fetch.cancel();
 ```
 
 ## Plugins
 ```typescript
-undoRedo({ maxHistory: 50 })
-persist({ key: 'app', storage: 'localStorage', omit: ['token'], ttl: 300000, onExpire: () => {} })
+undoRedo({ limit: 50 })
+persist({ key: 'app', storage: 'localStorage', omit: ['token'], ttl: 300000, onExpire: () => {}, onReady: (state) => {} })
+sync({ key: 'app', debounce: 100 })  // Multi-tab sync
 logger({ filter: a => a?.startsWith('user:'), trackPerformance: true })
 ```
 

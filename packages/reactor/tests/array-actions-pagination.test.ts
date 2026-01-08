@@ -1,11 +1,15 @@
 /**
- * Pagination Tests for arrayActions helper
+ * Pagination Tests for arrayPagination helper
  * Testing pagination functionality with large datasets
+ *
+ * NOTE: Pagination was extracted from arrayActions in v0.2.9.
+ * Use arrayPagination() separately from arrayActions().
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createReactor } from '../src/core/reactor.svelte.js';
 import { arrayActions } from '../src/helpers/array-actions.js';
+import { arrayPagination } from '../src/helpers/array-pagination.js';
 
 interface Todo {
   id: string;
@@ -14,9 +18,10 @@ interface Todo {
   priority: number;
 }
 
-describe('arrayActions - Pagination', () => {
+describe('arrayPagination', () => {
   let reactor: any;
   let actions: any;
+  let pagination: any;
 
   beforeEach(() => {
     // Create reactor with 100 items
@@ -28,18 +33,16 @@ describe('arrayActions - Pagination', () => {
     }));
 
     reactor = createReactor({ items });
-    actions = arrayActions(reactor, 'items', {
-      idKey: 'id',
-      pagination: {
-        pageSize: 10,
-        initialPage: 1,
-      },
+    actions = arrayActions(reactor, 'items', { idKey: 'id' });
+    pagination = arrayPagination(reactor, 'items', {
+      pageSize: 10,
+      initialPage: 1,
     });
   });
 
-  describe('getPaginated()', () => {
+  describe('getPage()', () => {
     it('should return first page by default', () => {
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(10);
       expect(result.page).toBe(1);
@@ -55,8 +58,8 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should return correct middle page', () => {
-      actions.setPage(5);
-      const result = actions.getPaginated();
+      pagination.setPage(5);
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(10);
       expect(result.page).toBe(5);
@@ -69,8 +72,8 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should return correct last page', () => {
-      actions.setPage(10);
-      const result = actions.getPaginated();
+      pagination.setPage(10);
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(10);
       expect(result.page).toBe(10);
@@ -93,8 +96,8 @@ describe('arrayActions - Pagination', () => {
         });
       }
 
-      actions.setPage(11);
-      const result = actions.getPaginated();
+      pagination.setPage(11);
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(5);
       expect(result.page).toBe(11);
@@ -106,7 +109,7 @@ describe('arrayActions - Pagination', () => {
 
     it('should handle empty array', () => {
       actions.clear();
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(0);
       expect(result.page).toBe(1);
@@ -127,7 +130,7 @@ describe('arrayActions - Pagination', () => {
         });
       }
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
 
       expect(result.items).toHaveLength(5);
       expect(result.page).toBe(1);
@@ -140,8 +143,8 @@ describe('arrayActions - Pagination', () => {
 
   describe('setPage()', () => {
     it('should change current page', () => {
-      actions.setPage(3);
-      const result = actions.getPaginated();
+      pagination.setPage(3);
+      const result = pagination.getPage();
 
       expect(result.page).toBe(3);
       expect(result.items[0].id).toBe('21');
@@ -150,8 +153,8 @@ describe('arrayActions - Pagination', () => {
     it('should warn and ignore invalid page (too high)', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      actions.setPage(11); // Only 10 pages
-      const result = actions.getPaginated();
+      pagination.setPage(11); // Only 10 pages
+      const result = pagination.getPage();
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(result.page).toBe(1); // Should stay on current page
@@ -162,8 +165,8 @@ describe('arrayActions - Pagination', () => {
     it('should warn and ignore invalid page (too low)', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      actions.setPage(0);
-      const result = actions.getPaginated();
+      pagination.setPage(0);
+      const result = pagination.getPage();
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(result.page).toBe(1); // Should stay on current page
@@ -174,8 +177,8 @@ describe('arrayActions - Pagination', () => {
     it('should handle negative page numbers', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      actions.setPage(-1);
-      const result = actions.getPaginated();
+      pagination.setPage(-1);
+      const result = pagination.getPage();
 
       expect(consoleSpy).toHaveBeenCalled();
       expect(result.page).toBe(1);
@@ -186,8 +189,8 @@ describe('arrayActions - Pagination', () => {
 
   describe('nextPage()', () => {
     it('should move to next page', () => {
-      const success = actions.nextPage();
-      const result = actions.getPaginated();
+      const success = pagination.nextPage();
+      const result = pagination.getPage();
 
       expect(success).toBe(true);
       expect(result.page).toBe(2);
@@ -195,89 +198,89 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should return false when already on last page', () => {
-      actions.setPage(10);
-      const success = actions.nextPage();
+      pagination.setPage(10);
+      const success = pagination.nextPage();
 
       expect(success).toBe(false);
-      expect(actions.getPaginated().page).toBe(10);
+      expect(pagination.getPage().page).toBe(10);
     });
 
     it('should work multiple times', () => {
-      actions.nextPage();
-      actions.nextPage();
-      actions.nextPage();
+      pagination.nextPage();
+      pagination.nextPage();
+      pagination.nextPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(4);
     });
   });
 
   describe('prevPage()', () => {
     it('should move to previous page', () => {
-      actions.setPage(5);
-      const success = actions.prevPage();
-      const result = actions.getPaginated();
+      pagination.setPage(5);
+      const success = pagination.prevPage();
+      const result = pagination.getPage();
 
       expect(success).toBe(true);
       expect(result.page).toBe(4);
     });
 
     it('should return false when already on first page', () => {
-      const success = actions.prevPage();
+      const success = pagination.prevPage();
 
       expect(success).toBe(false);
-      expect(actions.getPaginated().page).toBe(1);
+      expect(pagination.getPage().page).toBe(1);
     });
 
     it('should work multiple times', () => {
-      actions.setPage(5);
-      actions.prevPage();
-      actions.prevPage();
-      actions.prevPage();
+      pagination.setPage(5);
+      pagination.prevPage();
+      pagination.prevPage();
+      pagination.prevPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(2);
     });
   });
 
   describe('firstPage()', () => {
     it('should jump to first page', () => {
-      actions.setPage(7);
-      actions.firstPage();
+      pagination.setPage(7);
+      pagination.firstPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(1);
       expect(result.items[0].id).toBe('1');
     });
 
     it('should work when already on first page', () => {
-      actions.firstPage();
+      pagination.firstPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(1);
     });
   });
 
   describe('lastPage()', () => {
     it('should jump to last page', () => {
-      actions.lastPage();
+      pagination.lastPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(10);
       expect(result.items[0].id).toBe('91');
     });
 
     it('should work when already on last page', () => {
-      actions.setPage(10);
-      actions.lastPage();
+      pagination.setPage(10);
+      pagination.lastPage();
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(10);
     });
 
     it('should update when array size changes', () => {
-      actions.lastPage();
-      expect(actions.getPaginated().page).toBe(10);
+      pagination.lastPage();
+      expect(pagination.getPage().page).toBe(10);
 
       // Add 20 more items (now 12 pages)
       for (let i = 101; i <= 120; i++) {
@@ -289,21 +292,46 @@ describe('arrayActions - Pagination', () => {
         });
       }
 
-      actions.lastPage();
-      expect(actions.getPaginated().page).toBe(12);
+      pagination.lastPage();
+      expect(pagination.getPage().page).toBe(12);
+    });
+  });
+
+  describe('getCurrentPage() and getTotalPages()', () => {
+    it('should return current page number', () => {
+      expect(pagination.getCurrentPage()).toBe(1);
+
+      pagination.setPage(5);
+      expect(pagination.getCurrentPage()).toBe(5);
+    });
+
+    it('should return total pages count', () => {
+      expect(pagination.getTotalPages()).toBe(10);
+
+      // Add more items
+      for (let i = 101; i <= 150; i++) {
+        actions.add({
+          id: `${i}`,
+          text: `Todo ${i}`,
+          done: false,
+          priority: i,
+        });
+      }
+
+      expect(pagination.getTotalPages()).toBe(15);
     });
   });
 
   describe('Edge cases', () => {
     it('should clamp page when array shrinks', () => {
-      actions.setPage(10); // Page 10 of 10
+      pagination.setPage(10); // Page 10 of 10
 
       // Remove 50 items (now only 5 pages)
       for (let i = 1; i <= 50; i++) {
         actions.remove(`${i}`);
       }
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(5); // Auto-clamped to last valid page
       expect(result.totalPages).toBe(5);
     });
@@ -317,8 +345,8 @@ describe('arrayActions - Pagination', () => {
       // Remove done items (70 items left, 7 pages)
       actions.removeWhere((item: Todo) => item.done);
 
-      actions.setPage(7);
-      const result = actions.getPaginated();
+      pagination.setPage(7);
+      const result = pagination.getPage();
 
       expect(result.totalPages).toBe(7);
       expect(result.totalItems).toBe(70);
@@ -329,7 +357,7 @@ describe('arrayActions - Pagination', () => {
       // Sort by priority descending
       actions.sort((a: Todo, b: Todo) => b.priority - a.priority);
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
 
       // First page should have highest priority items
       expect(result.items[0].priority).toBe(100);
@@ -337,13 +365,13 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should handle page navigation after bulk operations', () => {
-      actions.setPage(5);
+      pagination.setPage(5);
 
       // Bulk update
       const ids = Array.from({ length: 20 }, (_, i) => `${i + 1}`);
       actions.bulkUpdate(ids, { done: true });
 
-      const result = actions.getPaginated();
+      const result = pagination.getPage();
       expect(result.page).toBe(5);
       expect(result.totalItems).toBe(100);
     });
@@ -351,14 +379,11 @@ describe('arrayActions - Pagination', () => {
 
   describe('Custom page size', () => {
     it('should respect custom page size of 25', () => {
-      const customActions = arrayActions(reactor, 'items', {
-        idKey: 'id',
-        pagination: {
-          pageSize: 25,
-        },
+      const customPagination = arrayPagination(reactor, 'items', {
+        pageSize: 25,
       });
 
-      const result = customActions.getPaginated();
+      const result = customPagination.getPage();
 
       expect(result.items).toHaveLength(25);
       expect(result.totalPages).toBe(4);
@@ -366,14 +391,11 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should respect custom page size of 1', () => {
-      const customActions = arrayActions(reactor, 'items', {
-        idKey: 'id',
-        pagination: {
-          pageSize: 1,
-        },
+      const customPagination = arrayPagination(reactor, 'items', {
+        pageSize: 1,
       });
 
-      const result = customActions.getPaginated();
+      const result = customPagination.getPage();
 
       expect(result.items).toHaveLength(1);
       expect(result.totalPages).toBe(100);
@@ -381,34 +403,61 @@ describe('arrayActions - Pagination', () => {
     });
 
     it('should respect custom initial page', () => {
-      const customActions = arrayActions(reactor, 'items', {
-        idKey: 'id',
-        pagination: {
-          pageSize: 10,
-          initialPage: 3,
-        },
+      const customPagination = arrayPagination(reactor, 'items', {
+        pageSize: 10,
+        initialPage: 3,
       });
 
-      const result = customActions.getPaginated();
+      const result = customPagination.getPage();
 
       expect(result.page).toBe(3);
       expect(result.items[0].id).toBe('21');
     });
   });
 
-  describe('Without pagination enabled', () => {
-    it('should not have pagination methods when pagination is not enabled', () => {
-      const noPaginationActions = arrayActions(reactor, 'items', {
+  describe('Validation', () => {
+    it('should throw on invalid pageSize', () => {
+      expect(() => {
+        arrayPagination(reactor, 'items', { pageSize: 0 });
+      }).toThrow(RangeError);
+
+      expect(() => {
+        arrayPagination(reactor, 'items', { pageSize: -1 });
+      }).toThrow(RangeError);
+    });
+
+    it('should throw on invalid initialPage', () => {
+      expect(() => {
+        arrayPagination(reactor, 'items', { initialPage: 0 });
+      }).toThrow(RangeError);
+
+      expect(() => {
+        arrayPagination(reactor, 'items', { initialPage: -1 });
+      }).toThrow(RangeError);
+    });
+
+    it('should throw if field is not an array', () => {
+      const badReactor = createReactor({ items: 'not an array' as any });
+
+      expect(() => {
+        const p = arrayPagination(badReactor, 'items');
+        p.getPage();
+      }).toThrow(TypeError);
+    });
+  });
+
+  describe('arrayActions no longer has pagination', () => {
+    it('should not have pagination methods on arrayActions', () => {
+      const actionsWithoutPagination = arrayActions(reactor, 'items', {
         idKey: 'id',
-        // No pagination option
       });
 
-      expect(noPaginationActions.getPaginated).toBeUndefined();
-      expect(noPaginationActions.setPage).toBeUndefined();
-      expect(noPaginationActions.nextPage).toBeUndefined();
-      expect(noPaginationActions.prevPage).toBeUndefined();
-      expect(noPaginationActions.firstPage).toBeUndefined();
-      expect(noPaginationActions.lastPage).toBeUndefined();
+      expect((actionsWithoutPagination as any).getPaginated).toBeUndefined();
+      expect((actionsWithoutPagination as any).setPage).toBeUndefined();
+      expect((actionsWithoutPagination as any).nextPage).toBeUndefined();
+      expect((actionsWithoutPagination as any).prevPage).toBeUndefined();
+      expect((actionsWithoutPagination as any).firstPage).toBeUndefined();
+      expect((actionsWithoutPagination as any).lastPage).toBeUndefined();
     });
   });
 });

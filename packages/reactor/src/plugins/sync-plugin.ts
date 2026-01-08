@@ -1,5 +1,8 @@
 /**
  * Multi-tab synchronization plugin using BroadcastChannel API
+ *
+ * NOTE: localStorage fallback was removed in v0.2.9.
+ * This plugin requires BroadcastChannel API (95%+ browser support).
  */
 
 import type { ReactorPlugin, PluginContext, Middleware, SyncOptions } from '../types/index.js';
@@ -8,7 +11,7 @@ import type { ReactorPlugin, PluginContext, Middleware, SyncOptions } from '../t
  * Enable multi-tab state synchronization
  *
  * Synchronizes state changes across browser tabs/windows using BroadcastChannel API.
- * Falls back to localStorage events for older browsers.
+ * Requires a modern browser with BroadcastChannel support (95%+).
  *
  * @example
  * ```ts
@@ -37,7 +40,6 @@ export function multiTabSync<T extends object>(options: SyncOptions = {}): React
   }
 
   let channel: BroadcastChannel | null = null;
-  let storageListener: ((e: StorageEvent) => void) | null = null;
   let debounceTimer: any;
   let context: PluginContext<T> | null = null;
   let isReceivingUpdate = false;
@@ -56,119 +58,82 @@ export function multiTabSync<T extends object>(options: SyncOptions = {}): React
         return;
       }
 
-      // Try to use BroadcastChannel (modern browsers)
-      if (broadcast && typeof BroadcastChannel !== 'undefined') {
-        try {
-          channel = new BroadcastChannel(syncKey);
-
-          // Listen for messages from other tabs
-          channel.onmessage = (event) => {
-            if (event.data.type === 'state-update') {
-              // Mark that we're receiving an update to prevent infinite loops
-              isReceivingUpdate = true;
-
-              try {
-                // Update each property individually to trigger Svelte reactivity
-                const newState = event.data.state;
-                for (const key in newState) {
-                  if (Object.prototype.hasOwnProperty.call(newState, key)) {
-                    (ctx.state as any)[key] = newState[key];
-                  }
-                }
-              } finally {
-                // Reset flag after a small delay to ensure the update propagates
-                setTimeout(() => {
-                  isReceivingUpdate = false;
-                }, 0);
-              }
-            }
-          };
-        } catch (error) {
-          console.error(`[multiTabSync:${syncKey}] Failed to create BroadcastChannel:`, error);
-          // Fall through to localStorage fallback
-        }
+      // Check for BroadcastChannel support
+      if (typeof BroadcastChannel === 'undefined') {
+        console.warn(
+          `[multiTabSync] BroadcastChannel API is not available in this browser.\n` +
+          `Multi-tab sync will be disabled. Most modern browsers support this API (95%+).`
+        );
+        return;
       }
 
-      // Fallback: Use localStorage events for older browsers or if BroadcastChannel fails
-      if (!channel) {
-        const storageKey = `__reactor_sync_${syncKey}`;
+      if (!broadcast) {
+        return;
+      }
 
-        storageListener = (e: StorageEvent) => {
-          if (e.key === storageKey && e.newValue) {
+      try {
+        channel = new BroadcastChannel(syncKey);
+
+        // Listen for messages from other tabs
+        channel.onmessage = (event) => {
+          if (event.data.type === 'state-update') {
+            // Mark that we're receiving an update to prevent infinite loops
+            isReceivingUpdate = true;
+
             try {
-              const data = JSON.parse(e.newValue);
-
-              // Mark that we're receiving an update to prevent infinite loops
-              isReceivingUpdate = true;
-
-              try {
-                // Update each property individually to trigger Svelte reactivity
-                const newState = data.state;
-                for (const key in newState) {
-                  if (Object.prototype.hasOwnProperty.call(newState, key)) {
-                    (ctx.state as any)[key] = newState[key];
-                  }
+              // Update each property individually to trigger Svelte reactivity
+              const newState = event.data.state;
+              for (const key in newState) {
+                if (Object.prototype.hasOwnProperty.call(newState, key)) {
+                  (ctx.state as any)[key] = newState[key];
                 }
-              } finally {
-                // Reset flag after a small delay
-                setTimeout(() => {
-                  isReceivingUpdate = false;
-                }, 0);
               }
-            } catch (error) {
-              console.error(`[multiTabSync:${syncKey}] Failed to parse storage event:`, error);
+            } finally {
+              // Reset flag after a small delay to ensure the update propagates
+              setTimeout(() => {
+                isReceivingUpdate = false;
+              }, 0);
             }
           }
         };
 
-        window.addEventListener('storage', storageListener);
-      }
+        // Register middleware to broadcast state changes
+        const middleware: Middleware<T> = {
+          name: 'multiTabSync-broadcaster',
 
-      // Register middleware to broadcast state changes
-      const middleware: Middleware<T> = {
-        name: 'multiTabSync-broadcaster',
+          onAfterUpdate(prevState: T, nextState: T, action?: string): void {
+            // Don't broadcast if we're receiving an update from another tab
+            if (isReceivingUpdate) {
+              return;
+            }
 
-        onAfterUpdate(prevState: T, nextState: T, action?: string): void {
-          // Don't broadcast if we're receiving an update from another tab
-          if (isReceivingUpdate) {
-            return;
-          }
+            // Clear existing timer
+            if (debounceTimer) {
+              clearTimeout(debounceTimer);
+            }
 
-          // Clear existing timer
-          if (debounceTimer) {
-            clearTimeout(debounceTimer);
-          }
+            // Debounce broadcasts to avoid spamming
+            debounceTimer = setTimeout(() => {
+              const message = {
+                type: 'state-update',
+                state: nextState,
+                action,
+                timestamp: Date.now(),
+              };
 
-          // Debounce broadcasts to avoid spamming
-          debounceTimer = setTimeout(() => {
-            const message = {
-              type: 'state-update',
-              state: nextState,
-              action,
-              timestamp: Date.now(),
-            };
-
-            if (channel) {
-              // Send via BroadcastChannel
               try {
-                channel.postMessage(message);
+                channel?.postMessage(message);
               } catch (error) {
                 console.error(`[multiTabSync:${syncKey}] Failed to broadcast message:`, error);
               }
-            } else if (storageListener) {
-              // Send via localStorage (fallback)
-              try {
-                const storageKey = `__reactor_sync_${syncKey}`;
-                window.localStorage.setItem(storageKey, JSON.stringify(message));
-              } catch (error) {
-                console.error(`[multiTabSync:${syncKey}] Failed to write to localStorage:`, error);
-              }
-            }
-          }, debounce);
-        },
-      };
+            }, debounce);
+          },
+        };
 
-      ctx.middlewares.push(middleware);
+        ctx.middlewares.push(middleware);
+      } catch (error) {
+        console.error(`[multiTabSync:${syncKey}] Failed to create BroadcastChannel:`, error);
+      }
     },
 
     destroy(): void {
@@ -182,12 +147,6 @@ export function multiTabSync<T extends object>(options: SyncOptions = {}): React
       if (channel) {
         channel.close();
         channel = null;
-      }
-
-      // Remove storage listener
-      if (storageListener && typeof window !== 'undefined') {
-        window.removeEventListener('storage', storageListener);
-        storageListener = null;
       }
 
       context = null;

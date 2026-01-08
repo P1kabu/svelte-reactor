@@ -11,22 +11,25 @@
 
 **The most powerful state management for Svelte 5** - Combines the simplicity of Svelte stores with advanced features like undo/redo, persistence, and time-travel debugging.
 
-## ✨ What's New in v0.2.8
+## ✨ What's New in v0.2.9
 
 | Feature | Description |
 |---------|-------------|
-| ⚠️ **`.value` Deprecation** | Migrating from other libraries? `.value` now works with deprecation warning. Use `.get()` instead |
-| 📚 **Complete Docs** | Full `simpleStore`/`persistedStore` API docs with `.get()` examples |
-| 📦 **Smaller Bundle** | Lazy lz-string loading - only loads when `compress: true` |
-| ✅ **501 Tests** | Comprehensive test coverage |
+| 🧹 **Simplified API** | Removed deprecated `.value`, `batch()`, `batchAll()`, `diff()` |
+| 🚀 **Simpler AsyncActions** | Removed built-in retry/debounce - use at API layer |
+| 📄 **New `arrayPagination()`** | Standalone pagination helper (separated from arrayActions) |
+| ⚡ **Cleaner Subscriptions** | Use `select()` instead of `subscribe({ selector })` |
+| 📦 **Smaller Bundle** | 11.11 KB gzipped (down from 11.67 KB) |
+| ✅ **500 Tests** | Comprehensive test coverage |
 
 <details>
 <summary>📜 Previous Versions</summary>
 
+- **v0.2.8**: `.value` deprecation warning, complete docs
 - **v0.2.7**: `select()` method, `ReactorError` class, async concurrency control
 - **v0.2.5**: Selective subscriptions, computed stores, 25% smaller bundle
 - **v0.2.4**: IndexedDB storage, TTL, pagination, derived stores export
-- **v0.2.3**: Selective persistence, retry/cancellation, bulk operations
+- **v0.2.3**: Selective persistence, bulk operations
 
 </details>
 
@@ -34,26 +37,17 @@
 
 ## 🚀 Features
 
-- **✅ Svelte Stores Compatible** - Full `subscribe()` API, works with `$store` auto-subscription
-- **🎯 Selective Subscriptions** - `reactor.select()` for subscribing to specific state parts ✨ Improved in v0.2.7
-- **📊 Computed Stores** - Memoized computed state with dependency tracking (2-10x faster) ✨ NEW in v0.2.5
-- **🔗 Derived Stores** - `derived()`, `get()`, `readonly()` exported for single-import convenience
-- **📦 Simple Helpers** - `simpleStore()`, `persistedStore()`, `arrayActions()`, `asyncActions()`, `computedStore()`
-- **🤖 AI-Powered Development** - Built-in AI assistant integration (Claude, Cursor, Copilot)
-- **♻️ Undo/Redo** - Built-in history management with batch operations
-- **💾 Smart Persistence** - localStorage, sessionStorage, IndexedDB (50MB+), **Memory Storage** ✨ NEW in v0.2.5
-- **🗜️ Data Compression** - Built-in LZ compression (40-70% smaller, tree-shakeable) ✨ NEW in v0.2.5
-- **🔄 Multi-Tab Sync** - Real-time synchronization across browser tabs ✨ NEW in v0.2.5
-- **🔒 Security First** - Exclude sensitive data (tokens, passwords) from persistence
-- **🔄 Network Resilience** - Retry logic with exponential backoff, request cancellation
-- **📊 Bulk Operations** - Sort, bulk update/remove for arrays
-- **🎯 Advanced Logging** - Filter by action/state, performance tracking
-- **🎮 DevTools** - Time-travel debugging and state inspection
-- **⚡ SSR-Ready** - Works seamlessly with SvelteKit on server and client
-- **🎯 Type-safe** - Full TypeScript support with excellent inference
-- **🪶 Lightweight** - **11.04 KB gzipped** (core), tree-shakeable modules ✨ 25% smaller in v0.2.5
-- **📚 Rich Documentation** - 3+ comprehensive guides (plugins, performance, error handling)
-- **0️⃣ Zero dependencies** - Only requires Svelte 5
+| Category | Features |
+|----------|----------|
+| **Core** | Svelte Stores Compatible (`$store`), Selective Subscriptions, Computed Stores, Derived Stores |
+| **Helpers** | `simpleStore()`, `persistedStore()`, `arrayActions()`, `arrayPagination()`, `asyncActions()`, `computedStore()` |
+| **Persistence** | localStorage, sessionStorage, IndexedDB (50MB+), Memory Storage, LZ Compression |
+| **History** | Undo/Redo, Batch Operations, Time-Travel Debugging |
+| **Sync** | Multi-Tab Sync, Cross-Tab BroadcastChannel |
+| **Async** | Auto Loading/Error States, Request Cancellation, Concurrency Control |
+| **Security** | Exclude Sensitive Data (`omit`/`pick`), TTL Auto-Expiration |
+| **DX** | AI Assistant Integration, DevTools, Rich Error Messages, 500 Tests |
+| **Performance** | 11 KB gzipped, Tree-Shakeable, SSR-Ready, TypeScript, Zero Dependencies |
 
 ## Installation
 
@@ -73,10 +67,9 @@ yarn add svelte-reactor
 
 📖 **[View All Upgrade Guides](../../UPGRADES/)**
 
+- [**v0.2.9**](../../UPGRADES/UPGRADE-0.2.9.md) ⚠️ **Breaking Changes** - API cleanup & simplification
 - [v0.2.3](../../UPGRADES/UPGRADE-0.2.3.md) - Feature enhancements (selective persistence, retry, bulk ops)
 - [v0.2.2](../../UPGRADES/UPGRADE-0.2.2.md) - Bug fixes & stability improvements
-
-For general migration tips, see [MIGRATION.md](./MIGRATION.md).
 
 ### 🤖 AI Assistant Setup (Optional)
 
@@ -287,7 +280,7 @@ actions.update('1', { done: true });
 actions.toggle('1', 'done');
 actions.remove('1');
 
-// NEW in v0.2.3: Sorting and bulk operations
+// Sorting and bulk operations
 actions.sort((a, b) => a.priority - b.priority); // Sort by priority
 actions.bulkUpdate(['1', '2', '3'], { done: true }); // Update multiple
 actions.bulkRemove(['1', '2']); // Remove multiple
@@ -296,25 +289,30 @@ actions.bulkRemove(item => item.done); // Remove by predicate
 // Query operations
 const item = actions.find('1');
 const count = actions.count();
+```
 
-// NEW in v0.2.4: Pagination for large datasets
-const paginated = arrayActions(todos, 'items', {
-  idKey: 'id',
-  pagination: {
-    pageSize: 20,      // Items per page
-    initialPage: 1     // Starting page
-  }
+#### `arrayPagination(reactor, field, options)` - NEW in v0.2.9
+
+Standalone pagination helper for large arrays:
+
+```typescript
+import { createReactor, arrayPagination } from 'svelte-reactor';
+
+const store = createReactor({ items: [] });
+const pagination = arrayPagination(store, 'items', {
+  pageSize: 20,      // Items per page
+  initialPage: 1     // Starting page
 });
 
 // Get paginated data with metadata
-const { items, page, totalPages, hasNext, hasPrev } = paginated.getPaginated();
+const { items, page, totalPages, hasNext, hasPrev } = pagination.getPaginated();
 
 // Navigation
-paginated.nextPage();   // Go to next page (returns false if on last page)
-paginated.prevPage();   // Go to previous page (returns false if on first page)
-paginated.setPage(5);   // Jump to specific page
-paginated.firstPage();  // Jump to first page
-paginated.lastPage();   // Jump to last page
+pagination.nextPage();   // Go to next page
+pagination.prevPage();   // Go to previous page
+pagination.setPage(5);   // Jump to specific page
+pagination.firstPage();  // Jump to first page
+pagination.lastPage();   // Jump to last page
 ```
 
 #### `asyncActions(reactor, actions, options?)`
@@ -343,28 +341,39 @@ const api = asyncActions(store, {
     return { users: await response.json() };
   }
 }, {
-  // NEW in v0.2.3: Retry with exponential backoff
-  retry: {
-    attempts: 3,
-    delay: 1000,
-    backoff: 'exponential' // 1s, 2s, 4s, 8s...
-  },
-  // NEW in v0.2.3: Debounce for search
-  debounce: 300 // Wait 300ms before executing
+  // Concurrency control (v0.2.9)
+  concurrency: 'replace',  // 'replace' (default) or 'queue'
+  onError: (error, actionName) => console.error(`${actionName} failed:`, error)
 });
 
 // Automatic loading & error management!
 await api.fetchUsers();
-// Automatically retries 3 times on failure!
 
-// Debounced search - only last call executes
-api.searchUsers('j');
-api.searchUsers('jo');
-api.searchUsers('john'); // Only this one runs after 300ms
+// Concurrency: 'replace' mode cancels previous request
+api.searchUsers('hello');
+api.searchUsers('world');  // Cancels 'hello', only 'world' result applies
 
 // Manual cancellation
 const controller = api.fetchUsers();
 controller.cancel(); // Cancel in-flight request
+```
+
+**Retry at API layer (v0.2.9 pattern):**
+
+```typescript
+// For retry logic, wrap at the API layer:
+const fetchWithRetry = async () => {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fetch('/api/users').then(r => r.json());
+    } catch (e) {
+      if (i === 2) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+};
+
+const api = asyncActions(store, { fetchUsers: fetchWithRetry });
 ```
 
 ---
@@ -454,57 +463,48 @@ console.log(get(cartSummary)); // "2 items - $20.00"
 
 ---
 
-### 🎯 Selective Subscriptions
+### 🎯 Selective Subscriptions with `select()`
 
-**NEW in v0.2.5:** Subscribe to specific parts of state for better performance!
-
-Instead of subscribing to the entire state, you can subscribe to just the parts you care about. The callback only fires when the selected value changes.
-
-**Basic example:**
+Subscribe to specific parts of state for better performance using the `select()` method (v0.2.9):
 
 ```typescript
-import { createReactor } from 'svelte-reactor';
+import { createReactor, isEqual } from 'svelte-reactor';
 
 const store = createReactor({
   user: { name: 'John', age: 30 },
   count: 0
 });
 
-// Selective subscribe - only fires when user.name changes
-store.subscribe({
-  selector: state => state.user.name,
-  onChanged: (name, prevName) => {
+// select() - only fires when user.name changes
+const unsubscribe = store.select(
+  state => state.user.name,
+  (name, prevName) => {
     console.log(`Name: ${prevName} → ${name}`);
   }
-});
+);
 
-store.update(s => { s.count++; });        // ❌ Callback NOT called
-store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
+store.update(s => { s.count++; });            // ❌ Callback NOT called
+store.update(s => { s.user.age = 31; });      // ❌ Callback NOT called
 store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
+
+// With options
+store.select(
+  state => state.items,
+  (items) => console.log(items),
+  {
+    fireImmediately: false,  // Don't fire on subscribe
+    equalityFn: isEqual      // Deep comparison for arrays/objects
+  }
+);
+
+// Cleanup
+unsubscribe();
 ```
 
-**Advanced options:**
-
-```typescript
-import { isEqual } from 'svelte-reactor';
-
-store.subscribe({
-  selector: state => state.items,
-  onChanged: (items) => console.log(items),
-
-  // Don't fire immediately (default: true)
-  fireImmediately: false,
-
-  // Custom equality (useful for arrays/objects)
-  equalityFn: isEqual  // Deep comparison
-});
-```
-
-**Why use selective subscriptions?**
+**Why use `select()`?**
 - ⚡ **Performance** - Avoid unnecessary re-renders and computations
 - 🎯 **Precision** - React only to relevant state changes
 - 🧩 **Composable** - Multiple selective subscriptions per store
-- 🔌 **Svelte-compatible** - Works seamlessly with `derived()`, `get()`, etc.
 
 **Real-world example - Form validation:**
 
@@ -517,16 +517,13 @@ const form = createReactor({
 });
 
 // Validate each field independently
-form.subscribe({
-  selector: s => s.email,
-  onChanged: (email) => validateEmail(email)
-});
+form.select(s => s.email, validateEmail);
 
-form.subscribe({
-  selector: s => [s.password, s.confirmPassword],
-  onChanged: ([pwd, confirm]) => validatePasswordMatch(pwd, confirm),
-  equalityFn: isEqual  // Deep comparison for arrays
-});
+form.select(
+  s => [s.password, s.confirmPassword],
+  ([pwd, confirm]) => validatePasswordMatch(pwd, confirm),
+  { equalityFn: isEqual }
+);
 
 // Changes to 'name' don't trigger email or password validation! 🎯
 ```
@@ -537,379 +534,54 @@ form.subscribe({
 
 ### 📊 Computed Stores
 
-**NEW in v0.2.5:** Memoized computed state with dependency tracking!
-
-Instead of recomputing on every state change, `computedStore()` intelligently tracks dependencies and only recomputes when they change. This provides massive performance benefits for expensive operations.
-
-**Basic example:**
+Memoized computed state with dependency tracking (2-10x faster than `derived()`):
 
 ```typescript
-import { createReactor, computedStore } from 'svelte-reactor';
+import { createReactor, computedStore, isEqual } from 'svelte-reactor';
 
 const store = createReactor({
-  items: [
-    { id: 1, name: 'Apple', done: false },
-    { id: 2, name: 'Banana', done: true },
-    { id: 3, name: 'Orange', done: false }
-  ],
+  items: [{ id: 1, done: false }, { id: 2, done: true }],
   filter: 'all'
 });
 
-// Computed store - automatically updates when items or filter change
-const filteredItems = computedStore(
-  store,
-  state => {
-    if (state.filter === 'completed') return state.items.filter(item => item.done);
-    if (state.filter === 'active') return state.items.filter(item => !item.done);
-    return state.items;
-  },
-  {
-    keys: ['items', 'filter']  // Only recompute when these change
-  }
-);
-
-// Use like any Svelte store
-filteredItems.subscribe(items => console.log(items));
+// Only recomputes when 'items' or 'filter' change
+const filtered = computedStore(store, state => {
+  if (state.filter === 'active') return state.items.filter(i => !i.done);
+  if (state.filter === 'done') return state.items.filter(i => i.done);
+  return state.items;
+}, { keys: ['items', 'filter'], equals: isEqual });
 ```
 
-**Advanced options:**
-
-```typescript
-import { computedStore, isEqual } from 'svelte-reactor';
-
-const computed = computedStore(
-  store,
-  state => expensiveComputation(state.data),
-  {
-    // Dependency tracking - only recompute when these fields change
-    keys: ['data', 'user.preferences'],  // Supports nested paths!
-
-    // Custom equality - prevents updates if result is deeply equal
-    equals: isEqual  // Use deep comparison instead of ===
-  }
-);
-```
-
-**Why use computed stores?**
-- ⚡ **Performance** - Avoid expensive recomputations (2-10x faster)
-- 🎯 **Smart caching** - Only recomputes when dependencies change
-- 📦 **Stable references** - Same result object if content unchanged
-- 🔗 **Composable** - Works with `derived()`, `get()`, and all Svelte APIs
-
-**Real-world example - Shopping cart:**
-
-```typescript
-const cart = createReactor({
-  items: [
-    { id: 1, name: 'Laptop', price: 999, quantity: 1 },
-    { id: 2, name: 'Mouse', price: 29, quantity: 2 }
-  ],
-  discount: 0,
-  taxRate: 0.1
-});
-
-// Computed total - only recalculates when items, discount, or taxRate change
-const total = computedStore(
-  cart,
-  state => {
-    const subtotal = state.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
-      0
-    );
-    const afterDiscount = subtotal * (1 - state.discount);
-    return afterDiscount * (1 + state.taxRate);
-  },
-  {
-    keys: ['items', 'discount', 'taxRate']
-  }
-);
-
-// In Svelte component
-$: totalPrice = $total;  // Reactively updates, but efficiently!
-```
-
-**Performance comparison:**
-
-```typescript
-// ❌ Without computedStore - recalculates on EVERY state change
-const total = derived(cart, $cart => expensiveCalculation($cart));
-
-// ✅ With computedStore - recalculates only when dependencies change
-const total = computedStore(
-  cart,
-  state => expensiveCalculation(state),
-  { keys: ['items', 'discount'] }
-);
-
-// Updating metadata won't trigger recomputation! 🚀
-cart.update(s => { s.metadata.lastUpdated = Date.now(); });
-```
-
-**See [EXAMPLES.md](./EXAMPLES.md#computed-stores) for more patterns**
+📖 **See [EXAMPLES.md](./EXAMPLES.md#computed-stores) for more patterns**
 
 ---
 
-### 💾 IndexedDB Storage
+### 💾 Storage Options
 
-**NEW in v0.2.4:** Store large amounts of data (50MB+) with IndexedDB!
-
-IndexedDB provides significantly more storage capacity than localStorage (typically 5-10MB). Perfect for:
-- 📸 **Large datasets** - Photos, documents, media files
-- 📊 **Offline-first apps** - Cache API responses, sync data
-- 🎮 **Games** - Save states, assets, progress
-- 📝 **Rich content editors** - Store documents, drafts, history
-
-**Quick Start:**
+| Storage | Capacity | Persistence | Use Case |
+|---------|----------|-------------|----------|
+| `localStorage` | 5-10 MB | Forever | Settings, preferences |
+| `sessionStorage` | 5-10 MB | Tab session | Form drafts, temp data |
+| `indexedDB` | 50+ MB | Forever | Large datasets, offline data |
+| `memory` | Unlimited | Runtime only | Testing, SSR |
 
 ```typescript
 import { persistedStore } from 'svelte-reactor';
 
-const photos = persistedStore('my-photos', { items: [] }, {
-  storage: 'indexedDB',  // Use IndexedDB instead of localStorage
-  indexedDB: {
-    database: 'my-app',   // Optional: database name (default: 'svelte-reactor')
-    storeName: 'photos',  // Optional: store name (default: 'state')
-    version: 1            // Optional: database version (default: 1)
-  }
-});
-
-// Use it like any other store!
-photos.update(state => {
-  state.items.push({ id: 1, url: '...', size: 5000000 }); // 5MB photo
-});
-```
-
-**Storage Comparison:**
-
-| Feature | localStorage | sessionStorage | IndexedDB | memory |
-|---------|-------------|----------------|-----------|--------|
-| **Capacity** | 5-10 MB | 5-10 MB | 50+ MB | Unlimited |
-| **Persistence** | Forever | Tab session | Forever | Runtime only |
-| **Async** | No | No | Yes (transparent) | No |
-| **Performance** | Fast | Fast | Slower startup, fast after | Fastest |
-| **Use Case** | Settings | Temp data | Large datasets | Testing |
-
-**IndexedDB Configuration:**
-
-```typescript
-import { persistedReactor } from 'svelte-reactor';
-
-const store = persistedReactor('large-data', { documents: [] }, {
+// IndexedDB for large data (50MB+)
+const photos = persistedStore('photos', { items: [] }, {
   storage: 'indexedDB',
-  debounce: 500,  // Debounce writes for performance
+  indexedDB: { database: 'my-app', storeName: 'photos' }
+});
 
-  indexedDB: {
-    database: 'my-app-db',      // Database name
-    storeName: 'app-state',     // Object store name
-    version: 1                  // Schema version
-  },
-
-  // Exclude sensitive data
-  omit: ['user.token', 'temp']
+// TTL for auto-expiring cache
+const cache = persistedStore('api-cache', { data: null }, {
+  ttl: 5 * 60 * 1000,  // 5 minutes
+  onExpire: () => console.log('Cache expired!')
 });
 ```
 
-**Real-world example - Photo Gallery:**
-
-```typescript
-import { persistedStore } from 'svelte-reactor';
-
-interface Photo {
-  id: string;
-  url: string;
-  thumbnail: string;
-  size: number;
-  metadata: Record<string, any>;
-}
-
-const gallery = persistedStore<{ photos: Photo[] }>(
-  'photo-gallery',
-  { photos: [] },
-  {
-    storage: 'indexedDB',
-    debounce: 1000,  // Save after 1s of inactivity
-    indexedDB: {
-      database: 'photo-app',
-      storeName: 'gallery-state',
-      version: 1
-    }
-  }
-);
-
-// Add photos - they're automatically persisted to IndexedDB
-gallery.update(state => {
-  state.photos.push({
-    id: crypto.randomUUID(),
-    url: 'blob:...',          // Large image data
-    thumbnail: 'data:...',
-    size: 5242880,            // 5MB
-    metadata: { /* ... */ }
-  });
-});
-
-// Access in Svelte components
-// {#each $gallery.photos as photo}
-//   <img src={photo.url} alt="Photo" />
-// {/each}
-```
-
-**Important Notes:**
-
-⚡ **Async Behavior:** IndexedDB operations are asynchronous, but svelte-reactor provides a synchronous-like API:
-- Reads happen instantly from an in-memory cache
-- Writes are batched and persisted in the background
-- All pending writes are automatically flushed on page unload
-
-🔒 **Data Safety:** The persist plugin tracks all pending writes and flushes them before cleanup, ensuring no data loss even if the app closes immediately after a write.
-
-📊 **Quota Management:** Browser quotas vary (typically 50MB-1GB). Use the storage estimate API to check available space:
-
-```typescript
-// Check storage quota
-if ('storage' in navigator && 'estimate' in navigator.storage) {
-  const estimate = await navigator.storage.estimate();
-  console.log(`Used: ${estimate.usage} bytes`);
-  console.log(`Quota: ${estimate.quota} bytes`);
-  console.log(`Available: ${estimate.quota - estimate.usage} bytes`);
-}
-```
-
-**When to use each storage type:**
-- **localStorage** - Settings, preferences, small data (< 1MB)
-- **sessionStorage** - Temporary data, form drafts, wizard state
-- **indexedDB** - Large datasets, offline data, media files (> 5MB)
-- **memory** - Testing, SSR, ephemeral state
-
----
-
-### ⏱️ Time-To-Live (TTL) Support
-
-**NEW in v0.2.4:** Automatically expire cached data after a specified time!
-
-TTL (Time-To-Live) enables automatic expiration of persisted data. Perfect for:
-- 🔄 **API Caches** - Auto-refresh stale data
-- 🔐 **Session Data** - Auto-logout after inactivity
-- 📝 **Temporary Storage** - Auto-cleanup of temporary data
-- 🎯 **Fresh Content** - Ensure users see up-to-date information
-
-**Quick Start:**
-
-```typescript
-import { persistedStore } from 'svelte-reactor';
-
-const apiCache = persistedStore('api-cache', { data: null }, {
-  ttl: 5 * 60 * 1000,  // 5 minutes in milliseconds
-  onExpire: (key) => {
-    console.log(`Cache expired: ${key}, fetching fresh data...`);
-    // Trigger data refresh
-  }
-});
-
-// Data persists for 5 minutes, then expires automatically
-apiCache.update(state => {
-  state.data = { users: ['Alice', 'Bob'], fetchedAt: Date.now() };
-});
-```
-
-**Real-world Example - API Cache with Auto-Refresh:**
-
-```typescript
-import { persistedStore } from 'svelte-reactor';
-
-interface CacheState {
-  users: User[];
-  lastFetch: number | null;
-}
-
-const userCache = persistedStore<CacheState>(
-  'user-cache',
-  { users: [], lastFetch: null },
-  {
-    storage: 'localStorage',
-    ttl: 5 * 60 * 1000,  // Cache expires after 5 minutes
-    onExpire: async (key) => {
-      console.log('User cache expired, refreshing...');
-      // Automatically refetch data when cache expires
-      await fetchUsers();
-    }
-  }
-);
-
-async function fetchUsers() {
-  const response = await fetch('/api/users');
-  const users = await response.json();
-
-  userCache.update(state => {
-    state.users = users;
-    state.lastFetch = Date.now();
-  });
-}
-
-// On app load:
-// - If cache is fresh (< 5 minutes old), use cached data ✅
-// - If cache expired, onExpire triggers and fetches fresh data 🔄
-```
-
-**Session Management with Auto-Logout:**
-
-```typescript
-import { persistedStore } from 'svelte-reactor';
-
-const session = persistedStore(
-  'user-session',
-  { isAuthenticated: false, userId: null, token: null },
-  {
-    storage: 'sessionStorage',
-    ttl: 30 * 60 * 1000,  // 30 minutes
-    omit: ['token'],      // Don't persist sensitive token
-    onExpire: (key) => {
-      console.log('Session expired, redirecting to login...');
-      window.location.href = '/login';
-    }
-  }
-);
-
-// User stays logged in for 30 minutes of inactivity
-// After 30 minutes, session expires and user is redirected to login
-```
-
-**TTL with IndexedDB:**
-
-```typescript
-import { persistedStore } from 'svelte-reactor';
-
-const offlineQueue = persistedStore(
-  'sync-queue',
-  { pendingActions: [] },
-  {
-    storage: 'indexedDB',
-    ttl: 24 * 60 * 60 * 1000,  // 24 hours
-    onExpire: (key) => {
-      console.log('Sync queue expired, clearing old data...');
-    }
-  }
-);
-
-// Offline actions persist for 24 hours, then auto-cleanup
-```
-
-**How TTL Works:**
-
-1. 📝 **On Write:** Timestamp is automatically added to persisted data
-2. 📖 **On Read:** Age is calculated and compared to TTL
-3. ⏰ **If Expired:**
-   - Data is removed from storage
-   - `onExpire` callback is called (if provided)
-   - Initial state is used instead
-4. ✅ **If Fresh:** Data is loaded normally
-
-**Important Notes:**
-
-- ⚡ **Zero TTL (`ttl: 0`):** Data expires immediately on next load
-- 🔒 **Callback Errors:** `onExpire` errors are caught and logged, won't break app
-- 🎯 **Works with all storage types:** localStorage, sessionStorage, indexedDB, memory
-- 🔄 **Compatible with migrations:** TTL check happens before migrations run
-- 🛡️ **Type Safe:** TypeScript enforces non-negative numbers
+📖 **See [API.md](./API.md#persist) for full storage options documentation.**
 
 ---
 
@@ -1228,78 +900,16 @@ For more examples, see [EXAMPLES.md](./EXAMPLES.md).
 
 ## Roadmap
 
-### ✅ v0.1.0 - MVP (Released)
-- ✅ Core reactor with Svelte 5 Runes
-- ✅ Basic undo/redo functionality
-- ✅ Plugin system (undoRedo, persist, logger)
-- ✅ DevTools API with time-travel debugging
-- ✅ State utilities (diff, clone, equality)
-- ✅ TypeScript types
-- ✅ 93 tests
-
-### ✅ v0.2.0 - Production Ready (Released)
-- ✅ **Full Svelte stores API** - `subscribe()` support, `$store` auto-subscription
-- ✅ **Helper functions** - `simpleStore()`, `persistedStore()`, `persistedReactor()`
-- ✅ **Array Actions Helper** - `arrayActions()` for CRUD operations
-- ✅ **Enhanced persistence** - `pick`/`omit`, custom serialization, cross-tab sync
-- ✅ **Security features** - Exclude sensitive data from persistence
-- ✅ 149 tests (+56)
-
-### ✅ v0.2.1 - Async & Helpers (Released)
-- ✅ **Async Actions Helper** - `asyncActions()` for automatic loading/error states
-- ✅ **Enhanced Migration Guide** - Array and async operation examples
-- ✅ **Advanced testing** - 3 complexity tests for concurrent operations
-- ✅ 172 tests (+23)
-
-### ✅ v0.2.8 - Developer Experience (Current)
-- ✅ **`.value` Deprecation Warning** - Helps users migrating from other libraries
-- ✅ **Complete API Documentation** - Full `simpleStore`/`persistedStore` docs
-- ✅ **Lazy lz-string Loading** - Better tree-shaking for bundle size
-- ✅ 501 tests (+15)
-
-### ✅ v0.2.7 - Performance & Polish (Released)
-- ✅ **`reactor.select()` Method** - Simpler API for selective subscriptions
-- ✅ **`ReactorError` Class** - Rich error context with debugging info
-- ✅ **Async Concurrency Control** - `'replace' | 'queue' | 'parallel'`
-- ✅ **DevTools Optimization** - Real subscription instead of polling
-- ✅ 486 tests
-
-### ✅ v0.2.5 - Selective & Computed (Released)
-- ✅ **Selective Subscriptions** - Subscribe to specific state parts
-- ✅ **Computed Stores** - Memoized computed state with dependency tracking
-- ✅ **Performance Optimizations** - 2-10x faster for critical operations
-- ✅ 370 tests
-
-### ✅ v0.2.4 - Storage & TTL (Released)
-- ✅ **IndexedDB Storage** - 50MB+ capacity for large datasets
-- ✅ **TTL (Time-To-Live)** - Auto-expire cached data
-- ✅ **Pagination Helper** - Built-in pagination for `arrayActions()`
-- ✅ 326 tests
-
-### ✅ v0.2.3 - Feature Enhancements (Released)
-- ✅ **Selective Persistence** - `pick`/`omit` options for security
-- ✅ **Array Enhancements** - `sort()`, `bulkUpdate()`, `bulkRemove()`
-- ✅ **Async Retry & Cancellation** - Retry logic, debouncing, cancellation
-- ✅ **Advanced Logger** - Filter by action/state, performance tracking
-- ✅ **Critical Bug Fixes** - Unhandled rejection fixes
-- ✅ 232 tests (+58)
-
-### ✅ v0.2.2 - Bug Fixes & Stability (Released)
-- ✅ **Memory Leak Fixes** - Proper cleanup of subscribers and middlewares
-- ✅ **Performance Optimization** - Skip unnecessary updates
-- ✅ **Enhanced Error Handling** - Better validation and error messages
-- ✅ 181 tests (+9)
+**Current:** v0.2.9 (500 tests, 11.11 KB gzipped) — See [CHANGELOG.md](./CHANGELOG.md) for version history.
 
 ### 🔜 v0.3.0 - Advanced Features (Planned)
-- 🔄 Computed/Derived State API
-- 🔄 Selectors API with memoization
-- 🔄 Multi-tab sync with BroadcastChannel
-- 🔄 Image compression for persist plugin
+- Enhanced Computed/Derived State API
+- Advanced Selectors with memoization
+- Image compression for persist plugin
 
 ### 🚀 v1.0.0 - Stable Release (Future)
 - React/Vue adapters
 - Redux DevTools extension
-- Advanced performance optimizations
 - Comprehensive ecosystem
 
 ## Development
@@ -1328,7 +938,7 @@ pnpm typecheck
 
 The package includes comprehensive test coverage:
 
-- **501 tests** covering all features
+- **500 tests** covering all features
 - Unit tests for core reactor, plugins, helpers, utilities, and DevTools
 - Advanced complexity tests for edge cases and concurrent operations
 - Integration tests for IndexedDB, TTL, pagination, compression

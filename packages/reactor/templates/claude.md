@@ -2,7 +2,7 @@
 
 <library>
 name: svelte-reactor
-version: 0.2.8
+version: 0.2.9
 description: Reactive state management for Svelte 5 with plugins
 </library>
 
@@ -47,7 +47,7 @@ const store = createReactor({ count: 0 }, {
 ### undoRedo
 ```typescript
 import { undoRedo } from 'svelte-reactor/plugins';
-const store = createReactor(state, { plugins: [undoRedo({ maxHistory: 50 })] });
+const store = createReactor(state, { plugins: [undoRedo({ limit: 50 })] });
 ```
 
 ### persist
@@ -61,8 +61,16 @@ persist({
   pick: ['settings'],         // Include only these fields
   debounce: 300,              // Save delay in ms
   ttl: 5 * 60 * 1000,         // Auto-expire after 5 minutes
-  onExpire: (key) => {}       // Callback on expiration
+  onExpire: (key) => {},      // Callback on expiration
+  onReady: (state) => {}      // Callback when IndexedDB data loaded (v0.2.9)
 })
+```
+
+### sync (multiTabSync)
+```typescript
+import { sync } from 'svelte-reactor/plugins';
+
+sync({ key: 'app-state', debounce: 100 })  // Sync state across browser tabs
 ```
 
 ### logger
@@ -81,8 +89,7 @@ import { simpleStore } from 'svelte-reactor';
 const count = simpleStore(0);  // Svelte-compatible writable
 count.set(5);
 count.update(n => n + 1);
-console.log(count.get());  // ✅ Use .get() to read value
-// count.value is DEPRECATED - shows warning
+console.log(count.get());  // Read value with .get()
 ```
 
 ### persistedStore(key, initialValue, options?)
@@ -92,14 +99,12 @@ const settings = persistedStore('settings', { theme: 'dark' });
 console.log(settings.get().theme);  // ✅ Use .get() to read value
 ```
 
-### Reading Values (IMPORTANT)
+### Reading Values
 | Store type | Read (non-reactive) | Read (reactive) |
 |------------|---------------------|-----------------|
 | `simpleStore` | `.get()` | `$store` |
 | `persistedStore` | `.get()` | `$store` |
 | `createReactor` | `.state` | `.state` |
-
-⚠️ `.value` is DEPRECATED - use `.get()` instead
 
 ### computedStore(reactor, selector, options?)
 ```typescript
@@ -124,6 +129,19 @@ actions.bulkUpdate(ids, updates);
 actions.sort((a, b) => a.priority - b.priority);
 ```
 
+### arrayPagination(reactor, key, options?)
+```typescript
+import { arrayPagination } from 'svelte-reactor';
+const pagination = arrayPagination(store, 'items', { pageSize: 20 });
+
+const { items, page, totalPages, hasNext, hasPrev } = pagination.getPage();
+pagination.nextPage();
+pagination.prevPage();
+pagination.setPage(3);
+pagination.firstPage();
+pagination.lastPage();
+```
+
 ### asyncActions(reactor, actions, options?)
 ```typescript
 import { asyncActions } from 'svelte-reactor';
@@ -134,9 +152,7 @@ const api = asyncActions(store, {
     return { users: await res.json() };
   }
 }, {
-  retry: { attempts: 3, delay: 1000, backoff: 'exponential' },
-  debounce: 300,
-  concurrency: 'replace'  // 'replace' | 'queue' | 'parallel'
+  concurrency: 'replace'  // 'replace' | 'queue'
 });
 
 await api.fetchUsers();
@@ -149,19 +165,11 @@ api.fetchUsers.cancel();  // Cancel request
 Subscribe only to specific state changes:
 
 ```typescript
-// Method 1: select()
 store.select(
   state => state.user.name,
   (name, prevName) => console.log(`Changed: ${prevName} -> ${name}`),
   { fireImmediately: false, equalityFn: isEqual }
 );
-
-// Method 2: subscribe with selector
-store.subscribe({
-  selector: state => state.items,
-  onChanged: (items, prev) => {},
-  equalityFn: isEqual
-});
 ```
 </selective-subscriptions>
 
@@ -207,14 +215,14 @@ store.subscribe(state => {}); // Use select() for specific fields
 ```typescript
 // Main
 import { createReactor, simpleStore, persistedStore, computedStore } from 'svelte-reactor';
-import { arrayActions, asyncActions } from 'svelte-reactor';
+import { arrayActions, arrayPagination, asyncActions } from 'svelte-reactor';
 import { derived, get, readonly, isEqual } from 'svelte-reactor';
 
 // Plugins
-import { undoRedo, persist, logger } from 'svelte-reactor/plugins';
+import { undoRedo, persist, logger, sync } from 'svelte-reactor/plugins';
 
-// Optional
-import { diff, applyPatch } from 'svelte-reactor/utils/diff';
+// Utilities
+import { batched, debouncedBatch } from 'svelte-reactor/utils/batch';
 ```
 </exports>
 

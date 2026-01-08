@@ -60,6 +60,7 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
     omit: omitPaths,
     ttl,
     onExpire,
+    onReady,
   } = options;
 
   // Validate debounce
@@ -301,10 +302,38 @@ export function persist<T extends object>(options: PersistOptions): ReactorPlugi
       // Initialize storage backend
       storageBackend = getStorage();
 
-      // Load persisted state
-      const loadedState = loadState();
-      if (loadedState) {
-        Object.assign(context.state, loadedState);
+      // Helper function to apply loaded state and call onReady
+      const applyLoadedState = (loadedState: T | null) => {
+        if (loadedState) {
+          Object.assign(context.state, loadedState);
+        }
+
+        // Call onReady callback if provided
+        if (onReady) {
+          try {
+            onReady(loadedState);
+          } catch (error) {
+            console.error(`[persist:${key}] Error in onReady callback:`, error);
+          }
+        }
+      };
+
+      // For IndexedDB, we need to wait for the cache to be ready before loading
+      if (storage === 'indexedDB' && indexedDBInstance) {
+        // Load state asynchronously after IndexedDB cache is populated
+        indexedDBInstance.ready
+          .then(() => {
+            const loadedState = loadState();
+            applyLoadedState(loadedState);
+          })
+          .catch((error) => {
+            console.error(`[persist:${key}] Failed to initialize IndexedDB:`, error);
+            applyLoadedState(null);
+          });
+      } else {
+        // For other storage types, load synchronously
+        const loadedState = loadState();
+        applyLoadedState(loadedState);
       }
 
       // Create middleware to sync changes

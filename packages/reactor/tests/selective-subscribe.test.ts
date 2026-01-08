@@ -1,5 +1,8 @@
 /**
- * Tests for selective subscription (subscribe() overload)
+ * Tests for selective subscription (select() method)
+ *
+ * NOTE: subscribe(options) overload was removed in v0.2.9.
+ * Use select() for selective subscriptions instead.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -7,15 +10,15 @@ import { createReactor } from '../src/core/reactor.svelte.js';
 import { isEqual } from '../src/utils/clone.js';
 
 describe('Selective Subscriptions', () => {
-  describe('subscribe() overload with selector', () => {
+  describe('select() method', () => {
     it('should only fire when selected value changes', () => {
       const store = createReactor({ user: { name: 'John', age: 30 }, count: 0 });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.user.name,
-        onChanged: callback
-      });
+      store.select(
+        state => state.user.name,
+        callback
+      );
 
       // Initial call
       expect(callback).toHaveBeenCalledTimes(1);
@@ -50,10 +53,10 @@ describe('Selective Subscriptions', () => {
       });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.data.user.profile.name,
-        onChanged: callback
-      });
+      store.select(
+        state => state.data.user.profile.name,
+        callback
+      );
 
       callback.mockClear();
 
@@ -71,11 +74,11 @@ describe('Selective Subscriptions', () => {
       const store = createReactor({ count: 0 });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.count,
-        onChanged: callback,
-        fireImmediately: false
-      });
+      store.select(
+        state => state.count,
+        callback,
+        { fireImmediately: false }
+      );
 
       // Should NOT fire initially
       expect(callback).not.toHaveBeenCalled();
@@ -92,11 +95,11 @@ describe('Selective Subscriptions', () => {
       const callback = vi.fn();
 
       // Use deep equality check
-      store.subscribe({
-        selector: state => state.items,
-        onChanged: callback,
-        equalityFn: isEqual
-      });
+      store.select(
+        state => state.items,
+        callback,
+        { equalityFn: isEqual }
+      );
 
       callback.mockClear();
 
@@ -116,10 +119,10 @@ describe('Selective Subscriptions', () => {
       });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.user,
-        onChanged: callback
-      });
+      store.select(
+        state => state.user,
+        callback
+      );
 
       callback.mockClear();
 
@@ -134,10 +137,10 @@ describe('Selective Subscriptions', () => {
       const store = createReactor({ count: 0 });
       const callback = vi.fn();
 
-      const unsubscribe = store.subscribe({
-        selector: state => state.count,
-        onChanged: callback
-      });
+      const unsubscribe = store.select(
+        state => state.count,
+        callback
+      );
 
       callback.mockClear();
 
@@ -157,10 +160,10 @@ describe('Selective Subscriptions', () => {
       const store = createReactor({ count: 0, name: 'John' });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.count,
-        onChanged: callback
-      });
+      store.select(
+        state => state.count,
+        callback
+      );
 
       callback.mockClear();
 
@@ -178,10 +181,10 @@ describe('Selective Subscriptions', () => {
       const store = createReactor<{ value: string | null }>({ value: 'test' });
       const callback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.value,
-        onChanged: callback
-      });
+      store.select(
+        state => state.value,
+        callback
+      );
 
       callback.mockClear();
 
@@ -205,14 +208,8 @@ describe('Selective Subscriptions', () => {
       const countCallback = vi.fn();
 
       // Subscribe to each field independently
-      store.subscribe({
-        selector: state => state.user.name,
-        onChanged: nameCallback
-      });
-      store.subscribe({
-        selector: state => state.count,
-        onChanged: countCallback
-      });
+      store.select(state => state.user.name, nameCallback);
+      store.select(state => state.count, countCallback);
 
       // Initial calls
       expect(nameCallback).toHaveBeenCalledTimes(1);
@@ -247,14 +244,8 @@ describe('Selective Subscriptions', () => {
       const nameCallback = vi.fn();
       const themeCallback = vi.fn();
 
-      store.subscribe({
-        selector: state => state.user.name,
-        onChanged: nameCallback
-      });
-      store.subscribe({
-        selector: state => state.settings.theme,
-        onChanged: themeCallback
-      });
+      store.select(state => state.user.name, nameCallback);
+      store.select(state => state.settings.theme, themeCallback);
 
       nameCallback.mockClear();
       themeCallback.mockClear();
@@ -288,14 +279,8 @@ describe('Selective Subscriptions', () => {
       const emailCallback = vi.fn();
 
       // Subscribe to individual fields
-      store.subscribe({
-        selector: s => s.form.name,
-        onChanged: nameCallback
-      });
-      store.subscribe({
-        selector: s => s.form.email,
-        onChanged: emailCallback
-      });
+      store.select(s => s.form.name, nameCallback);
+      store.select(s => s.form.email, emailCallback);
 
       nameCallback.mockClear();
       emailCallback.mockClear();
@@ -321,10 +306,7 @@ describe('Selective Subscriptions', () => {
       const callback = vi.fn();
 
       // Component only cares about currentUser and theme
-      store.subscribe({
-        selector: s => s.currentUser,
-        onChanged: callback
-      });
+      store.select(s => s.currentUser, callback);
 
       callback.mockClear();
 
@@ -338,6 +320,24 @@ describe('Selective Subscriptions', () => {
       // Update settings - WILL also fire because it causes new object references
       store.update(s => { s.settings.theme = 'light'; });
       expect(callback).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('validation', () => {
+    it('should throw on invalid selector', () => {
+      const store = createReactor({ count: 0 });
+
+      expect(() => {
+        store.select('not a function' as any, vi.fn());
+      }).toThrow(TypeError);
+    });
+
+    it('should throw on invalid callback', () => {
+      const store = createReactor({ count: 0 });
+
+      expect(() => {
+        store.select(s => s.count, 'not a function' as any);
+      }).toThrow(TypeError);
     });
   });
 });

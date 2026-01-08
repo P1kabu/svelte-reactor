@@ -1,31 +1,29 @@
 # API Reference
 
-Complete API documentation for svelte-reactor v0.2.8.
+Complete API documentation for svelte-reactor v0.2.9.
 
-## What's New in v0.2.8
+## What's New in v0.2.9
 
-🎉 **Developer Experience improvements** in v0.2.8:
+🎉 **API Cleanup & Simplification** in v0.2.9:
 
-- **⚠️ `.value` deprecation warning** - Helps users migrating from other libraries
-- **📚 Complete simpleStore/persistedStore API docs** - Full `.get()` examples
-- **📦 Lazy lz-string loading** - Better tree-shaking when compression not used
-- **✅ 501 tests** - All features thoroughly tested
+- **🧹 Removed Deprecated APIs**: `.value`, `batch()`, `batchAll()`, `diff()` removed
+- **🚀 Simpler AsyncActions**: Removed built-in retry/debounce - use at API layer
+- **📄 New `arrayPagination()`**: Standalone pagination helper (separated from arrayActions)
+- **⚡ Cleaner Subscriptions**: Use `select()` instead of `subscribe({ selector })`
+- **🔧 IndexedDB Fix**: Added `onReady` callback for async data loading
+- **📦 Smaller Bundle**: 11.52 KB gzipped (down from 11.67 KB)
+- **✅ 505 tests**: Comprehensive test coverage
 
-👉 See [v0.2.8 Upgrade](../../UPGRADES/UPGRADE-0.2.8.md) for complete changelog.
+👉 See [v0.2.9 Upgrade](../../UPGRADES/UPGRADE-0.2.9.md) for complete changelog.
 
-## What's New in v0.2.7
+<details>
+<summary>📜 Previous Versions</summary>
 
-🎉 **Major improvements** in v0.2.7 - "Performance & Polish":
+**v0.2.8**: `.value` deprecation warning, complete docs
+**v0.2.7**: `select()` method, `ReactorError` class, async concurrency control
+**v0.2.5**: Selective subscriptions, computed stores, 25% smaller bundle
 
-- **🎯 `reactor.select()` Method**: Simpler API for selective subscriptions ✨ NEW
-- **🛡️ `ReactorError` Class**: Rich error context (reactor name, action, plugin, tips) ✨ NEW
-- **⚡ Async Concurrency Control**: `concurrency: 'replace' | 'queue' | 'parallel'` for race conditions ✨ NEW
-- **🔧 DevTools Fix**: Real subscription instead of polling (major CPU/memory improvement)
-- **📦 Optimized Cloning**: Clone states once and reuse in notifySubscribers
-- **🤖 AI Instructions Optimized**: 79% smaller, tailored for each AI
-- **✅ 486 tests**: All features thoroughly tested
-
-👉 See [v0.2.7 Upgrade](../../UPGRADES/UPGRADE-0.2.7.md) for complete changelog.
+</details>
 
 ## Table of Contents
 
@@ -41,6 +39,7 @@ Complete API documentation for svelte-reactor v0.2.8.
   - [simpleStore](#simplestore)
   - [persistedStore](#persistedstore)
   - [arrayActions](#arrayactions)
+  - [arrayPagination](#arraypagination) ✨ NEW in v0.2.9
   - [asyncActions](#asyncactions)
 - [Svelte Store Utilities](#svelte-store-utilities)
   - [derived](#derived)
@@ -124,11 +123,10 @@ interface Reactor<T extends object> {
   // Replace entire state
   set(newState: T): void;
 
-  // Subscribe to state changes
+  // Subscribe to state changes (Svelte store contract)
   subscribe(callback: (state: T) => void): () => void;
-  subscribe<R>(options: SelectiveSubscribeOptions<T, R>): () => void;
 
-  // Selective subscribe (simpler API) ✨ NEW in v0.2.7
+  // Selective subscribe ✨ Recommended in v0.2.9
   select<R>(
     selector: (state: T) => R,
     onChanged: (value: R, prevValue?: R) => void,
@@ -231,11 +229,7 @@ counter.batch(() => {
 
 #### subscribe(callback)
 
-**NEW in v0.2.5:** Enhanced with selective subscription support!
-
-Subscribe to state changes. Supports both standard (entire state) and selective (specific parts) subscriptions.
-
-**Standard subscription:**
+Subscribe to state changes (Svelte store contract).
 
 ```typescript
 function subscribe(callback: (state: T) => void, invalidate?: () => void): () => void
@@ -264,93 +258,13 @@ counter.update(s => { s.name = 'New Counter'; }); // Callback fires
 unsubscribe();
 ```
 
-**Selective subscription:** ✨ NEW in v0.2.5
-
-```typescript
-function subscribe<R>(options: SelectiveSubscribeOptions<T, R>): () => void
-
-interface SelectiveSubscribeOptions<T, R> {
-  // Extract specific value from state
-  selector: (state: T) => R;
-
-  // Called only when selected value changes
-  onChanged: (value: R, prevValue?: R) => void;
-
-  // Fire callback immediately with current value (default: true)
-  fireImmediately?: boolean;
-
-  // Custom equality check (default: ===)
-  equalityFn?: (a: R, b: R) => boolean;
-}
-```
-
-**Parameters:**
-- `selector` - Function that extracts the value to observe
-- `onChanged` - Callback that receives the selected value (not entire state)
-- `fireImmediately` - Whether to call callback immediately (default: `true`)
-- `equalityFn` - Custom equality function for comparing values (default: `(a, b) => a === b`)
-
-**Returns:** Unsubscribe function
-
-**Example:**
-
-```typescript
-const store = createReactor({
-  user: { name: 'John', age: 30 },
-  count: 0
-});
-
-// Subscribe only to user.name
-const unsubscribe = store.subscribe({
-  selector: state => state.user.name,
-  onChanged: (name, prevName) => {
-    console.log(`Name changed: ${prevName} → ${name}`);
-  }
-});
-
-store.update(s => { s.count++; });        // ❌ Callback NOT called
-store.update(s => { s.user.age = 31; });  // ❌ Callback NOT called
-store.update(s => { s.user.name = 'Jane'; }); // ✅ Callback called!
-
-unsubscribe();
-```
-
-**Advanced example with custom equality:**
-
-```typescript
-import { isEqual } from 'svelte-reactor';
-
-store.subscribe({
-  selector: state => state.items,
-  onChanged: (items) => console.log('Items:', items),
-
-  // Use deep equality for arrays/objects
-  equalityFn: isEqual,
-
-  // Don't fire immediately
-  fireImmediately: false
-});
-
-// Array reference changes but content is same
-store.update(s => { s.items = [1, 2, 3]; });
-store.update(s => { s.items = [1, 2, 3]; }); // ❌ Not called (deep equal)
-
-store.update(s => { s.items = [1, 2, 3, 4]; }); // ✅ Called (content changed)
-```
-
-**Why use selective subscriptions?**
-- ⚡ **Performance** - Avoid unnecessary re-renders/computations
-- 🎯 **Precision** - React only to relevant changes
-- 🧩 **Composable** - Multiple selective subscriptions per store
-- 🔌 **Compatible** - Works with `derived()`, `get()`, etc.
-
-**See [EXAMPLES.md](./EXAMPLES.md#selective-subscriptions) for more patterns**
+> **💡 Tip:** For subscribing to specific parts of state, use `select()` instead.
 
 ---
 
-#### select(selector, onChanged, options?) ✨ NEW in v0.2.7
+#### select(selector, onChanged, options?)
 
-Simpler API for selective subscriptions. This is the recommended way to subscribe to specific parts of state.
+**Recommended** API for selective subscriptions. Subscribe to specific parts of state efficiently.
 
 ```typescript
 function select<R>(
@@ -609,6 +523,10 @@ interface PersistOptions {
 
   // Custom deserialization (optional)
   deserialize?: (stored: unknown) => T;
+
+  // NEW in v0.2.9: Callback when IndexedDB data is loaded
+  // Called after async storage (IndexedDB) finishes loading
+  onReady?: (loadedState: Partial<T> | null) => void;
 }
 ```
 
@@ -778,6 +696,31 @@ const sessionCache = createReactor(
 | `sessionStorage` | 5-10 MB | Tab session | Temporary data, forms | ✅ Supported |
 | `indexedDB` | 50+ MB | Forever | Large datasets, offline data | ✅ Supported |
 | `memory` | Unlimited | Runtime only | Testing, SSR, temp state | ✅ Supported |
+
+**onReady Callback (v0.2.9):**
+
+```typescript
+// IndexedDB loads data asynchronously - use onReady to know when data is available
+const store = createReactor(
+  { documents: [], loaded: false },
+  {
+    plugins: [
+      persist({
+        key: 'my-documents',
+        storage: 'indexedDB',
+        onReady: (loadedState) => {
+          console.log('IndexedDB data loaded:', loadedState);
+          // Update UI to show data is ready
+          store.update(s => { s.loaded = true; });
+        }
+      })
+    ]
+  }
+);
+
+// Before onReady fires, state has initial values
+// After onReady fires, state has persisted values from IndexedDB
+```
 
 **TTL Support (v0.2.4):**
 
@@ -1310,11 +1253,8 @@ console.log(counter.get()); // 6
 ```typescript
 const counter = simpleStore(0);
 
-// ✅ CORRECT: Use .get() to read value in non-reactive context
+// ✅ Use .get() to read value in non-reactive context
 console.log(counter.get()); // 0
-
-// ❌ DEPRECATED: Don't use .value (shows deprecation warning)
-// console.log(counter.value); // Works but deprecated
 
 // ✅ In Svelte components, use $ syntax for reactive access
 // {$counter}
@@ -1401,11 +1341,8 @@ settings.update(s => ({ ...s, theme: 'light' }));
 ```typescript
 const settings = persistedStore('settings', { theme: 'dark' });
 
-// ✅ CORRECT: Use .get() to read value in non-reactive context
+// ✅ Use .get() to read value in non-reactive context
 const currentTheme = settings.get().theme;
-
-// ❌ DEPRECATED: Don't use .value (shows deprecation warning)
-// const theme = settings.value.theme; // Works but deprecated
 
 // ✅ In Svelte components, use $ syntax for reactive access
 // {$settings.theme}
@@ -1440,14 +1377,10 @@ interface ArrayActionsOptions {
 
   // Action prefix for undo/redo history (default: field name)
   actionPrefix?: string;
-
-  // NEW in v0.2.4: Pagination configuration (opt-in)
-  pagination?: {
-    pageSize?: number;    // Items per page (default: 20)
-    initialPage?: number; // Starting page number (default: 1)
-  };
 }
 ```
+
+> **Note:** Pagination was moved to standalone `arrayPagination()` helper in v0.2.9.
 
 **Returns:** `ArrayActions<T>`
 
@@ -1499,27 +1432,6 @@ interface ArrayActions<T> {
 
   // Get array length
   count(): number;
-
-  // NEW in v0.2.4: Pagination methods (only available when pagination is enabled)
-  getPaginated?(): PaginatedResult<T>;
-  setPage?(page: number): void;
-  nextPage?(): boolean;
-  prevPage?(): boolean;
-  firstPage?(): void;
-  lastPage?(): void;
-}
-
-/**
- * Paginated result with metadata (NEW in v0.2.4)
- */
-interface PaginatedResult<T> {
-  items: T[];        // Items for current page
-  page: number;      // Current page number (1-indexed)
-  totalPages: number;// Total number of pages
-  totalItems: number;// Total number of items in array
-  hasNext: boolean;  // Whether next page exists
-  hasPrev: boolean;  // Whether previous page exists
-  pageSize: number;  // Items per page
 }
 ```
 
@@ -1588,10 +1500,92 @@ actions.bulkRemove(item => item.done && item.age > 30); // Remove by condition
 // Both methods support undo/redo
 ```
 
-**New Methods in v0.2.4: Pagination**
+**Features:**
+
+- **Less boilerplate**: No need to write `update()` for every operation
+- **Type-safe**: Full TypeScript inference for array items
+- **Undo/Redo compatible**: All methods work seamlessly with undoRedo plugin
+- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, `items:sort`, etc.)
+- **Bulk operations**: Efficient bulk update/remove
+
+---
+
+### arrayPagination
+
+**NEW in v0.2.9:** Standalone pagination helper for arrays. Separated from `arrayActions` for better modularity.
 
 ```typescript
-import { createReactor, arrayActions } from 'svelte-reactor';
+function arrayPagination<S extends object, K extends keyof S, T>(
+  reactor: Reactor<S>,
+  field: K,
+  options?: ArrayPaginationOptions
+): ArrayPagination<T>
+```
+
+**Parameters:**
+
+- `reactor: Reactor<S>` - The reactor instance
+- `field: K` - Field name containing the array
+- `options?: ArrayPaginationOptions` - Optional configuration
+
+**ArrayPaginationOptions:**
+
+```typescript
+interface ArrayPaginationOptions {
+  // Items per page (default: 20)
+  pageSize?: number;
+
+  // Starting page number (default: 1)
+  initialPage?: number;
+}
+```
+
+**Returns:** `ArrayPagination<T>`
+
+**ArrayPagination Interface:**
+
+```typescript
+interface ArrayPagination<T> {
+  // Get current page data with metadata
+  getPage(): PaginatedResult<T>;
+
+  // Set current page number
+  setPage(page: number): void;
+
+  // Navigate to next page (returns false if on last page)
+  nextPage(): boolean;
+
+  // Navigate to previous page (returns false if on first page)
+  prevPage(): boolean;
+
+  // Jump to first page
+  firstPage(): void;
+
+  // Jump to last page
+  lastPage(): void;
+
+  // Get current page number
+  getCurrentPage(): number;
+
+  // Get total number of pages
+  getTotalPages(): number;
+}
+
+interface PaginatedResult<T> {
+  items: T[];        // Items for current page
+  page: number;      // Current page number (1-indexed)
+  totalPages: number;// Total number of pages
+  totalItems: number;// Total number of items in array
+  hasNext: boolean;  // Whether next page exists
+  hasPrev: boolean;  // Whether previous page exists
+  pageSize: number;  // Items per page
+}
+```
+
+**Example:**
+
+```typescript
+import { createReactor, arrayActions, arrayPagination } from 'svelte-reactor';
 
 interface Todo {
   id: string;
@@ -1601,17 +1595,14 @@ interface Todo {
 
 const todos = createReactor({ items: [] as Todo[] });
 
-// Enable pagination (opt-in)
-const paginated = arrayActions(todos, 'items', {
-  idKey: 'id',
-  pagination: {
-    pageSize: 20,      // Items per page (default: 20)
-    initialPage: 1     // Starting page (default: 1)
-  }
-});
+// Create array actions for CRUD operations
+const actions = arrayActions(todos, 'items', { idKey: 'id' });
 
-// Get paginated data with full metadata
-const result = paginated.getPaginated!();
+// Create pagination separately
+const pagination = arrayPagination(todos, 'items', { pageSize: 20 });
+
+// Use pagination methods
+const result = pagination.getPage();
 console.log(result);
 // {
 //   items: [...],        // Current page items
@@ -1623,61 +1614,68 @@ console.log(result);
 //   pageSize: 20         // Items per page
 // }
 
-// Navigation methods
-paginated.nextPage!();    // Go to next page (returns false if on last page)
-paginated.prevPage!();    // Go to previous page (returns false if on first page)
-paginated.setPage!(5);    // Jump to specific page
-paginated.firstPage!();   // Jump to first page
-paginated.lastPage!();    // Jump to last page
+// Navigation
+pagination.nextPage();    // Go to next page
+pagination.prevPage();    // Go to previous page
+pagination.setPage(5);    // Jump to specific page
+pagination.firstPage();   // Jump to first page
+pagination.lastPage();    // Jump to last page
 
-// Pagination works seamlessly with all arrayActions methods
-paginated.add({ id: '101', text: 'New task', done: false });
-paginated.sort((a, b) => a.text.localeCompare(b.text));
-paginated.filter(item => !item.done);
-// getPaginated() always returns current page after modifications
+// Works seamlessly with arrayActions
+actions.add({ id: '101', text: 'New task', done: false });
+actions.sort((a, b) => a.text.localeCompare(b.text));
+// pagination.getPage() reflects changes automatically
+```
 
-// Real-world example: Svelte component
-/*
+**In Svelte Component:**
+
+```svelte
 <script lang="ts">
-  import { paginated } from './stores';
+  import { todos, actions, pagination } from './stores';
 
-  const { items, page, totalPages, hasNext, hasPrev } = $derived(
-    paginated.getPaginated!()
-  );
+  // Reactive pagination data
+  $: pageData = pagination.getPage();
 </script>
 
-{#each items as todo}
+{#each pageData.items as todo}
   <div>{todo.text}</div>
 {/each}
 
 <div class="pagination">
-  <button disabled={!hasPrev} onclick={() => paginated.prevPage!()}>
+  <button disabled={!pageData.hasPrev} onclick={() => pagination.prevPage()}>
     Previous
   </button>
-  <span>Page {page} of {totalPages}</span>
-  <button disabled={!hasNext} onclick={() => paginated.nextPage!()}>
+  <span>Page {pageData.page} of {pageData.totalPages}</span>
+  <button disabled={!pageData.hasNext} onclick={() => pagination.nextPage()}>
     Next
   </button>
 </div>
-*/
 ```
-
-**Pagination Features:**
-- ✅ Opt-in (no overhead when not used)
-- ✅ Auto-clamping to valid page range (won't crash on invalid pages)
-- ✅ Works with all arrayActions methods (sort, filter, bulkUpdate, etc.)
-- ✅ 1-indexed pages (user-friendly: page 1, 2, 3...)
-- ✅ Complete metadata (totalPages, hasNext, hasPrev, totalItems)
-- ✅ Navigation methods return boolean success status
-- ✅ Safe for empty arrays (returns page 1 with 0 items)
 
 **Features:**
 
-- **Less boilerplate**: No need to write `update()` for every operation
-- **Type-safe**: Full TypeScript inference for array items
-- **Undo/Redo compatible**: All methods work seamlessly with undoRedo plugin
-- **Action names**: Automatic action names for better debugging (`items:add`, `items:update`, `items:sort`, etc.)
-- **Bulk operations**: Efficient bulk update/remove in v0.2.3
+- **Modular**: Use pagination only when needed
+- **Auto-clamping**: Won't crash on invalid page numbers
+- **Reactive**: Works with Svelte reactivity
+- **1-indexed**: User-friendly page numbers (1, 2, 3...)
+- **Safe**: Returns page 1 with 0 items for empty arrays
+
+**Migration from v0.2.8:**
+
+```typescript
+// Before (v0.2.8)
+const actions = arrayActions(store, 'items', {
+  pagination: { pageSize: 20 }
+});
+actions.nextPage!();
+actions.getPaginated!();
+
+// After (v0.2.9)
+const actions = arrayActions(store, 'items');
+const pagination = arrayPagination(store, 'items', { pageSize: 20 });
+pagination.nextPage();
+pagination.getPage();
+```
 
 ---
 
@@ -1715,34 +1713,18 @@ interface AsyncActionOptions {
   // Reset error on new request (default: true)
   resetErrorOnStart?: boolean;
 
-  // NEW in v0.2.3: Retry configuration
-  retry?: {
-    // Number of retry attempts (default: 3)
-    attempts?: number;
-    // Delay between retries in ms (default: 1000)
-    delay?: number;
-    // Backoff strategy: 'linear' | 'exponential' (default: 'exponential')
-    backoff?: 'linear' | 'exponential';
-    // Custom retry condition (default: retry on any error)
-    retryOn?: (error: Error) => boolean;
-  };
-
-  // NEW in v0.2.3: Debounce delay in milliseconds
-  // Waits for this duration of inactivity before executing
-  debounce?: number;
-
-  // NEW in v0.2.7: Concurrency control for race conditions
+  // Concurrency control for race conditions
   // 'replace' - Cancel previous request, only latest completes (default)
   // 'queue' - Queue requests, execute sequentially
-  // 'parallel' - All requests run in parallel
-  concurrency?: 'replace' | 'queue' | 'parallel';
-}
+  concurrency?: 'replace' | 'queue';
 
-// NEW in v0.2.3: Async controller for cancellation
-interface AsyncController {
-  cancel(): void;
+  // Error callback for handling errors
+  onError?: (error: Error, actionName: string) => void;
 }
 ```
+
+> **Note:** `retry`, `debounce`, and `parallel` concurrency were removed in v0.2.9.
+> Use external libraries (e.g., `lodash-es/debounce`) or implement at the API layer.
 
 **Returns:** `AsyncActions<T>`
 
@@ -1830,107 +1812,7 @@ const api = asyncActions(
 // Now uses store.state.isLoading and store.state.lastError
 ```
 
-**NEW in v0.2.3: Retry Logic**
-
-```typescript
-const api = asyncActions(
-  store,
-  {
-    fetchUsers: async () => {
-      const response = await fetch('/api/users');
-      if (!response.ok) throw new Error('Failed to fetch');
-      return { users: await response.json() };
-    }
-  },
-  {
-    retry: {
-      attempts: 3,           // Retry up to 3 times
-      delay: 1000,           // Wait 1s between retries
-      backoff: 'exponential' // 1s, 2s, 4s, 8s... (exponential backoff)
-    }
-  }
-);
-
-// Automatically retries on failure!
-await api.fetchUsers();
-// If it fails, retries 3 times before throwing
-
-// Custom retry condition
-const api2 = asyncActions(
-  store,
-  {
-    fetchData: async () => {
-      const res = await fetch('/api/data');
-      return { data: await res.json() };
-    }
-  },
-  {
-    retry: {
-      attempts: 5,
-      delay: 500,
-      backoff: 'linear', // 500ms, 1000ms, 1500ms, 2000ms...
-      retryOn: (error) => {
-        // Only retry on network errors, not 404s
-        return error.message.includes('network');
-      }
-    }
-  }
-);
-```
-
-**NEW in v0.2.3: Debouncing**
-
-```typescript
-const api = asyncActions(
-  store,
-  {
-    searchUsers: async (query: string) => {
-      const response = await fetch(`/api/users?q=${query}`);
-      return { results: await response.json() };
-    }
-  },
-  {
-    debounce: 300 // Wait 300ms of inactivity before executing
-  }
-);
-
-// Type fast - only last request executes!
-api.searchUsers('j');
-api.searchUsers('jo');
-api.searchUsers('joh');
-api.searchUsers('john'); // Only this one runs after 300ms
-```
-
-**NEW in v0.2.3: Manual Cancellation**
-
-```typescript
-const api = asyncActions(store, {
-  fetchData: async () => {
-    const response = await fetch('/api/data');
-    return { data: await response.json() };
-  }
-});
-
-// Start request and get controller
-const controller = api.fetchData();
-
-// Cancel if needed
-setTimeout(() => {
-  controller.cancel(); // Cancels in-flight request
-}, 1000);
-
-// Debounced actions also support cancellation
-const searchApi = asyncActions(
-  store,
-  { search: async (q: string) => { /* ... */ } },
-  { debounce: 300 }
-);
-
-const ctrl = searchApi.search('query');
-ctrl.cancel(); // Cancel pending/in-flight request
-```
-
-**Concurrency control (v0.2.7):**
+**Concurrency Control:**
 
 ```typescript
 // 'replace' mode - only latest request completes (default)
@@ -1946,17 +1828,44 @@ api.search('a');   // Canceled (stale)
 api.search('ab');  // Canceled (stale)
 api.search('abc'); // ✅ Only this updates state
 
-// 'parallel' mode - all requests run simultaneously
-const parallelApi = asyncActions(store, {
-  fetchItem: async (id: number) => { /* ... */ }
-}, { concurrency: 'parallel' });
+// 'queue' mode - requests execute sequentially
+const queueApi = asyncActions(store, {
+  saveItem: async (item: Item) => { /* ... */ }
+}, { concurrency: 'queue' });
 
-// All three requests run in parallel
-await Promise.all([
-  parallelApi.fetchItem(1),
-  parallelApi.fetchItem(2),
-  parallelApi.fetchItem(3)
-]);
+// Requests execute one after another
+queueApi.saveItem(item1); // Runs first
+queueApi.saveItem(item2); // Waits for item1, then runs
+queueApi.saveItem(item3); // Waits for item2, then runs
+```
+
+**Migration from v0.2.8 (retry/debounce):**
+
+```typescript
+// Before (v0.2.8) - retry in asyncAction
+const api = asyncActions(store, { fetchUsers }, {
+  retry: { attempts: 3, delay: 1000 }
+});
+
+// After (v0.2.9) - retry at API layer
+const fetchWithRetry = async () => {
+  for (let i = 0; i < 3; i++) {
+    try {
+      return await fetch('/api/users').then(r => r.json());
+    } catch (e) {
+      if (i === 2) throw e;
+      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+    }
+  }
+};
+const api = asyncActions(store, { fetchUsers: fetchWithRetry });
+
+// Before (v0.2.8) - debounce in asyncAction
+const api = asyncActions(store, { search }, { debounce: 300 });
+
+// After (v0.2.9) - use external debounce
+import { debounce } from 'lodash-es';
+const debouncedSearch = debounce((q: string) => api.search(q), 300);
 ```
 
 **Features:**
@@ -2681,12 +2590,62 @@ actions.add({ id: Date.now(), text, done: false });
 
 **No Breaking Changes** - Fully backward compatible
 
+### From v0.2.8 to v0.2.9 ⚠️ Breaking Changes
+
+**Removed APIs:**
+
+| Removed | Replacement |
+|---------|-------------|
+| `batch(reactor, fn)` | `reactor.batch(fn)` |
+| `batchAll(fn)` | Just call `fn()` directly |
+| `store.value` | `store.get()` |
+| `diff(a, b)` | Use `microdiff` or `deep-diff` package |
+| `arrayActions(..., { pagination })` | Use separate `arrayPagination()` |
+| `subscribe({ selector, ... })` | Use `select(selector, ...)` |
+| `asyncAction(..., { retry })` | Handle retry at API layer |
+| `asyncAction(..., { debounce })` | Use `lodash-es/debounce` |
+| `asyncAction(..., { concurrency: 'parallel' })` | Use `'replace'` or `'queue'` |
+
+**New Features:**
+- `arrayPagination()` - Standalone pagination helper
+- `onReady` callback for IndexedDB persistence
+- IndexedDB persistence fix (data now loads correctly on page reload)
+- 505 tests (was 501)
+- Bundle size: 11.52 KB (was 11.67 KB)
+
+**Migration Examples:**
+
+```typescript
+// batch() → reactor.batch()
+// Before
+import { batch } from 'svelte-reactor/utils';
+batch(store, () => { /* ... */ });
+// After
+store.batch(() => { /* ... */ });
+
+// .value → .get()
+// Before
+const count = counter.value;
+// After
+const count = counter.get();
+
+// Pagination
+// Before
+const actions = arrayActions(store, 'items', { pagination: { pageSize: 20 } });
+actions.nextPage!();
+// After
+const actions = arrayActions(store, 'items');
+const pagination = arrayPagination(store, 'items', { pageSize: 20 });
+pagination.nextPage();
+```
+
 ### From v0.2.x to v0.3.x (Planned)
 
-- IndexedDB storage adapter
-- Computed/Derived State API
-- Selectors API with memoization
-- Multi-tab sync with BroadcastChannel
+- State Snapshots API
+- Performance Monitoring Plugin
+- Validation Plugin
+- Form Helpers
+- SSR Improvements
 
 ---
 
@@ -2694,8 +2653,8 @@ actions.add({ id: Date.now(), text, done: false });
 
 - **State updates**: ~0.037ms for simple updates
 - **Undo/Redo overhead**: ~0.05ms per operation
-- **Bundle size**: 13.27 KB gzipped (full package with v0.2.3 features), 1.05 KB (plugins only)
+- **Bundle size**: 11.52 KB gzipped (full package)
 - **Memory**: History limited by `undoRedo({ limit })` option
-- **Test coverage**: 232 comprehensive tests
+- **Test coverage**: 505 comprehensive tests
 
 See [PERFORMANCE.md](./PERFORMANCE.md) for detailed benchmarks.

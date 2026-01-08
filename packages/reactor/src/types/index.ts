@@ -13,7 +13,7 @@ export type Subscriber<T> = (value: T) => void;
 export type Unsubscriber = () => void;
 
 /**
- * Options for selective subscriptions
+ * Options for selective subscriptions (used by select() method)
  */
 export interface SelectiveSubscribeOptions<T extends object, R> {
   /** Function that extracts the value you want to observe */
@@ -45,34 +45,24 @@ export interface Reactor<T extends object> {
   /**
    * Subscribe to state changes (Svelte stores API compatible)
    *
-   * @overload Subscribe to entire state
+   * NOTE: For selective subscriptions, use select() instead.
+   *
    * @param subscriber Callback that receives the entire state
    * @param invalidate Optional invalidate function (Svelte stores compatibility)
    * @returns Unsubscribe function
    *
-   * @overload Selective subscribe to specific part of state
-   * @param options Selective subscription options with selector and callback
-   * @returns Unsubscribe function
-   *
-   * @example Standard subscribe
+   * @example
    * ```ts
    * store.subscribe(state => console.log(state))
    * ```
-   *
-   * @example Selective subscribe
-   * ```ts
-   * store.subscribe({
-   *   selector: state => state.user.name,
-   *   onChanged: (name, prevName) => console.log(name)
-   * })
-   * ```
    */
   subscribe(subscriber: Subscriber<T>, invalidate?: () => void): Unsubscriber;
-  subscribe<R>(options: SelectiveSubscribeOptions<T, R>): Unsubscriber;
 
   /**
-   * Selective subscribe with a simpler API
-   * Only fires callback when selected value changes
+   * Selective subscribe - only fires callback when selected value changes
+   *
+   * Use this instead of subscribe() when you only need to react to changes
+   * in a specific field or derived value.
    *
    * @param selector Function that extracts the value to observe
    * @param onChanged Callback when selected value changes
@@ -375,6 +365,27 @@ export interface PersistOptions {
    * @param key - The storage key that expired
    */
   onExpire?: (key: string) => void;
+
+  /**
+   * Callback when IndexedDB storage is ready and data is loaded (NEW in v0.2.9)
+   * Since IndexedDB is asynchronous, the initial state may not include persisted data.
+   * This callback is called after data is loaded from IndexedDB.
+   * For localStorage/sessionStorage, this is called synchronously during init.
+   *
+   * @param state - The loaded state from storage (or null if no data was found)
+   *
+   * @example
+   * ```ts
+   * persist({
+   *   key: 'my-state',
+   *   storage: 'indexedDB',
+   *   onReady: (loadedState) => {
+   *     console.log('Data loaded from IndexedDB:', loadedState);
+   *   }
+   * })
+   * ```
+   */
+  onReady?: (state: any | null) => void;
 }
 
 /**
