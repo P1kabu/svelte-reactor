@@ -1,18 +1,52 @@
 # Upgrade Guide: v0.3.0
 
 **Target Release:** Q1 2025
-**Codename:** "Monorepo & RuneDB"
+**Codename:** "Monorepo, Forms & Cleanup"
 **Status:** Planning
 
 ---
 
 ## Overview
 
-v0.3.0 is a major architectural change:
+v0.3.0 is a foundational release that sets the library on the right path:
 
 1. **Monorepo Migration** - Split into scoped packages `@svelte-reactor/*`
-2. **RuneDB** - New reactive IndexedDB wrapper (`@svelte-reactor/db`)
-3. **100% Backward Compatible** - Existing code continues to work
+2. **Form Helper** - New `createForm()` helper (killer feature)
+3. **API Cleanup** - Deprecations, simplifications, better structure
+4. **100% Backward Compatible** - Existing code continues to work (with warnings)
+
+---
+
+## What's Changing
+
+### New
+| Feature | Description |
+|---------|-------------|
+| `@svelte-reactor/core` | New scoped package name |
+| `createForm()` | Form management helper |
+
+### Deprecated (will show warnings, removed in v0.4.0)
+| Feature | Replacement |
+|---------|-------------|
+| `asyncActions()` | Use `createQuery()` (v0.4.0) or plain async functions |
+
+### Renamed
+| Old | New |
+|-----|-----|
+| `multiTabSync` | `sync` |
+
+### Simplified
+| Feature | Change |
+|---------|--------|
+| `logger` plugin | Fewer options (removed rarely used) |
+| Middleware system | Merged into Plugin interface |
+
+### Demoted (less prominent in docs)
+| Feature | Reason |
+|---------|--------|
+| `arrayActions` | Advanced use case, not core |
+| `arrayPagination` | Advanced use case, not core |
+| `computedStore` | Use `derived()` for simple cases |
 
 ---
 
@@ -20,33 +54,15 @@ v0.3.0 is a major architectural change:
 
 ```
 @svelte-reactor/
-├── core                 # State management (all-in-one, tree-shakeable)
-├── db                   # RuneDB - Reactive IndexedDB
-└── (shared)             # Internal utilities (not published separately)
+└── core                 # Main package (renamed from svelte-reactor)
+
+svelte-reactor           # Compatibility wrapper -> @svelte-reactor/core
 ```
-
-### Final Decision: Варіант B
-
-**Один пакет `@svelte-reactor/core` з хорошим tree-shaking.**
-
-Користувач імпортує тільки те що потрібно - bundler видаляє решту:
-
-```typescript
-// Імпортуємо тільки persist
-import { createReactor } from '@svelte-reactor/core';
-import { persist } from '@svelte-reactor/core/plugins';
-
-// Bundler автоматично видалить: undo, logger, arrayActions, asyncActions, etc.
-// Фінальний bundle: ~6 KB замість 12 KB
-```
-
-### Package Details
 
 | Package | Description | Size Target |
 |---------|-------------|-------------|
-| `@svelte-reactor/core` | State management, plugins, helpers (tree-shakeable) | < 12 KB full / ~4-6 KB typical |
-| `@svelte-reactor/db` | Reactive IndexedDB collections | < 8 KB |
-| `svelte-reactor` | Compatibility alias → @svelte-reactor/core | ~0 KB (re-export) |
+| `@svelte-reactor/core` | State management, plugins, helpers | < 12 KB |
+| `svelte-reactor` | Compatibility alias | ~0 KB (re-export) |
 
 ---
 
@@ -57,151 +73,60 @@ import { persist } from '@svelte-reactor/core/plugins';
 ```
 svelte-dev.reactor/
 ├── packages/
-│   ├── core/                    # @svelte-reactor/core (rename from reactor)
+│   ├── core/                    # @svelte-reactor/core
 │   │   ├── src/
 │   │   │   ├── index.ts
 │   │   │   ├── core/
-│   │   │   │   └── reactor.svelte.ts
+│   │   │   │   ├── reactor.svelte.ts
+│   │   │   │   └── reactor-error.ts
 │   │   │   ├── helpers/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── simple-store.ts
+│   │   │   │   ├── persisted-store.ts
+│   │   │   │   ├── array-actions.ts
+│   │   │   │   ├── array-pagination.ts
+│   │   │   │   ├── async-actions.ts     # DEPRECATED
+│   │   │   │   ├── computed-store.ts
+│   │   │   │   └── form.ts              # NEW
 │   │   │   ├── plugins/
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── undo-plugin.ts
+│   │   │   │   ├── persist-plugin.ts
+│   │   │   │   ├── logger-plugin.ts     # SIMPLIFIED
+│   │   │   │   └── sync-plugin.ts       # RENAMED from multiTabSync
 │   │   │   ├── storage/
 │   │   │   ├── devtools/
 │   │   │   ├── utils/
 │   │   │   └── types/
-│   │   ├── tests/               # 505+ existing tests
-│   │   ├── templates/           # AI templates
-│   │   ├── package.json
-│   │   ├── vite.config.ts
-│   │   ├── tsconfig.json
-│   │   ├── README.md
-│   │   ├── API.md
-│   │   └── CHANGELOG.md
+│   │   ├── tests/
+│   │   ├── templates/
+│   │   └── package.json
 │   │
-│   ├── db/                      # @svelte-reactor/db (RuneDB) - NEW
-│   │   ├── src/
-│   │   │   ├── index.ts
-│   │   │   ├── core/
-│   │   │   │   ├── database.ts
-│   │   │   │   ├── collection.svelte.ts
-│   │   │   │   └── record.svelte.ts
-│   │   │   ├── idb/
-│   │   │   │   ├── connection.ts
-│   │   │   │   ├── operations.ts
-│   │   │   │   └── migrations.ts
-│   │   │   ├── sync/
-│   │   │   │   └── broadcast.ts
-│   │   │   ├── utils/
-│   │   │   └── types/
-│   │   ├── tests/               # 110+ new tests
-│   │   ├── package.json
-│   │   ├── vite.config.ts
-│   │   ├── tsconfig.json
-│   │   └── README.md
-│   │
-│   ├── reactor/                 # svelte-reactor (compatibility alias)
-│   │   ├── src/
-│   │   │   └── index.ts         # Re-exports from @svelte-reactor/core
+│   ├── reactor/                 # svelte-reactor (compatibility wrapper)
+│   │   ├── src/index.ts
 │   │   └── package.json
 │   │
 │   └── create-reactor/          # CLI (existing)
-│       └── ...
 │
 ├── examples/
-│   ├── reactor-demos/           # Existing demos
-│   └── db-demo/                 # RuneDB demo - NEW
-│
-├── UPGRADES/                    # Upgrade guides
-├── .claude/                     # AI context
+├── UPGRADES/
 ├── pnpm-workspace.yaml
-├── package.json                 # Root workspace config
-└── tsconfig.base.json           # Shared TS config
+└── package.json
 ```
 
-### 1.2 Root Configuration Files
+### 1.2 Migration Tasks
 
-**pnpm-workspace.yaml:**
-```yaml
-packages:
-  - 'packages/*'
-  - 'examples/*'
-```
-
-**Root package.json:**
-```json
-{
-  "name": "svelte-reactor-monorepo",
-  "private": true,
-  "scripts": {
-    "dev": "pnpm -r dev",
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
-    "publish:all": "pnpm -r publish --access public"
-  },
-  "devDependencies": {
-    "typescript": "^5.3.0",
-    "vite": "^5.0.0",
-    "vitest": "^3.0.0"
-  }
-}
-```
-
-### 1.3 Migration Tasks
-
-- [ ] Register `@svelte-reactor` npm organization
+- [x] Register `@svelte-reactor` npm organization
 - [ ] Create `pnpm-workspace.yaml`
 - [ ] Update root `package.json` for workspaces
-- [ ] Rename `packages/reactor` → `packages/core`
+- [ ] Rename `packages/reactor` -> `packages/core`
 - [ ] Update package.json name to `@svelte-reactor/core`
 - [ ] Create `packages/reactor` as compatibility wrapper
-- [ ] Create `packages/db` scaffold
 - [ ] Update all internal imports
-- [ ] Update CI/CD workflows (GitHub Actions)
-- [ ] Run all 505 tests - must pass
-- [ ] Test publish to npm (dry-run)
+- [ ] Update CI/CD workflows
+- [ ] Run all 500+ tests - must pass
 
----
-
-## Phase 2: @svelte-reactor/core
-
-### 2.1 Package Rename
-
-**Old (v0.2.x):**
-```typescript
-import { createReactor } from 'svelte-reactor';
-import { undoRedo, persist } from 'svelte-reactor/plugins';
-```
-
-**New (v0.3.0):**
-```typescript
-import { createReactor } from '@svelte-reactor/core';
-import { undoRedo, persist } from '@svelte-reactor/core/plugins';
-```
-
-### 2.2 Backward Compatibility
-
-Publish `svelte-reactor` as a wrapper that re-exports from `@svelte-reactor/core`:
-
-**packages/reactor-compat/package.json:**
-```json
-{
-  "name": "svelte-reactor",
-  "version": "0.3.0",
-  "description": "Alias for @svelte-reactor/core",
-  "dependencies": {
-    "@svelte-reactor/core": "^0.3.0"
-  }
-}
-```
-
-**packages/reactor-compat/src/index.ts:**
-```typescript
-// Re-export everything from @svelte-reactor/core
-export * from '@svelte-reactor/core';
-```
-
-### 2.3 Package.json (@svelte-reactor/core)
+### 1.3 Package.json (@svelte-reactor/core)
 
 ```json
 {
@@ -209,8 +134,6 @@ export * from '@svelte-reactor/core';
   "version": "0.3.0",
   "description": "Reactive state management for Svelte 5 with plugins",
   "type": "module",
-  "svelte": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -219,479 +142,366 @@ export * from '@svelte-reactor/core';
     },
     "./plugins": {
       "types": "./dist/plugins/index.d.ts",
-      "svelte": "./dist/plugins/index.js",
       "default": "./dist/plugins/index.js"
     },
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
-      "svelte": "./dist/helpers/index.js",
       "default": "./dist/helpers/index.js"
     },
     "./devtools": {
       "types": "./dist/devtools/index.d.ts",
-      "svelte": "./dist/devtools/index.js",
       "default": "./dist/devtools/index.js"
-    },
-    "./utils/*": {
-      "types": "./dist/utils/*.d.ts",
-      "default": "./dist/utils/*.js"
     }
   },
   "peerDependencies": {
     "svelte": "^5.0.0"
-  },
-  "keywords": [
-    "svelte",
-    "svelte5",
-    "state-management",
-    "reactive",
-    "runes",
-    "undo-redo",
-    "persistence"
-  ]
+  }
 }
 ```
 
-### 2.4 Core Changes (Minimal)
+### 1.4 Compatibility Wrapper
 
-v0.3.0 core has **minimal changes** - focus is on monorepo + RuneDB:
+**packages/reactor/src/index.ts:**
+```typescript
+// Re-export everything from @svelte-reactor/core
+export * from '@svelte-reactor/core';
 
-- [ ] Rename package to `@svelte-reactor/core`
-- [ ] Update internal imports
-- [ ] Export shared utilities for `@svelte-reactor/db`
-- [ ] Add integration hooks for RuneDB (optional)
-- [ ] All 505+ tests must pass
+// Show deprecation notice (once)
+if (typeof console !== 'undefined') {
+  console.info(
+    '[svelte-reactor] Consider migrating to @svelte-reactor/core for new projects.\n' +
+    'See: https://github.com/user/svelte-reactor/blob/master/UPGRADES/UPGRADE-0.3.0.md'
+  );
+}
+```
 
 ---
 
-## Phase 3: @svelte-reactor/db (RuneDB)
+## Phase 2: API Cleanup
 
-### 3.1 Design Philosophy
+### 2.1 Deprecate asyncActions
 
-| Principle | Description |
-|-----------|-------------|
-| **Zero Config** | Works out of box, schema optional |
-| **Svelte 5 Native** | Uses $state, $derived, feels like Svelte |
-| **Plain Objects** | No ORM classes, just TypeScript interfaces |
-| **Proxy Magic** | `record.title = 'New'` auto-saves |
-| **Optimistic UI** | Changes reflect immediately |
-
-### 3.2 Core API
+**Why:** Query helper (v0.4.0) will be better. Users can use plain async functions.
 
 ```typescript
-// ============================================
-// @svelte-reactor/db - Public API
-// ============================================
-
-// 1. Create Database
-function createDB(name: string, options?: DBOptions): Database;
-
-interface DBOptions {
-  version?: number;
-  onUpgrade?: (db: IDBDatabase, oldVersion: number) => void;
-}
-
-// 2. Database Instance
-interface Database {
-  name: string;
-  ready: boolean;              // $state - true when IDB connected
-  error: Error | null;         // $state - connection error if any
-
-  // Get or create collection
-  collection<T>(name: string, options?: CollectionOptions): Collection<T>;
-
-  // Database operations
-  close(): void;
-  delete(): Promise<void>;
-  export(): Promise<Record<string, any[]>>;
-  import(data: Record<string, any[]>): Promise<void>;
-}
-
-interface CollectionOptions {
-  keyPath?: string;            // Default: 'id'
-  autoIncrement?: boolean;     // Default: true
-  indexes?: string[];          // Fields to index
-}
-
-// 3. Collection
-interface Collection<T> {
-  name: string;
-
-  // Create
-  add(item: Omit<T, 'id'>): Promise<Record<T>>;
-  addMany(items: Omit<T, 'id'>[]): Promise<Record<T>[]>;
-
-  // Read (reactive)
-  get(id: number | string): Record<T>;           // Returns reactive record
-  all(): RecordCollection<T>;                    // Returns reactive collection
-  where(field: keyof T, value: any): RecordCollection<T>;
-
-  // Update
-  update(id: number | string, changes: Partial<T>): Promise<void>;
-
-  // Delete
-  delete(id: number | string): Promise<void>;
-  deleteMany(ids: (number | string)[]): Promise<void>;
-  clear(): Promise<void>;
-
-  // Utilities
-  count(): number;             // $derived
-}
-
-// 4. Reactive Record (single item)
-interface Record<T> {
-  // Data fields accessible directly via Proxy
-  [K in keyof T]: T[K];        // e.g., record.title, record.done
-
-  // Meta state
-  $id: number | string;        // Record ID
-  $loading: boolean;           // $state - loading from IDB
-  $saving: boolean;            // $state - saving to IDB
-  $error: Error | null;        // $state - last error
-  $dirty: boolean;             // $state - has unsaved changes
-  $exists: boolean;            // $derived - record exists in DB
-
-  // Methods
-  $save(): Promise<void>;      // Force immediate save
-  $reload(): Promise<void>;    // Reload from IDB
-  $delete(): Promise<void>;    // Delete record
-  $toJSON(): T;                // Get plain object
-}
-
-// 5. Reactive Collection (multiple items)
-interface RecordCollection<T> {
-  items: Record<T>[];          // $state - array of reactive records
-
-  // Meta state
-  loading: boolean;            // $state
-  error: Error | null;         // $state
-
-  // Computed
-  count: number;               // $derived
-  isEmpty: boolean;            // $derived
-  first: Record<T> | null;     // $derived
-  last: Record<T> | null;      // $derived
-
-  // Query modifiers (chainable, return new collection)
-  orderBy(field: keyof T, dir?: 'asc' | 'desc'): RecordCollection<T>;
-  limit(n: number): RecordCollection<T>;
-  offset(n: number): RecordCollection<T>;
-
-  // Methods
-  reload(): Promise<void>;
-  toArray(): T[];              // Get plain objects array
+// helpers/async-actions.ts
+/**
+ * @deprecated Use createQuery() (coming in v0.4.0) or plain async functions.
+ * Will be removed in v0.4.0.
+ */
+export function asyncActions<T extends object, A extends Record<string, AsyncActionFn<T>>>(
+  reactor: Reactor<T>,
+  actions: A,
+  options?: AsyncActionOptions
+): AsyncActions<T, A> {
+  // Show warning once per session
+  if (typeof console !== 'undefined' && !asyncActions._warned) {
+    console.warn(
+      '[svelte-reactor] asyncActions() is deprecated.\n' +
+      'Use createQuery() (coming in v0.4.0) or plain async functions.\n' +
+      'See: https://github.com/user/svelte-reactor/blob/master/UPGRADES/UPGRADE-0.3.0.md'
+    );
+    asyncActions._warned = true;
+  }
+  // ... existing implementation
 }
 ```
 
-### 3.3 Usage Examples
-
-**Basic CRUD:**
+**Migration:**
 ```typescript
-import { createDB } from '@svelte-reactor/db';
-
-interface Todo {
-  id?: number;
-  text: string;
-  done: boolean;
-  createdAt: Date;
-}
-
-// Create database
-const db = createDB('my-app');
-
-// Get collection (auto-created if doesn't exist)
-const todos = db.collection<Todo>('todos');
-
-// Create
-const newTodo = await todos.add({
-  text: 'Buy milk',
-  done: false,
-  createdAt: new Date()
+// Before (asyncActions)
+const api = asyncActions(store, {
+  fetchUsers: async () => {
+    const res = await fetch('/api/users');
+    return { users: await res.json() };
+  }
 });
-console.log(newTodo.$id); // 1
+await api.fetchUsers();
 
-// Read (reactive)
-const todo = todos.get(1);
-console.log(todo.text); // 'Buy milk'
-
-// Update (auto-saves!)
-todo.text = 'Buy oat milk';
-todo.done = true;
-// Changes debounced and saved to IndexedDB automatically
-
-// Delete
-await todo.$delete();
+// After (plain async function)
+async function fetchUsers() {
+  store.update(s => { s.loading = true; });
+  try {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+    store.update(s => { s.users = users; s.loading = false; });
+  } catch (error) {
+    store.update(s => { s.error = error; s.loading = false; });
+  }
+}
 ```
 
-**In Svelte Component:**
+### 2.2 Rename multiTabSync -> sync
+
+**Why:** Shorter, cleaner name.
+
+```typescript
+// plugins/index.ts
+
+// New name
+export { sync } from './sync-plugin.js';
+
+// Old name (deprecated alias)
+export { sync as multiTabSync } from './sync-plugin.js';
+```
+
+```typescript
+// sync-plugin.ts
+export function sync(options?: SyncOptions): ReactorPlugin<any> {
+  // ... implementation
+}
+
+/**
+ * @deprecated Use sync() instead. Will be removed in v0.4.0.
+ */
+export const multiTabSync = sync;
+```
+
+**Migration:**
+```typescript
+// Before
+import { multiTabSync } from 'svelte-reactor/plugins';
+plugins: [multiTabSync({ key: 'app' })]
+
+// After
+import { sync } from '@svelte-reactor/core/plugins';
+plugins: [sync({ key: 'app' })]
+```
+
+### 2.3 Simplify Logger Options
+
+**Remove rarely used options:**
+
+```typescript
+// Before (too many options)
+interface LoggerOptions {
+  collapsed?: boolean;
+  filter?: (action, state, prevState) => boolean;
+  trackPerformance?: boolean;
+  slowThreshold?: number;
+  includeTimestamp?: boolean;
+  maxDepth?: number;
+}
+
+// After (essential only)
+interface LoggerOptions {
+  collapsed?: boolean;
+  filter?: (action, state, prevState) => boolean;
+  performance?: boolean;  // renamed from trackPerformance
+}
+```
+
+### 2.4 Merge Middleware into Plugins
+
+**Current (confusing):**
+```typescript
+// Two similar concepts
+interface ReactorPlugin<T> {
+  name: string;
+  init(context): void;
+  destroy?(): void;
+}
+
+interface Middleware<T> {
+  name: string;
+  onBeforeUpdate?(prev, next, action): void;
+  onAfterUpdate?(prev, next, action): void;
+  onError?(error): void;
+}
+```
+
+**After (unified):**
+```typescript
+interface ReactorPlugin<T> {
+  name: string;
+  init(context): void;
+  destroy?(): void;
+
+  // Lifecycle hooks (merged from Middleware)
+  onBeforeUpdate?(prev: T, next: T, action?: string): void;
+  onAfterUpdate?(prev: T, next: T, action?: string): void;
+  onError?(error: Error): void;
+}
+```
+
+**Migration:** Internal change only, no user action needed.
+
+---
+
+## Phase 3: Form Helper (Killer Feature)
+
+### 3.1 Why Forms?
+
+- Every project needs forms
+- No good Svelte 5 runes-based solution exists
+- React has Formik, React Hook Form - Svelte 5 has nothing comparable
+
+### 3.2 API Design
+
+```typescript
+import { createForm } from '@svelte-reactor/core/helpers';
+
+const form = createForm({
+  initialValues: {
+    email: '',
+    password: '',
+    rememberMe: false
+  },
+
+  validate: {
+    email: [
+      (v) => !!v || 'Email is required',
+      (v) => v.includes('@') || 'Invalid email'
+    ],
+    password: (v) => v.length >= 8 || 'Min 8 characters'
+  },
+
+  onSubmit: async (values) => {
+    await api.login(values);
+  },
+
+  validateOn: 'blur',
+  persistDraft: 'login-form'
+});
+```
+
+### 3.3 Form State
+
+```typescript
+interface FormState<T> {
+  // Values
+  values: T;
+  initialValues: T;
+
+  // Field state
+  touched: Record<keyof T, boolean>;
+  dirty: Record<keyof T, boolean>;
+  errors: Record<keyof T, string>;
+
+  // Form state
+  isValid: boolean;
+  isDirty: boolean;
+  isSubmitting: boolean;
+  submitCount: number;
+  submitError: string | null;
+
+  // Methods
+  setField(field, value): void;
+  setError(field, error): void;
+  setTouched(field): void;
+  validate(): Promise<boolean>;
+  submit(): Promise<void>;
+  reset(): void;
+}
+```
+
+### 3.4 Usage in Svelte
+
 ```svelte
 <script lang="ts">
-  import { createDB } from '@svelte-reactor/db';
+  import { createForm } from '@svelte-reactor/core/helpers';
 
-  interface Todo {
-    id?: number;
-    text: string;
-    done: boolean;
-  }
-
-  const db = createDB('todo-app');
-  const todos = db.collection<Todo>('todos');
-
-  // Reactive collection - auto-updates when data changes
-  const allTodos = todos.all();
-
-  let newText = $state('');
-
-  async function addTodo() {
-    if (!newText.trim()) return;
-    await todos.add({ text: newText, done: false });
-    newText = '';
-  }
+  const form = createForm({
+    initialValues: { email: '', password: '' },
+    validate: {
+      email: (v) => v.includes('@') || 'Invalid email',
+      password: (v) => v.length >= 8 || 'Min 8 characters'
+    },
+    onSubmit: async (values) => await login(values)
+  });
 </script>
 
-<input bind:value={newText} onkeydown={e => e.key === 'Enter' && addTodo()} />
-<button onclick={addTodo}>Add</button>
+<form onsubmit={(e) => { e.preventDefault(); form.submit(); }}>
+  <input
+    type="email"
+    bind:value={form.values.email}
+    onblur={() => form.setTouched('email')}
+  />
+  {#if form.touched.email && form.errors.email}
+    <span class="error">{form.errors.email}</span>
+  {/if}
 
-{#if allTodos.loading}
-  <p>Loading...</p>
-{:else if allTodos.isEmpty}
-  <p>No todos yet!</p>
-{:else}
-  {#each allTodos.items as todo}
-    <div class="todo" class:done={todo.done}>
-      <input type="checkbox" bind:checked={todo.done} />
-      <input bind:value={todo.text} />
-      {#if todo.$saving}
-        <span class="saving">Saving...</span>
-      {/if}
-      <button onclick={() => todo.$delete()}>Delete</button>
-    </div>
-  {/each}
-{/if}
+  <input
+    type="password"
+    bind:value={form.values.password}
+    onblur={() => form.setTouched('password')}
+  />
+  {#if form.touched.password && form.errors.password}
+    <span class="error">{form.errors.password}</span>
+  {/if}
 
-<style>
-  .done { opacity: 0.5; text-decoration: line-through; }
-  .saving { color: orange; font-size: 0.8em; }
-</style>
+  <button type="submit" disabled={!form.isValid || form.isSubmitting}>
+    {form.isSubmitting ? 'Loading...' : 'Login'}
+  </button>
+</form>
 ```
 
-**With Indexes and Queries:**
-```typescript
-const db = createDB('app');
+### 3.5 Test Plan
 
-// Define indexes for faster queries
-const todos = db.collection<Todo>('todos', {
-  indexes: ['done', 'createdAt']
-});
-
-// Query by index
-const activeTodos = todos.where('done', false);
-const completedTodos = todos.where('done', true);
-
-// Chain modifiers
-const recentActive = todos
-  .where('done', false)
-  .orderBy('createdAt', 'desc')
-  .limit(10);
-```
-
-**Cross-Tab Sync (Built-in):**
-```typescript
-const db = createDB('app');
-const todos = db.collection<Todo>('todos');
-
-// Changes automatically sync across browser tabs!
-// Tab 1: todos.add({ text: 'New', done: false });
-// Tab 2: allTodos.items automatically updates
-```
-
-### 3.4 Internal Architecture
-
-```
-@svelte-reactor/db/src/
-├── index.ts                 # Public exports
-│
-├── core/
-│   ├── database.ts          # createDB, Database class
-│   ├── collection.svelte.ts # Collection class with $state
-│   └── record.svelte.ts     # Record proxy with auto-save
-│
-├── idb/
-│   ├── connection.ts        # IndexedDB connection pool
-│   ├── operations.ts        # CRUD operations (add, get, put, delete)
-│   ├── cursor.ts            # Cursor iteration for queries
-│   └── migrations.ts        # Schema versioning
-│
-├── sync/
-│   └── broadcast.ts         # BroadcastChannel for cross-tab sync
-│
-├── utils/
-│   ├── debounce.ts          # Debounced auto-save
-│   ├── proxy.ts             # Reactive proxy creation
-│   └── cache.ts             # In-memory cache management
-│
-└── types/
-    └── index.ts             # All TypeScript types
-```
-
-### 3.5 Record Proxy Implementation
-
-```typescript
-// Simplified concept of how Record proxy works
-
-function createRecordProxy<T>(
-  data: T,
-  collection: Collection<T>,
-  id: number | string
-): Record<T> {
-  // Internal reactive state
-  let _data = $state(data);
-  let _saving = $state(false);
-  let _dirty = $state(false);
-  let _error = $state<Error | null>(null);
-
-  // Debounced save
-  const debouncedSave = debounce(async () => {
-    _saving = true;
-    try {
-      await collection._update(id, _data);
-      _dirty = false;
-      _error = null;
-    } catch (e) {
-      _error = e;
-    } finally {
-      _saving = false;
-    }
-  }, 300);
-
-  // Create proxy for data access
-  return new Proxy({} as Record<T>, {
-    get(_, prop: string) {
-      // Meta properties
-      if (prop === '$id') return id;
-      if (prop === '$saving') return _saving;
-      if (prop === '$dirty') return _dirty;
-      if (prop === '$error') return _error;
-      if (prop === '$exists') return true;
-      if (prop === '$loading') return false;
-
-      // Methods
-      if (prop === '$save') return () => debouncedSave.flush();
-      if (prop === '$reload') return () => collection._reload(id);
-      if (prop === '$delete') return () => collection.delete(id);
-      if (prop === '$toJSON') return () => ({ ..._data });
-
-      // Data fields
-      return _data[prop as keyof T];
-    },
-
-    set(_, prop: string, value) {
-      if (prop.startsWith('$')) return false; // Can't set meta
-
-      _data[prop as keyof T] = value;
-      _dirty = true;
-      debouncedSave();
-      return true;
-    }
-  });
-}
-```
-
-### 3.6 Package.json (@svelte-reactor/db)
-
-```json
-{
-  "name": "@svelte-reactor/db",
-  "version": "0.1.0",
-  "description": "Reactive IndexedDB for Svelte 5 - bind:value that auto-saves",
-  "type": "module",
-  "svelte": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "svelte": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "peerDependencies": {
-    "svelte": "^5.0.0"
-  },
-  "keywords": [
-    "svelte",
-    "svelte5",
-    "indexeddb",
-    "database",
-    "reactive",
-    "runes",
-    "offline",
-    "persistence"
-  ]
-}
-```
-
-### 3.7 Test Plan
-
-| Category | Tests | Description |
-|----------|-------|-------------|
-| Database | 15 | createDB, close, delete, export/import |
-| Collection CRUD | 25 | add, get, update, delete, clear |
-| Reactive Record | 20 | proxy, auto-save, meta states |
-| Reactive Collection | 20 | all, where, orderBy, limit |
-| Cross-Tab Sync | 15 | BroadcastChannel, conflict resolution |
-| Edge Cases | 15 | errors, large data, concurrent ops |
-| **Total** | **110+** | |
+| Category | Tests |
+|----------|-------|
+| Basic CRUD | 15 |
+| Validation | 20 |
+| Form State | 15 |
+| Submission | 10 |
+| Persistence | 10 |
+| Edge Cases | 10 |
+| **Total** | **80+** |
 
 ---
 
-## Phase 4: Integration (Optional)
+## Phase 4: Documentation & Polish
 
-### 4.1 Using @svelte-reactor/core with @svelte-reactor/db
+### 4.1 Core Documentation Updates
 
-```typescript
-import { createReactor } from '@svelte-reactor/core';
-import { createDB } from '@svelte-reactor/db';
+**Step 1: Package Documentation**
+- [ ] `packages/core/README.md` - Update with @svelte-reactor/core branding
+- [ ] `packages/core/CHANGELOG.md` - Add v0.3.0 entry
+- [ ] `packages/core/API.md` - Add createForm(), update deprecations
+- [ ] `packages/core/QUICK_START.md` - Update import paths
+- [ ] `packages/core/MIGRATION.md` - Add v0.2.x → v0.3.0 guide
 
-// UI state in reactor
-const ui = createReactor({
-  selectedTodoId: null as number | null,
-  filter: 'all' as 'all' | 'active' | 'done'
-});
+**Step 2: Root Repository Documentation**
+- [ ] `/README.md` - Update with monorepo structure
+- [ ] `/CLAUDE.md` - Update commands, architecture
+- [ ] `/CONTRIBUTING.md` - Update for monorepo workflow
 
-// Persistent data in RuneDB
-const db = createDB('app');
-const todos = db.collection<Todo>('todos');
+**Step 3: AI Templates**
+- [ ] `templates/claude.md` - Add createForm() patterns
+- [ ] `templates/cursor.md` - Add createForm() patterns
+- [ ] `templates/copilot.md` - Add createForm() patterns
 
-// Combined usage
-const selectedTodo = $derived(
-  ui.state.selectedTodoId
-    ? todos.get(ui.state.selectedTodoId)
-    : null
-);
-```
+**Step 4: Form Helper Dedicated Docs**
+- [ ] `packages/core/FORMS.md` - Complete form guide
 
-### 4.2 Future: Deep Integration
+### 4.2 Documentation Restructure
 
-```typescript
-// FUTURE: Reactor + RuneDB integration plugin
-import { createReactor } from '@svelte-reactor/core';
-import { withDB } from '@svelte-reactor/db/integration';
+**Demote these sections (move to "Advanced" section):**
+- arrayActions
+- arrayPagination
+- computedStore (clarify vs derived)
 
-const store = createReactor({
-  user: null,
-  settings: { theme: 'dark' }
-}, {
-  plugins: [
-    withDB({
-      db: 'my-app',
-      collections: {
-        user: 'users',      // Sync user to users collection
-        settings: 'config'  // Sync settings to config collection
-      }
-    })
-  ]
-});
-```
+**Promote these sections (main docs):**
+- createReactor
+- simpleStore / persistedStore
+- createForm (NEW)
+- Plugins (undoRedo, persist, sync, logger)
+
+### 4.3 Examples
+
+**Form Examples:**
+- [ ] Basic login form
+- [ ] Registration with password confirmation
+- [ ] Multi-step form wizard
+- [ ] Dynamic form fields
+
+### 4.4 Final Verification Checklist
+
+- [ ] All code examples tested and working
+- [ ] All import paths updated
+- [ ] No broken links
+- [ ] Deprecation warnings working
+- [ ] Bundle size < 12 KB
 
 ---
 
@@ -699,42 +509,60 @@ const store = createReactor({
 
 | Phase | Duration | Tasks |
 |-------|----------|-------|
-| **Phase 1: Monorepo** | 1 week | Setup, migrate, CI/CD |
-| **Phase 2: Core** | 1 week | Rename, test, publish |
-| **Phase 3: RuneDB** | 3-4 weeks | Implement, test, document |
-| **Phase 4: Integration** | 1 week | Optional features, polish |
-| **Total** | **6-7 weeks** | |
+| **Phase 1: Monorepo** | 1-2 weeks | Setup, migrate, compatibility wrapper |
+| **Phase 2: Cleanup** | 1 week | Deprecations, renames, simplifications |
+| **Phase 3: Form Helper** | 2-3 weeks | Implement, test, document |
+| **Phase 4: Polish** | 1 week | Docs, examples, release |
+| **Total** | **5-7 weeks** | |
 
 ---
 
 ## Migration Guide for Users
 
-### From svelte-reactor v0.2.x
+### Import Path Changes
 
-**Option 1: No changes needed**
 ```typescript
-// This still works! svelte-reactor re-exports @svelte-reactor/core
+// Old (still works with deprecation notice)
 import { createReactor } from 'svelte-reactor';
-```
+import { persist, multiTabSync } from 'svelte-reactor/plugins';
 
-**Option 2: Update to scoped package**
-```typescript
-// Recommended for new projects
+// New (recommended)
 import { createReactor } from '@svelte-reactor/core';
+import { persist, sync } from '@svelte-reactor/core/plugins';
 ```
 
-### Adding RuneDB
-
-```bash
-# Install
-npm install @svelte-reactor/db
-```
+### Deprecated Features
 
 ```typescript
-import { createDB } from '@svelte-reactor/db';
+// asyncActions - DEPRECATED
+// Before
+const api = asyncActions(store, { fetchUsers: ... });
 
-const db = createDB('my-app');
-const todos = db.collection('todos');
+// After - use plain async functions or wait for createQuery() in v0.4.0
+async function fetchUsers() {
+  store.update(s => { s.loading = true; });
+  // ...
+}
+
+// multiTabSync - RENAMED to sync
+// Before
+import { multiTabSync } from 'svelte-reactor/plugins';
+
+// After
+import { sync } from '@svelte-reactor/core/plugins';
+```
+
+### New Features
+
+```typescript
+// createForm() - NEW
+import { createForm } from '@svelte-reactor/core/helpers';
+
+const form = createForm({
+  initialValues: { email: '', password: '' },
+  validate: { email: v => v.includes('@') || 'Invalid' },
+  onSubmit: async (values) => { /* ... */ }
+});
 ```
 
 ---
@@ -743,64 +571,67 @@ const todos = db.collection('todos');
 
 | Metric | Target |
 |--------|--------|
-| @svelte-reactor/core tests | 505+ (maintain) |
-| @svelte-reactor/db tests | 110+ |
+| Existing tests | 500+ (maintain) |
+| New form tests | 80+ |
 | Core bundle size | < 12 KB |
-| DB bundle size | < 8 KB |
-| Documentation | Complete API docs |
-| Examples | 2+ demo apps |
+| Form helper size | < 3 KB (tree-shakeable) |
+| Documentation | Complete |
+| Deprecation warnings | All working |
 
 ---
 
-## Risks & Mitigations
+## Breaking Changes
 
-| Risk | Mitigation |
-|------|------------|
-| npm org `@svelte-reactor` taken | Check availability, register early |
-| Breaking changes | Maintain `svelte-reactor` as alias |
-| RuneDB complexity | Start minimal MVP, iterate |
-| IndexedDB edge cases | Extensive testing, fake-indexeddb |
+### v0.3.0 - No Breaking Changes
+All changes are backward compatible with deprecation warnings.
+
+### v0.4.0 - Planned Removals
+- `asyncActions()` - use `createQuery()` or plain async
+- `multiTabSync` alias - use `sync`
+- Old logger options - use simplified options
 
 ---
 
 ## Checklist
 
 ### Phase 1: Monorepo Setup
-- [ ] Register `@svelte-reactor` npm organization
-- [ ] Create directory structure
-- [ ] Setup pnpm workspaces
-- [ ] Migrate `packages/reactor` → `packages/core`
-- [ ] Create `packages/shared`
-- [ ] Update CI/CD (GitHub Actions)
-- [ ] Test all existing functionality
+- [x] Register `@svelte-reactor` npm organization
+- [ ] Create pnpm-workspace.yaml
+- [ ] Update root package.json
+- [ ] Rename packages/reactor -> packages/core
+- [ ] Create compatibility wrapper
+- [ ] Update imports
+- [ ] Update CI/CD
+- [ ] Test all 500+ tests
+- [ ] Publish @svelte-reactor/core
+- [ ] Publish svelte-reactor (wrapper)
 
-### Phase 2: @svelte-reactor/core
-- [ ] Rename package
-- [ ] Update exports
-- [ ] Create compatibility package (`svelte-reactor`)
-- [ ] Update all documentation
-- [ ] Publish to npm
+### Phase 2: API Cleanup
+- [ ] Add deprecation warning to asyncActions
+- [ ] Rename multiTabSync -> sync (keep alias)
+- [ ] Simplify logger options
+- [ ] Merge middleware into plugin interface
+- [ ] Update types
 
-### Phase 3: @svelte-reactor/db
-- [ ] Create package scaffold
-- [ ] Implement `createDB`
-- [ ] Implement `Collection`
-- [ ] Implement `Record` proxy
-- [ ] Implement `RecordCollection`
-- [ ] Add IndexedDB operations
-- [ ] Add cross-tab sync
-- [ ] Write 110+ tests
-- [ ] Write documentation
-- [ ] Create demo app
-- [ ] Publish to npm
+### Phase 3: Form Helper
+- [ ] Design API (done above)
+- [ ] Implement createForm()
+- [ ] Add validation (sync + async)
+- [ ] Add form state management
+- [ ] Add draft persistence
+- [ ] Write 80+ tests
+- [ ] Document API
 
 ### Phase 4: Polish
-- [ ] Integration examples
-- [ ] Performance optimization
-- [ ] Edge case handling
-- [ ] Final documentation review
+- [ ] Update all documentation
+- [ ] Restructure docs (demote advanced helpers)
+- [ ] Create form examples
+- [ ] Update AI templates
+- [ ] Final testing
+- [ ] Release
 
 ---
 
-**Created:** 2025-01-07
+**Created:** 2025-01-04
+**Updated:** 2025-01-08
 **Status:** Planning
